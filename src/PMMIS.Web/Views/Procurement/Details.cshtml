@@ -205,7 +205,7 @@
                             {
                                 <tr>
                                     <td class="text-muted">Субкомпонент:</td>
-                                    <td>@Model.SubComponent.Number — @Model.SubComponent.NameRu</td>
+                                    <td>@Model.SubComponent.Code — @Model.SubComponent.NameRu</td>
                                 </tr>
                             }
                             @if (!string.IsNullOrEmpty(Model.Comments))
@@ -309,7 +309,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Объём работ:</td>
-                                    <td>@Model.Contract.Scope</td>
+                                    <td>@Model.Contract.ScopeOfWork</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Сумма:</td>
@@ -317,7 +317,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Подписан:</td>
-                                    <td>@Model.Contract.ContractStartDate.ToString("dd.MM.yyyy")</td>
+                                    <td>@Model.Contract.SigningDate.ToString("dd.MM.yyyy")</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Срок:</td>
@@ -375,13 +375,6 @@
                                             </a>
                                         </td>
                                     </tr>
-                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.NameEn))
-                                    {
-                                        <tr>
-                                            <td class="text-muted">Name (EN):</td>
-                                            <td>@Model.Contract.Contractor.NameEn</td>
-                                        </tr>
-                                    }
                                     @if (!string.IsNullOrEmpty(Model.Contract.Contractor.Country))
                                     {
                                         <tr>
@@ -438,10 +431,10 @@
                     <small class="text-muted d-block">
                         <i class="bi bi-clock me-1"></i> Создано: @Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")
                     </small>
-                    @if (Model.UpdatedAt != default)
+                    @if (Model.UpdatedAt.HasValue)
                     {
                         <small class="text-muted d-block mt-1">
-                            <i class="bi bi-pencil me-1"></i> Обновлено: @Model.UpdatedAt.ToString("dd.MM.yyyy HH:mm")
+                            <i class="bi bi-pencil me-1"></i> Обновлено: @Model.UpdatedAt.Value.ToString("dd.MM.yyyy HH:mm")
                         </small>
                     }
                 </div>
