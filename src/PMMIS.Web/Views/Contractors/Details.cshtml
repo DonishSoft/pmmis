@@ -3,6 +3,8 @@
 @{
     ViewData["Title"] = Model.Name;
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canEdit = await permissionService.HasPermissionAsync(User, "Contractors", "edit");
     var totalContractAmount = Model.Contracts.Sum(c => c.FinalAmount);
     var totalPaid = Model.Contracts.Sum(c => c.PaidAmount);
 }
@@ -24,7 +26,7 @@
             }
         </div>
         <div class="d-flex gap-2">
-            @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+            @if (canEdit)
             {
                 <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
                     <i class="bi bi-pencil me-1"></i> Редактировать

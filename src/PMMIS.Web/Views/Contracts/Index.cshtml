@@ -2,12 +2,16 @@
 @{
     ViewData["Title"] = "Контракты";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canCreate = await permissionService.HasPermissionAsync(User, "Contracts", "create");
+    var canEdit = await permissionService.HasPermissionAsync(User, "Contracts", "edit");
+    var canDelete = await permissionService.HasPermissionAsync(User, "Contracts", "delete");
 }
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Контракты</h2>
-        @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+        @if (canCreate)
         {
             <a asp-action="Create" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Добавить контракт
