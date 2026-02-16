@@ -7,14 +7,21 @@
     var selectedProjectId = ViewBag.SelectedProjectId as int?;
     var selectedStatus = ViewBag.SelectedStatus as ProcurementStatus?;
     var selectedType = ViewBag.SelectedType as ProcurementType?;
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canCreate = await permissionService.HasPermissionAsync(User, "Procurement", "create");
+    var canEdit = await permissionService.HasPermissionAsync(User, "Procurement", "edit");
+    var canDelete = await permissionService.HasPermissionAsync(User, "Procurement", "delete");
 }
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-clipboard-check me-2"></i>План закупок</h2>
-        <a asp-action="Create" asp-route-projectId="@selectedProjectId" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i> Новая позиция
-        </a>
+        @if (canCreate)
+        {
+            <a asp-action="Create" asp-route-projectId="@selectedProjectId" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Новая позиция
+            </a>
+        }
     </div>
 
     @if (TempData["Success"] != null)
@@ -22,6 +29,37 @@
         <div class="alert alert-success alert-dismissible fade show">
             <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Summary Cards (moved to top) -->
+    @if (Model.Any())
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Общая сумма</div>
+                    <div class="fs-4 fw-bold text-primary">$@Model.Sum(m => m.EstimatedAmount).ToString("N0")</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">В процессе</div>
+                    <div class="fs-4 fw-bold text-warning">@Model.Count(m => m.Status == ProcurementStatus.InProgress || m.Status == ProcurementStatus.Evaluation)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Завершено</div>
+                    <div class="fs-4 fw-bold text-success">@Model.Count(m => m.Status == ProcurementStatus.Completed || m.Status == ProcurementStatus.Awarded)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Запланировано</div>
+                    <div class="fs-4 fw-bold text-secondary">@Model.Count(m => m.Status == ProcurementStatus.Planned)</div>
+                </div>
+            </div>
         </div>
     }
 
@@ -94,9 +132,15 @@
                     @foreach (var item in Model)
                     {
                         <tr>
-                            <td><code>@item.ReferenceNo</code></td>
                             <td>
-                                @item.Description
+                                <a asp-action="Details" asp-route-id="@item.Id" class="fw-bold text-primary text-decoration-none">
+                                    <code>@item.ReferenceNo</code>
+                                </a>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="text-dark text-decoration-none">
+                                    @item.Description
+                                </a>
                                 @if (item.Contract != null)
                                 {
                                     <br><small class="text-success"><i class="bi bi-link"></i> @item.Contract.ContractNumber</small>
@@ -149,14 +193,20 @@
                                 @(item.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—")
                             </td>
                             <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Редактировать">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить позицию?')">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                @if (canEdit)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                }
+                                @if (canDelete)
+                                {
+                                    <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить позицию?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
                             </td>
                         </tr>
                     }
@@ -167,9 +217,12 @@
                                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                 Нет позиций плана закупок
                                 <br>
-                                <a asp-action="Create" class="btn btn-primary btn-sm mt-3">
-                                    <i class="bi bi-plus-lg me-1"></i> Добавить первую позицию
-                                </a>
+                                @if (canCreate)
+                                {
+                                    <a asp-action="Create" class="btn btn-primary btn-sm mt-3">
+                                        <i class="bi bi-plus-lg me-1"></i> Добавить первую позицию
+                                    </a>
+                                }
                             </td>
                         </tr>
                     }
@@ -177,35 +230,4 @@
             </table>
         </div>
     </div>
-
-    <!-- Summary -->
-    @if (Model.Any())
-    {
-        <div class="row mt-4">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm text-center p-3">
-                    <div class="text-muted small">Общая сумма</div>
-                    <div class="fs-4 fw-bold text-primary">$@Model.Sum(m => m.EstimatedAmount).ToString("N0")</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm text-center p-3">
-                    <div class="text-muted small">В процессе</div>
-                    <div class="fs-4 fw-bold text-warning">@Model.Count(m => m.Status == ProcurementStatus.InProgress || m.Status == ProcurementStatus.Evaluation)</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm text-center p-3">
-                    <div class="text-muted small">Завершено</div>
-                    <div class="fs-4 fw-bold text-success">@Model.Count(m => m.Status == ProcurementStatus.Completed || m.Status == ProcurementStatus.Awarded)</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm text-center p-3">
-                    <div class="text-muted small">Запланировано</div>
-                    <div class="fs-4 fw-bold text-secondary">@Model.Count(m => m.Status == ProcurementStatus.Planned)</div>
-                </div>
-            </div>
-        </div>
-    }
 </div>

@@ -56,6 +56,25 @@ public class ProcurementController : Controller
         return View(items);
     }
 
+    [RequirePermission(MenuKeys.Procurement, PermissionType.View)]
+    public async Task<IActionResult> Details(int id)
+    {
+        var item = await _context.ProcurementPlans
+            .Include(p => p.Project)
+            .Include(p => p.Component)
+            .Include(p => p.SubComponent)
+            .Include(p => p.Contract)
+                .ThenInclude(c => c!.Contractor)
+            .Include(p => p.Contract)
+                .ThenInclude(c => c!.Payments)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (item == null)
+            return NotFound();
+
+        return View(item);
+    }
+
     public async Task<IActionResult> Create(int? projectId)
     {
         await LoadDropdowns();

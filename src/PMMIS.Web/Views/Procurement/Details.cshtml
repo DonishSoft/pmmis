@@ -1,0 +1,451 @@
+@model PMMIS.Domain.Entities.ProcurementPlan
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = Model.ReferenceNo;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canEdit = await permissionService.HasPermissionAsync(User, "Procurement", "edit");
+
+    string GetMethodName(ProcurementMethod method) => method switch
+    {
+        ProcurementMethod.NCB => "NCB — National Competitive Bidding",
+        ProcurementMethod.ICB => "ICB — International Competitive Bidding",
+        ProcurementMethod.Shopping => "Shopping",
+        ProcurementMethod.DirectContracting => "Direct Contracting",
+        ProcurementMethod.CQS => "CQS — Consultant Qualification Selection",
+        ProcurementMethod.QCBS => "QCBS — Quality and Cost Based Selection",
+        ProcurementMethod.LCS => "LCS — Least Cost Selection",
+        ProcurementMethod.FBS => "FBS — Fixed Budget Selection",
+        _ => method.ToString()
+    };
+
+    string GetTypeName(ProcurementType type) => type switch
+    {
+        ProcurementType.Goods => "Товары",
+        ProcurementType.Works => "Работы",
+        ProcurementType.ConsultingServices => "Консультационные услуги",
+        ProcurementType.NonConsultingServices => "Некон. услуги",
+        _ => type.ToString()
+    };
+
+    string GetStatusName(ProcurementStatus status) => status switch
+    {
+        ProcurementStatus.Planned => "🔵 Запланировано",
+        ProcurementStatus.InProgress => "⏳ В процессе",
+        ProcurementStatus.Evaluation => "📋 Оценка",
+        ProcurementStatus.Awarded => "🏆 Присуждено",
+        ProcurementStatus.Completed => "✅ Завершено",
+        ProcurementStatus.Cancelled => "❌ Отменено",
+        _ => status.ToString()
+    };
+
+    string GetStatusBadgeClass(ProcurementStatus status) => status switch
+    {
+        ProcurementStatus.Planned => "bg-secondary",
+        ProcurementStatus.InProgress => "bg-primary",
+        ProcurementStatus.Evaluation => "bg-warning text-dark",
+        ProcurementStatus.Awarded => "bg-info",
+        ProcurementStatus.Completed => "bg-success",
+        ProcurementStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    string GetTypeBadgeClass(ProcurementType type) => type switch
+    {
+        ProcurementType.Goods => "bg-primary",
+        ProcurementType.Works => "bg-warning text-dark",
+        ProcurementType.ConsultingServices => "bg-success",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">План закупок</a></li>
+            <li class="breadcrumb-item active">@Model.ReferenceNo</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">@Model.ReferenceNo</h2>
+            <p class="text-muted mb-0">@Model.Description</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (canEdit)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i> Редактировать
+                </a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Cards Row -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Оценочная стоимость</div>
+                    <div class="fs-3 fw-bold text-primary">$@Model.EstimatedAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Статус</div>
+                    <div class="mt-1">
+                        <span class="badge @GetStatusBadgeClass(Model.Status) fs-6">@GetStatusName(Model.Status)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Метод закупки</div>
+                    <div class="mt-1">
+                        <span class="badge bg-info fs-6">@Model.Method</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Тип</div>
+                    <div class="mt-1">
+                        <span class="badge @GetTypeBadgeClass(Model.Type) fs-6">@GetTypeName(Model.Type)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Plan Info -->
+        <div class="col-lg-7">
+            <!-- Plan Details Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clipboard-check me-2"></i>Информация о плане закупки
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted" style="width: 220px">Референс номер:</td>
+                                <td class="fw-semibold"><code>@Model.ReferenceNo</code></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Описание:</td>
+                                <td>@Model.Description</td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(Model.DescriptionTj))
+                            {
+                                <tr>
+                                    <td class="text-muted">Описание (тадж.):</td>
+                                    <td>@Model.DescriptionTj</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.DescriptionEn))
+                            {
+                                <tr>
+                                    <td class="text-muted">Description (EN):</td>
+                                    <td>@Model.DescriptionEn</td>
+                                </tr>
+                            }
+                            <tr>
+                                <td class="text-muted">Метод закупки:</td>
+                                <td>
+                                    <span class="badge bg-info">@Model.Method</span>
+                                    <span class="text-muted ms-1 small">@GetMethodName(Model.Method)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Тип:</td>
+                                <td>
+                                    <span class="badge @GetTypeBadgeClass(Model.Type)">@GetTypeName(Model.Type)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Оценочная стоимость:</td>
+                                <td class="fw-bold text-primary">$@Model.EstimatedAmount.ToString("N0")</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Статус:</td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(Model.Status)">@GetStatusName(Model.Status)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Проект:</td>
+                                <td>
+                                    <span class="badge bg-secondary">@Model.Project.Code</span>
+                                    @Model.Project.NameRu
+                                </td>
+                            </tr>
+                            @if (Model.Component != null)
+                            {
+                                <tr>
+                                    <td class="text-muted">Компонент:</td>
+                                    <td>Компонент @Model.Component.Number — @Model.Component.NameRu</td>
+                                </tr>
+                            }
+                            @if (Model.SubComponent != null)
+                            {
+                                <tr>
+                                    <td class="text-muted">Субкомпонент:</td>
+                                    <td>@Model.SubComponent.Number — @Model.SubComponent.NameRu</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.Comments))
+                            {
+                                <tr>
+                                    <td class="text-muted">Комментарии:</td>
+                                    <td>@Model.Comments</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Dates Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calendar3 me-2"></i>Даты
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th></th>
+                                <th class="text-center">Плановая дата</th>
+                                <th class="text-center">Фактическая дата</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-muted">Открытие тендера</td>
+                                <td class="text-center">@(Model.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="text-center">
+                                    @if (Model.ActualBidOpeningDate.HasValue)
+                                    {
+                                        <span class="text-success fw-semibold">@Model.ActualBidOpeningDate?.ToString("dd.MM.yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Подписание контракта</td>
+                                <td class="text-center">@(Model.PlannedContractSigningDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="text-center">
+                                    @if (Model.ActualContractSigningDate.HasValue)
+                                    {
+                                        <span class="text-success fw-semibold">@Model.ActualContractSigningDate?.ToString("dd.MM.yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Завершение</td>
+                                <td class="text-center">@(Model.PlannedCompletionDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                <td class="text-center">
+                                    @if (Model.ActualCompletionDate.HasValue)
+                                    {
+                                        <span class="text-success fw-semibold">@Model.ActualCompletionDate?.ToString("dd.MM.yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Contractor & Contract Info -->
+        <div class="col-lg-5">
+            <!-- Contract Card -->
+            @if (Model.Contract != null)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-text me-2"></i>Контракт
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted" style="width: 140px">Номер:</td>
+                                    <td>
+                                        <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.Contract.Id" class="fw-bold text-primary text-decoration-none">
+                                            @Model.Contract.ContractNumber
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Объём работ:</td>
+                                    <td>@Model.Contract.Scope</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Сумма:</td>
+                                    <td class="fw-bold text-primary">$@Model.Contract.FinalAmount.ToString("N0")</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Подписан:</td>
+                                    <td>@Model.Contract.ContractStartDate.ToString("dd.MM.yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Срок:</td>
+                                    <td>@Model.Contract.ContractEndDate.ToString("dd.MM.yyyy")</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Прогресс:</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress flex-grow-1" style="height: 8px;">
+                                                <div class="progress-bar bg-success" style="width: @Model.Contract.WorkCompletedPercent%"></div>
+                                            </div>
+                                            <span class="fw-semibold small">@Model.Contract.WorkCompletedPercent%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @if (Model.Contract.Payments.Any())
+                                {
+                                    var totalPaid = Model.Contract.Payments.Where(p => p.Status == PaymentStatus.Paid).Sum(p => p.Amount);
+                                    <tr>
+                                        <td class="text-muted">Оплачено:</td>
+                                        <td>
+                                            <span class="fw-semibold text-success">$@totalPaid.ToString("N0")</span>
+                                            <span class="text-muted small">из $@Model.Contract.FinalAmount.ToString("N0")</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        <div class="mt-3">
+                            <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.Contract.Id" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Открыть контракт
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contractor Card -->
+                @if (Model.Contract.Contractor != null)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white border-0">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-building me-2"></i>Подрядчик
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted" style="width: 140px">Название:</td>
+                                        <td class="fw-semibold">
+                                            <a asp-controller="Contractors" asp-action="Details" asp-route-id="@Model.Contract.Contractor.Id" class="text-dark text-decoration-none">
+                                                @Model.Contract.Contractor.Name
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.NameEn))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Name (EN):</td>
+                                            <td>@Model.Contract.Contractor.NameEn</td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.Country))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Страна:</td>
+                                            <td><i class="bi bi-geo-alt me-1"></i>@Model.Contract.Contractor.Country</td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.ContactPerson))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Контакт:</td>
+                                            <td>@Model.Contract.Contractor.ContactPerson</td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.Email))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">E-mail:</td>
+                                            <td><a href="mailto:@Model.Contract.Contractor.Email">@Model.Contract.Contractor.Email</a></td>
+                                        </tr>
+                                    }
+                                    @if (!string.IsNullOrEmpty(Model.Contract.Contractor.Phone))
+                                    {
+                                        <tr>
+                                            <td class="text-muted">Телефон:</td>
+                                            <td>@Model.Contract.Contractor.Phone</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                            <div class="mt-3">
+                                <a asp-controller="Contractors" asp-action="Details" asp-route-id="@Model.Contract.Contractor.Id" class="btn btn-sm btn-outline-secondary w-100">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Подробнее о подрядчике
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-file-earmark-x fs-1 text-muted d-block mb-3"></i>
+                        <p class="text-muted mb-0">Контракт ещё не привязан</p>
+                        <small class="text-muted">Контракт появится после присуждения закупки</small>
+                    </div>
+                </div>
+            }
+
+            <!-- Meta Info -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted d-block">
+                        <i class="bi bi-clock me-1"></i> Создано: @Model.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                    </small>
+                    @if (Model.UpdatedAt != default)
+                    {
+                        <small class="text-muted d-block mt-1">
+                            <i class="bi bi-pencil me-1"></i> Обновлено: @Model.UpdatedAt.ToString("dd.MM.yyyy HH:mm")
+                        </small>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
