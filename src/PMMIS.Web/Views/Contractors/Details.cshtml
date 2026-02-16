@@ -190,28 +190,169 @@
 
             <!-- Documents -->
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Документы</h5>
+                    @if (canEdit)
+                    {
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+                            <i class="bi bi-upload me-1"></i> Загрузить
+                        </button>
+                    }
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     @if (Model.Documents.Any())
                     {
-                        <ul class="list-unstyled mb-0">
-                            @foreach (var doc in Model.Documents)
-                            {
-                                <li class="mb-2">
-                                    <i class="bi bi-file-earmark me-2"></i>
-                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
-                                </li>
-                            }
-                        </ul>
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px">№</th>
+                                    <th>Тип</th>
+                                    <th>Название</th>
+                                    <th class="text-end">Размер</th>
+                                    @if (canEdit)
+                                    {
+                                        <th style="width:50px"></th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var doc in Model.Documents.OrderBy(d => d.SortOrder).ThenBy(d => d.CreatedAt))
+                                {
+                                    <tr>
+                                        <td class="text-muted">@doc.SortOrder</td>
+                                        <td>
+                                            @{
+                                                var (typeName, typeClass) = doc.Type switch
+                                                {
+                                                    DocumentType.CompanyRegistration => ("Регистрация", "bg-success"),
+                                                    DocumentType.CompanyLicense       => ("Лицензия", "bg-info"),
+                                                    DocumentType.TaxCertificate       => ("Налоговый серт.", "bg-warning text-dark"),
+                                                    DocumentType.BankDetails          => ("Банк. реквизиты", "bg-primary"),
+                                                    DocumentType.Insurance            => ("Страховка", "bg-danger"),
+                                                    DocumentType.Contract             => ("Контракт", "bg-secondary"),
+                                                    DocumentType.SignedContract        => ("Подп. контракт", "bg-dark"),
+                                                    DocumentType.TenderDocument       => ("Тендер", "bg-info"),
+                                                    DocumentType.Report               => ("Отчёт", "bg-primary"),
+                                                    _                                 => ("Прочее", "bg-secondary")
+                                                };
+                                            }
+                                            <span class="badge @typeClass" style="font-size: 0.7rem;">@typeName</span>
+                                        </td>
+                                        <td>
+                                            <a href="@doc.FilePath" target="_blank" class="text-decoration-none">
+                                                <i class="bi bi-file-earmark me-1"></i>@(doc.Description ?? doc.OriginalFileName)
+                                            </a>
+                                        </td>
+                                        <td class="text-end text-muted small">
+                                            @if (doc.FileSize > 1048576)
+                                            {
+                                                @($"{doc.FileSize / 1048576.0:F1} МБ")
+                                            }
+                                            else
+                                            {
+                                                @($"{doc.FileSize / 1024.0:F0} КБ")
+                                            }
+                                        </td>
+                                        @if (canEdit)
+                                        {
+                                            <td>
+                                                <form asp-action="DeleteDocument" method="post" onsubmit="return confirm('Удалить документ?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="documentId" value="@doc.Id" />
+                                                    <input type="hidden" name="contractorId" value="@Model.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Удалить">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     }
                     else
                     {
-                        <p class="text-muted mb-0 text-center">Нет документов</p>
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-folder2-open fs-1 d-block mb-2"></i>
+                            Нет документов
+                        </div>
                     }
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Upload Document Modal -->
+@if (canEdit)
+{
+    <div class="modal fade" id="uploadDocModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="UploadDocuments" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="contractorId" value="@Model.Id" />
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Загрузка документа</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Тип документа <span class="text-danger">*</span></label>
+                            <select name="documentType" class="form-select" required>
+                                <option value="">— Выберите тип —</option>
+                                <option value="@((int)DocumentType.CompanyRegistration)">📄 Свидетельство регистрации</option>
+                                <option value="@((int)DocumentType.CompanyLicense)">📜 Лицензия</option>
+                                <option value="@((int)DocumentType.TaxCertificate)">🏛️ Налоговый сертификат</option>
+                                <option value="@((int)DocumentType.BankDetails)">🏦 Банковские реквизиты</option>
+                                <option value="@((int)DocumentType.Insurance)">🛡️ Страховка</option>
+                                <option value="@((int)DocumentType.Contract)">📑 Контракт</option>
+                                <option value="@((int)DocumentType.SignedContract)">✍️ Подписанный контракт</option>
+                                <option value="@((int)DocumentType.TenderDocument)">📋 Тендерная документация</option>
+                                <option value="@((int)DocumentType.Report)">📊 Отчёт</option>
+                                <option value="@((int)DocumentType.Other)">📎 Прочее</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Файл <span class="text-danger">*</span></label>
+                            <input type="file" name="files" class="form-control" id="docFileInput" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Название документа</label>
+                            <input type="text" name="description" class="form-control" id="docNameInput" placeholder="По умолчанию — имя файла">
+                            <div class="form-text">Оставьте пустым, чтобы использовать имя загружаемого файла</div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-semibold">Порядок сортировки</label>
+                            <input type="number" name="sortOrder" class="form-control" value="@(Model.Documents.Any() ? Model.Documents.Max(d => d.SortOrder) + 1 : 1)" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload me-1"></i> Загрузить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    // Auto-fill document name from file name
+    document.getElementById('docFileInput')?.addEventListener('change', function() {
+        var nameInput = document.getElementById('docNameInput');
+        if (nameInput && !nameInput.value && this.files.length > 0) {
+            var fileName = this.files[0].name;
+            // Remove extension
+            var lastDot = fileName.lastIndexOf('.');
+            if (lastDot > 0) fileName = fileName.substring(0, lastDot);
+            nameInput.value = fileName;
+        }
+    });
+</script>
+}
+

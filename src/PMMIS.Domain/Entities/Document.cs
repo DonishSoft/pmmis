@@ -12,6 +12,7 @@ public class Document : BaseEntity
     public string FilePath { get; set; } = string.Empty;
     public DocumentType Type { get; set; }
     public string? Description { get; set; }
+    public int SortOrder { get; set; }
     
     // Foreign Keys (polymorphic - can belong to Contract or WorkProgress)
     public int? ContractId { get; set; }

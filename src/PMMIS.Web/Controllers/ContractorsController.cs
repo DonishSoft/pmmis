@@ -140,7 +140,7 @@ public class ContractorsController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UploadDocuments(int contractorId, List<IFormFile> files, DocumentType documentType)
+    public async Task<IActionResult> UploadDocuments(int contractorId, List<IFormFile> files, DocumentType documentType, string? description, int sortOrder = 0)
     {
         if (files.Any())
         {
@@ -150,6 +150,11 @@ public class ContractorsController : Controller
             foreach (var doc in docs)
             {
                 doc.ContractorId = contractorId;
+                doc.SortOrder = sortOrder;
+                if (!string.IsNullOrWhiteSpace(description))
+                {
+                    doc.Description = description;
+                }
                 _context.Documents.Add(doc);
             }
             await _context.SaveChangesAsync();
