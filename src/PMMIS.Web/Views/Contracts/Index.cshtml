@@ -45,9 +45,12 @@
                     <label class="form-label">Подрядчик</label>
                     <input type="text" class="form-control" id="contractorSearch" placeholder="Поиск...">
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                        <i class="bi bi-x-lg me-1"></i> Сбросить
+                <div class="col-auto d-flex align-items-end gap-2">
+                    <button class="btn btn-primary" onclick="applyFilters()" title="Применить фильтр">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()" title="Сбросить">
+                        <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
             </div>
@@ -195,6 +198,27 @@
         console.error('[PMMIS] Grid initialization error:', e);
         document.getElementById('contractsGrid').innerHTML = 
             '<div class="alert alert-danger">Ошибка инициализации таблицы: ' + e.message + '</div>';
+    }
+
+    function applyFilters() {
+        grid.clearFiltering();
+        var type = document.getElementById('contractTypeFilter').value;
+        var status = document.getElementById('statusFilter').value;
+        var contractor = document.getElementById('contractorSearch').value.trim();
+        
+        if (type) {
+            grid.filterByColumn('contractType', 'equal', type);
+        }
+        if (status === 'active') {
+            grid.filterByColumn('remainingDays', 'greaterthanorequal', 0);
+        } else if (status === 'completed') {
+            grid.filterByColumn('workCompletedPercent', 'equal', 100);
+        } else if (status === 'overdue') {
+            grid.filterByColumn('remainingDays', 'lessthan', 0);
+        }
+        if (contractor) {
+            grid.filterByColumn('contractorName', 'contains', contractor);
+        }
     }
 
     function clearFilters() {
