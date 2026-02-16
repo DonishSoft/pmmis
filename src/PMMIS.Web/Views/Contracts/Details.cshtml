@@ -381,6 +381,90 @@
                     }
                 </div>
             </div>
+
+            <!-- Documents (3 tabs) -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Документы</h5>
+                </div>
+                <div class="card-body">
+                    @{ 
+                        var signedDocs = Model.Documents.Where(d => d.Type == DocumentType.SignedContract).ToList();
+                        var mandatoryDocs = Model.Documents.Where(d => d.Type == DocumentType.MandatoryDocument).ToList();
+                        var additionalDocs = Model.Documents.Where(d => d.Type == DocumentType.AdditionalDocument).ToList();
+                    }
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#detailSigned" type="button" role="tab">
+                                <i class="bi bi-file-earmark-check me-1"></i>Подписанный контракт
+                                @if (signedDocs.Any()) { <span class="badge bg-primary ms-1">@signedDocs.Count</span> }
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detailMandatory" type="button" role="tab">
+                                <i class="bi bi-file-earmark-lock me-1"></i>Обязательные
+                                @if (mandatoryDocs.Any()) { <span class="badge bg-warning text-dark ms-1">@mandatoryDocs.Count</span> }
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detailAdditional" type="button" role="tab">
+                                <i class="bi bi-file-earmark-plus me-1"></i>Дополнительные
+                                @if (additionalDocs.Any()) { <span class="badge bg-info ms-1">@additionalDocs.Count</span> }
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="detailSigned" role="tabpanel">
+                            @if (signedDocs.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var doc in signedDocs)
+                                    {
+                                        <li class="mb-2">
+                                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
+                        </div>
+                        <div class="tab-pane fade" id="detailMandatory" role="tabpanel">
+                            @if (mandatoryDocs.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var doc in mandatoryDocs)
+                                    {
+                                        <li class="mb-2">
+                                            <i class="bi bi-file-earmark-text text-warning me-2"></i>
+                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
+                        </div>
+                        <div class="tab-pane fade" id="detailAdditional" role="tabpanel">
+                            @if (additionalDocs.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var doc in additionalDocs)
+                                    {
+                                        <li class="mb-2">
+                                            <i class="bi bi-file-earmark text-info me-2"></i>
+                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">
@@ -496,89 +580,6 @@
                 </div>
             </div>
 
-            <!-- Documents (3 tabs) -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Документы</h5>
-                </div>
-                <div class="card-body">
-                    @{ 
-                        var signedDocs = Model.Documents.Where(d => d.Type == DocumentType.SignedContract).ToList();
-                        var mandatoryDocs = Model.Documents.Where(d => d.Type == DocumentType.MandatoryDocument).ToList();
-                        var additionalDocs = Model.Documents.Where(d => d.Type == DocumentType.AdditionalDocument).ToList();
-                    }
-                    <ul class="nav nav-tabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#detailSigned" type="button" role="tab">
-                                <i class="bi bi-file-earmark-check me-1"></i>Подписанный контракт
-                                @if (signedDocs.Any()) { <span class="badge bg-primary ms-1">@signedDocs.Count</span> }
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detailMandatory" type="button" role="tab">
-                                <i class="bi bi-file-earmark-lock me-1"></i>Обязательные
-                                @if (mandatoryDocs.Any()) { <span class="badge bg-warning text-dark ms-1">@mandatoryDocs.Count</span> }
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detailAdditional" type="button" role="tab">
-                                <i class="bi bi-file-earmark-plus me-1"></i>Дополнительные
-                                @if (additionalDocs.Any()) { <span class="badge bg-info ms-1">@additionalDocs.Count</span> }
-                            </button>
-                        </li>
-                    </ul>
-                    <div class="tab-content pt-3">
-                        <div class="tab-pane fade show active" id="detailSigned" role="tabpanel">
-                            @if (signedDocs.Any())
-                            {
-                                <ul class="list-unstyled mb-0">
-                                    @foreach (var doc in signedDocs)
-                                    {
-                                        <li class="mb-2">
-                                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
-                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
-                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
-                        </div>
-                        <div class="tab-pane fade" id="detailMandatory" role="tabpanel">
-                            @if (mandatoryDocs.Any())
-                            {
-                                <ul class="list-unstyled mb-0">
-                                    @foreach (var doc in mandatoryDocs)
-                                    {
-                                        <li class="mb-2">
-                                            <i class="bi bi-file-earmark-text text-warning me-2"></i>
-                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
-                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
-                        </div>
-                        <div class="tab-pane fade" id="detailAdditional" role="tabpanel">
-                            @if (additionalDocs.Any())
-                            {
-                                <ul class="list-unstyled mb-0">
-                                    @foreach (var doc in additionalDocs)
-                                    {
-                                        <li class="mb-2">
-                                            <i class="bi bi-file-earmark text-info me-2"></i>
-                                            <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
-                                            <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else { <p class="text-muted mb-0 text-center"><i class="bi bi-inbox me-1"></i>Нет документов</p> }
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
