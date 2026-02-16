@@ -52,11 +52,11 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label">Номер контракта <span class="text-danger">*</span></label>
                                 <input type="text" asp-for="Contract.ContractNumber" class="form-control" placeholder="WSIP-AF3/W/001" required />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label">Тип контракта <span class="text-danger">*</span></label>
                                 <select asp-for="Contract.Type" class="form-select">
                                     <option value="@((int)ContractType.Works)">🏗️ Строительные работы</option>
@@ -64,7 +64,17 @@
                                     <option value="@((int)ContractType.Goods)">📦 Товары</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label">Статус контракта</label>
+                                <select asp-for="Contract.Status" class="form-select" id="contractStatusSelect">
+                                    <option value="@((int)ContractStatus.Ongoing)">🔄 В процессе</option>
+                                    <option value="@((int)ContractStatus.DefectLiability)">🛡️ Гарантийный период</option>
+                                    <option value="@((int)ContractStatus.Completed)">✅ Завершён</option>
+                                    <option value="@((int)ContractStatus.Suspended)">⏸️ Приостановлен</option>
+                                    <option value="@((int)ContractStatus.Terminated)">❌ Расторгнут</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">Подрядчик <span class="text-danger">*</span></label>
                                 <select asp-for="Contract.ContractorId" class="form-select" required>
                                     <option value="">— Выберите —</option>
@@ -72,6 +82,23 @@
                                     {
                                         <option value="@c.Id">@c.Name</option>
                                     }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Conditional completion fields -->
+                        <div class="row g-3 mt-2" id="completionFieldsRow" style="display: none">
+                            <div class="col-md-4">
+                                <label class="form-label">Фактическая дата завершения <span class="text-danger">*</span></label>
+                                <input type="date" asp-for="Contract.ActualCompletionDate" class="form-control" id="actualCompletionDate" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Оценка исполнения <span class="text-danger">*</span></label>
+                                <select asp-for="Contract.PerformanceRating" class="form-select" id="performanceRating">
+                                    <option value="">— Выберите —</option>
+                                    <option value="@((int)PerformanceRating.HighlySatisfactory)">⭐ Высоко удовлетворительно</option>
+                                    <option value="@((int)PerformanceRating.Satisfactory)">✅ Удовлетворительно</option>
+                                    <option value="@((int)PerformanceRating.Unsatisfactory)">⚠️ Неудовлетворительно</option>
                                 </select>
                             </div>
                         </div>
@@ -955,6 +982,27 @@
             </div>
         `;
         container.appendChild(row);
+    }
+
+    // === Contract Status toggle ===
+    const statusSelect = document.getElementById('contractStatusSelect');
+    const completionRow = document.getElementById('completionFieldsRow');
+    const completionDate = document.getElementById('actualCompletionDate');
+    const perfRating = document.getElementById('performanceRating');
+
+    function toggleCompletionFields() {
+        const isCompleted = statusSelect.value === '@((int)ContractStatus.Completed)';
+        completionRow.style.display = isCompleted ? 'flex' : 'none';
+        if (completionDate) completionDate.required = isCompleted;
+        if (perfRating) perfRating.required = isCompleted;
+        if (!isCompleted) {
+            if (completionDate) completionDate.value = '';
+            if (perfRating) perfRating.value = '';
+        }
+    }
+
+    if (statusSelect) {
+        statusSelect.addEventListener('change', toggleCompletionFields);
     }
 </script>
 }

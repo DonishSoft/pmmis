@@ -70,6 +70,98 @@ public class ContractsController : Controller
         return View(contracts);
     }
 
+    /// <summary>
+    /// Страница Contract Monitoring Report (6 таблиц)
+    /// </summary>
+    [RequirePermission(MenuKeys.Contracts, PermissionType.View)]
+    public async Task<IActionResult> Report(int? projectId)
+    {
+        var vm = new ContractReportViewModel
+        {
+            Projects = await _context.Projects.OrderBy(p => p.Code).ToListAsync(),
+            SelectedProjectId = projectId
+        };
+
+        // Base queries filtered by project
+        var contractsQuery = _context.Contracts
+            .Include(c => c.Contractor)
+            .Include(c => c.Project)
+            .Include(c => c.SubComponent).ThenInclude(sc => sc!.Component)
+            .Include(c => c.Payments)
+            .Include(c => c.ProcurementPlan)
+            .Include(c => c.Amendments)
+            .AsQueryable();
+
+        var procurementsQuery = _context.ProcurementPlans
+            .Include(pp => pp.Project)
+            .Include(pp => pp.SubComponent).ThenInclude(sc => sc!.Component)
+            .AsQueryable();
+
+        if (projectId.HasValue)
+        {
+            contractsQuery = contractsQuery.Where(c => c.ProjectId == projectId.Value);
+            procurementsQuery = procurementsQuery.Where(pp => pp.ProjectId == projectId.Value);
+        }
+
+        var allContracts = await contractsQuery.OrderBy(c => c.ContractNumber).ToListAsync();
+        var allProcurements = await procurementsQuery.OrderBy(pp => pp.ReferenceNo).ToListAsync();
+
+        // Table 1: On-Going Procurement (InProgress/Evaluation, without contract)
+        vm.OnGoingProcurements = allProcurements
+            .Where(pp => pp.ContractId == null && (pp.Status == ProcurementStatus.InProgress || pp.Status == ProcurementStatus.Evaluation))
+            .ToList();
+
+        // Table 2: Contracted Activities (Ongoing or DefectLiability)
+        vm.ContractedActivities = allContracts
+            .Where(c => c.Status == ContractStatus.Ongoing || c.Status == ContractStatus.DefectLiability)
+            .ToList();
+
+        // Table 3: Not Commenced / Pending Readiness (Planned, no contract)
+        vm.NotCommencedActivities = allProcurements
+            .Where(pp => pp.ContractId == null && pp.Status == ProcurementStatus.Planned)
+            .ToList();
+
+        // Table 4: Completed Activities
+        vm.CompletedActivities = allContracts
+            .Where(c => c.Status == ContractStatus.Completed)
+            .ToList();
+
+        // Table 5: Progress Summary
+        vm.ProgressSummary = new ReportProgressSummary
+        {
+            TotalContracts = allContracts.Count,
+            OngoingContracts = allContracts.Count(c => c.Status == ContractStatus.Ongoing || c.Status == ContractStatus.DefectLiability),
+            CompletedContracts = allContracts.Count(c => c.Status == ContractStatus.Completed),
+            SuspendedContracts = allContracts.Count(c => c.Status == ContractStatus.Suspended),
+            TerminatedContracts = allContracts.Count(c => c.Status == ContractStatus.Terminated),
+            TotalContractAmount = allContracts.Sum(c => c.FinalAmount),
+            TotalPaidAmount = allContracts.Sum(c => c.PaidAmount),
+            AverageWorkCompleted = allContracts.Count > 0 ? allContracts.Average(c => c.WorkCompletedPercent) : 0
+        };
+
+        // Table 6: Summary by Category (by ContractType)
+        vm.CategorySummaries = allContracts
+            .GroupBy(c => c.Type)
+            .Select(g => new CategorySummary
+            {
+                CategoryName = g.Key switch
+                {
+                    ContractType.Works => "Строительные работы",
+                    ContractType.Consulting => "Консультационные услуги",
+                    ContractType.Goods => "Товары",
+                    _ => "Другое"
+                },
+                Count = g.Count(),
+                TotalAmount = g.Sum(c => c.FinalAmount),
+                PaidAmount = g.Sum(c => c.PaidAmount),
+                AverageCompletion = g.Average(c => c.WorkCompletedPercent)
+            })
+            .OrderByDescending(cs => cs.TotalAmount)
+            .ToList();
+
+        return View(vm);
+    }
+
     public async Task<IActionResult> Details(int? id)
     {
         if (id == null)
@@ -147,6 +239,20 @@ public class ContractsController : Controller
         ModelState.Remove("Contract.ScopeOfWorkTj");
         ModelState.Remove("Contract.ScopeOfWorkEn");
         
+        // Server-side validation: Completed requires completion fields
+        if (viewModel.Contract.Status == ContractStatus.Completed)
+        {
+            if (!viewModel.Contract.ActualCompletionDate.HasValue)
+                ModelState.AddModelError("Contract.ActualCompletionDate", "Дата завершения обязательна при статусе «Завершён»");
+            if (!viewModel.Contract.PerformanceRating.HasValue)
+                ModelState.AddModelError("Contract.PerformanceRating", "Оценка исполнения обязательна при статусе «Завершён»");
+        }
+        else
+        {
+            viewModel.Contract.ActualCompletionDate = null;
+            viewModel.Contract.PerformanceRating = null;
+        }
+        
         // DEBUG: Log all remaining ModelState errors
         foreach (var entry in ModelState.Where(e => e.Value?.Errors.Count > 0))
         {
@@ -173,6 +279,7 @@ public class ContractsController : Controller
             viewModel.Contract.SigningDate = viewModel.Contract.SigningDate.ToUtc();
             viewModel.Contract.ContractEndDate = viewModel.Contract.ContractEndDate.ToUtc();
             viewModel.Contract.ExtendedToDate = viewModel.Contract.ExtendedToDate.ToUtc();
+            viewModel.Contract.ActualCompletionDate = viewModel.Contract.ActualCompletionDate.ToUtc();
             
             _context.Add(viewModel.Contract);
             await _context.SaveChangesAsync();
@@ -338,6 +445,21 @@ public class ContractsController : Controller
         ModelState.Remove("Contract.ScopeOfWorkTj");
         ModelState.Remove("Contract.ScopeOfWorkEn");
         
+        // Server-side validation: Completed requires completion fields
+        if (viewModel.Contract.Status == ContractStatus.Completed)
+        {
+            if (!viewModel.Contract.ActualCompletionDate.HasValue)
+                ModelState.AddModelError("Contract.ActualCompletionDate", "Дата завершения обязательна при статусе «Завершён»");
+            if (!viewModel.Contract.PerformanceRating.HasValue)
+                ModelState.AddModelError("Contract.PerformanceRating", "Оценка исполнения обязательна при статусе «Завершён»");
+        }
+        else
+        {
+            // Clear completion fields if status is not Completed
+            viewModel.Contract.ActualCompletionDate = null;
+            viewModel.Contract.PerformanceRating = null;
+        }
+        
         if (ModelState.IsValid)
         {
             try
@@ -364,6 +486,7 @@ public class ContractsController : Controller
                 viewModel.Contract.SigningDate = viewModel.Contract.SigningDate.ToUtc();
                 viewModel.Contract.ContractEndDate = viewModel.Contract.ContractEndDate.ToUtc();
                 viewModel.Contract.ExtendedToDate = viewModel.Contract.ExtendedToDate.ToUtc();
+                viewModel.Contract.ActualCompletionDate = viewModel.Contract.ActualCompletionDate.ToUtc();
                 
                 _context.Update(viewModel.Contract);
                 

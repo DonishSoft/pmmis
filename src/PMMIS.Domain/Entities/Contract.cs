@@ -12,6 +12,11 @@ public class Contract : BaseEntity
     
     public ContractType Type { get; set; }
     
+    /// <summary>
+    /// Статус выполнения контракта
+    /// </summary>
+    public ContractStatus Status { get; set; } = ContractStatus.Ongoing;
+    
     // Dates
     public DateTime SigningDate { get; set; }
     public DateTime ContractEndDate { get; set; }
@@ -29,6 +34,17 @@ public class Contract : BaseEntity
     // TJS fields (when Currency = TJS)
     public decimal? AmountTjs { get; set; }
     public decimal? ExchangeRate { get; set; }
+    
+    // Completion
+    /// <summary>
+    /// Фактическая дата завершения (обязательна при Status = Completed)
+    /// </summary>
+    public DateTime? ActualCompletionDate { get; set; }
+    
+    /// <summary>
+    /// Оценка исполнения (обязательна при Status = Completed)
+    /// </summary>
+    public PerformanceRating? PerformanceRating { get; set; }
     
     // Progress
     public decimal WorkCompletedPercent { get; set; }
@@ -76,6 +92,22 @@ public enum ContractType
     Works,           // Строительные работы
     Consulting,      // Консультационные услуги
     Goods            // Товары
+}
+
+public enum ContractStatus
+{
+    Ongoing,            // В процессе выполнения
+    DefectLiability,    // Гарантийный период
+    Completed,          // Завершён
+    Suspended,          // Приостановлен
+    Terminated          // Расторгнут
+}
+
+public enum PerformanceRating
+{
+    HighlySatisfactory,   // Высоко удовлетворительно
+    Satisfactory,         // Удовлетворительно
+    Unsatisfactory        // Неудовлетворительно
 }
 
 public enum ContractCurrency

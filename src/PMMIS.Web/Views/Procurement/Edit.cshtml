@@ -115,15 +115,19 @@
                     <div class="card-body">
                         <h6 class="text-muted mb-3">Плановые даты</h6>
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label">Дата объявления</label>
+                                <input type="date" asp-for="AdvertisementDate" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">Дата тендера</label>
                                 <input type="date" asp-for="PlannedBidOpeningDate" class="form-control" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label">Дата подписания</label>
                                 <input type="date" asp-for="PlannedContractSigningDate" class="form-control" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label">Завершение</label>
                                 <input type="date" asp-for="PlannedCompletionDate" class="form-control" />
                             </div>

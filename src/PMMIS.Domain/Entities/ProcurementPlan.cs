@@ -76,6 +76,11 @@ public class ProcurementPlan : BaseEntity
     public DateTime? PlannedContractSigningDate { get; set; }
     public DateTime? PlannedCompletionDate { get; set; }
     
+    /// <summary>
+    /// Дата публикации объявления о тендере
+    /// </summary>
+    public DateTime? AdvertisementDate { get; set; }
+    
     // Фактические даты
     public DateTime? ActualBidOpeningDate { get; set; }
     public DateTime? ActualContractSigningDate { get; set; }

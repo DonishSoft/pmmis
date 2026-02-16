@@ -20,8 +20,38 @@
 
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
-            <h2 class="mb-1">@Model.ContractNumber</h2>
-            <p class="text-muted mb-0">@Model.Contractor.Name</p>
+            <h2 class="mb-1">@Model.ContractNumber
+                @{
+                    var statusBadge = Model.Status switch
+                    {
+                        ContractStatus.Ongoing => ("bg-primary", "🔄 В процессе"),
+                        ContractStatus.DefectLiability => ("bg-info", "🛡️ Гарантийный период"),
+                        ContractStatus.Completed => ("bg-success", "✅ Завершён"),
+                        ContractStatus.Suspended => ("bg-warning text-dark", "⏸️ Приостановлен"),
+                        ContractStatus.Terminated => ("bg-danger", "❌ Расторгнут"),
+                        _ => ("bg-secondary", "—")
+                    };
+                }
+                <span class="badge @statusBadge.Item1 fs-6 ms-2">@statusBadge.Item2</span>
+            </h2>
+            <p class="text-muted mb-0">
+                @Model.Contractor.Name
+                @if (Model.Status == ContractStatus.Completed && Model.ActualCompletionDate.HasValue)
+                {
+                    <span class="ms-2">| Завершён: @Model.ActualCompletionDate.Value.ToString("dd.MM.yyyy")</span>
+                    @if (Model.PerformanceRating.HasValue)
+                    {
+                        var ratingText = Model.PerformanceRating.Value switch
+                        {
+                            PerformanceRating.HighlySatisfactory => "⭐ Высоко удовл.",
+                            PerformanceRating.Satisfactory => "✅ Удовл.",
+                            PerformanceRating.Unsatisfactory => "⚠️ Неудовл.",
+                            _ => ""
+                        };
+                        <span class="ms-2">| @ratingText</span>
+                    }
+                }
+            </p>
         </div>
         <div class="d-flex gap-2">
             @if (canAmend)

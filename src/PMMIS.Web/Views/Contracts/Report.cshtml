@@ -1,0 +1,560 @@
+@model PMMIS.Web.ViewModels.Contracts.ContractReportViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Contract Monitoring Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Контракты</a></li>
+            <li class="breadcrumb-item active">Мониторинг контрактов</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-clipboard-data me-2"></i>Contract Monitoring Report</h2>
+            <p class="text-muted mb-0">Дата отчёта: @Model.ReportDate.ToString("dd.MM.yyyy")</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <form method="get" class="d-flex gap-2 align-items-center">
+                <select name="projectId" class="form-select form-select-sm" style="width: 250px;" onchange="this.form.submit()">
+                    <option value="">Все проекты</option>
+                    @foreach (var p in Model.Projects)
+                    {
+                        <option value="@p.Id" selected="@(Model.SelectedProjectId == p.Id)">@p.Code — @p.NameRu</option>
+                    }
+                </select>
+            </form>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Всего контрактов</div>
+                    <div class="fs-2 fw-bold text-primary">@Model.ProgressSummary.TotalContracts</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">В процессе</div>
+                    <div class="fs-2 fw-bold text-info">@Model.ProgressSummary.OngoingContracts</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Завершено</div>
+                    <div class="fs-2 fw-bold text-success">@Model.ProgressSummary.CompletedContracts</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Сумма контрактов</div>
+                    <div class="fs-5 fw-bold text-primary">$@Model.ProgressSummary.TotalContractAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Оплачено</div>
+                    <div class="fs-5 fw-bold text-success">$@Model.ProgressSummary.TotalPaidAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div class="text-muted small">Ср. выполнение</div>
+                    <div class="fs-5 fw-bold text-info">@Model.ProgressSummary.AverageWorkCompleted.ToString("N1")%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accordion with 6 tables -->
+    <div class="accordion" id="reportAccordion">
+
+        <!-- Table 1: On-Going Procurement Processing -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#table1">
+                    <i class="bi bi-hourglass-split me-2 text-warning"></i>
+                    <strong>1. On-Going Procurement Processing</strong>
+                    <span class="badge bg-warning text-dark ms-2">@Model.OnGoingProcurements.Count</span>
+                </button>
+            </h2>
+            <div id="table1" class="accordion-collapse collapse show" data-bs-parent="#reportAccordion">
+                <div class="accordion-body p-0">
+                    @if (Model.OnGoingProcurements.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">№</th>
+                                        <th>Ref. No</th>
+                                        <th>Описание</th>
+                                        <th>Метод</th>
+                                        <th>Тип</th>
+                                        <th class="text-end">Оценочная сумма</th>
+                                        <th>Дата объявления</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ var idx1 = 0; }
+                                    @foreach (var pp in Model.OnGoingProcurements)
+                                    {
+                                        idx1++;
+                                        <tr>
+                                            <td class="ps-3">@idx1</td>
+                                            <td><strong>@pp.ReferenceNo</strong></td>
+                                            <td>@pp.Description</td>
+                                            <td><span class="badge bg-secondary">@pp.Method</span></td>
+                                            <td>@pp.Type</td>
+                                            <td class="text-end fw-bold">$@pp.EstimatedAmount.ToString("N0")</td>
+                                            <td>@(pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                            <td>
+                                                @{
+                                                    var procBadge = pp.Status switch
+                                                    {
+                                                        ProcurementStatus.InProgress => ("bg-primary", "⏳ В процессе"),
+                                                        ProcurementStatus.Evaluation => ("bg-info", "📋 Оценка"),
+                                                        _ => ("bg-secondary", pp.Status.ToString())
+                                                    };
+                                                }
+                                                <span class="badge @procBadge.Item1">@procBadge.Item2</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-check-circle fs-3 d-block mb-2"></i>
+                            Нет активных закупок в процессе
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 2: Contracted Activities -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table2">
+                    <i class="bi bi-file-earmark-check me-2 text-primary"></i>
+                    <strong>2. Contracted Activities</strong>
+                    <span class="badge bg-primary ms-2">@Model.ContractedActivities.Count</span>
+                </button>
+            </h2>
+            <div id="table2" class="accordion-collapse collapse" data-bs-parent="#reportAccordion">
+                <div class="accordion-body p-0">
+                    @if (Model.ContractedActivities.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">№</th>
+                                        <th>Контракт</th>
+                                        <th>Подрядчик</th>
+                                        <th>Тип</th>
+                                        <th class="text-end">Сумма</th>
+                                        <th class="text-end">Оплачено</th>
+                                        <th>Подписание</th>
+                                        <th>Срок</th>
+                                        <th>Выполнение</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ var idx2 = 0; }
+                                    @foreach (var c in Model.ContractedActivities)
+                                    {
+                                        idx2++;
+                                        var daysLeft = c.RemainingDays;
+                                        var daysClass = daysLeft < 0 ? "text-danger" : daysLeft < 30 ? "text-warning" : "text-success";
+                                        <tr>
+                                            <td class="ps-3">@idx2</td>
+                                            <td>
+                                                <a asp-action="Details" asp-route-id="@c.Id" class="text-decoration-none fw-bold">
+                                                    @c.ContractNumber
+                                                </a>
+                                            </td>
+                                            <td>@c.Contractor.Name</td>
+                                            <td>
+                                                @{
+                                                    var typeIcon = c.Type switch
+                                                    {
+                                                        ContractType.Works => "🏗️",
+                                                        ContractType.Consulting => "💼",
+                                                        ContractType.Goods => "📦",
+                                                        _ => "📄"
+                                                    };
+                                                }
+                                                @typeIcon
+                                            </td>
+                                            <td class="text-end">$@c.FinalAmount.ToString("N0")</td>
+                                            <td class="text-end text-success">$@c.PaidAmount.ToString("N0")</td>
+                                            <td>@c.SigningDate.ToString("dd.MM.yyyy")</td>
+                                            <td class="@daysClass fw-bold">
+                                                @if (daysLeft < 0)
+                                                {
+                                                    <span>@Math.Abs(daysLeft) дн. просрочки</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>@daysLeft дн.</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <div class="progress" style="width: 60px; height: 6px;">
+                                                        <div class="progress-bar bg-info" style="width: @c.WorkCompletedPercent%"></div>
+                                                    </div>
+                                                    <small>@c.WorkCompletedPercent.ToString("N0")%</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var sBadge = c.Status switch
+                                                    {
+                                                        ContractStatus.Ongoing => ("bg-primary", "🔄"),
+                                                        ContractStatus.DefectLiability => ("bg-info", "🛡️"),
+                                                        _ => ("bg-secondary", "—")
+                                                    };
+                                                }
+                                                <span class="badge @sBadge.Item1">@sBadge.Item2</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr class="fw-bold">
+                                        <td class="ps-3" colspan="4">Итого</td>
+                                        <td class="text-end">$@Model.ContractedActivities.Sum(c => c.FinalAmount).ToString("N0")</td>
+                                        <td class="text-end text-success">$@Model.ContractedActivities.Sum(c => c.PaidAmount).ToString("N0")</td>
+                                        <td colspan="4"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Нет активных контрактов
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 3: Activities Not Commenced / Pending Readiness -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table3">
+                    <i class="bi bi-pause-circle me-2 text-secondary"></i>
+                    <strong>3. Activities Not Commenced / Pending Readiness</strong>
+                    <span class="badge bg-secondary ms-2">@Model.NotCommencedActivities.Count</span>
+                </button>
+            </h2>
+            <div id="table3" class="accordion-collapse collapse" data-bs-parent="#reportAccordion">
+                <div class="accordion-body p-0">
+                    @if (Model.NotCommencedActivities.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">№</th>
+                                        <th>Ref. No</th>
+                                        <th>Описание</th>
+                                        <th>Тип</th>
+                                        <th class="text-end">Оценочная сумма</th>
+                                        <th>Плановая дата тендера</th>
+                                        <th>Комментарии</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ var idx3 = 0; }
+                                    @foreach (var pp in Model.NotCommencedActivities)
+                                    {
+                                        idx3++;
+                                        <tr>
+                                            <td class="ps-3">@idx3</td>
+                                            <td><strong>@pp.ReferenceNo</strong></td>
+                                            <td>@pp.Description</td>
+                                            <td>@pp.Type</td>
+                                            <td class="text-end">$@pp.EstimatedAmount.ToString("N0")</td>
+                                            <td>@(pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                            <td class="text-muted">@(pp.Comments ?? "—")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-check-all fs-3 d-block mb-2"></i>
+                            Все закупки начаты
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 4: Completed Activities -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table4">
+                    <i class="bi bi-check-circle me-2 text-success"></i>
+                    <strong>4. Completed Activities</strong>
+                    <span class="badge bg-success ms-2">@Model.CompletedActivities.Count</span>
+                </button>
+            </h2>
+            <div id="table4" class="accordion-collapse collapse" data-bs-parent="#reportAccordion">
+                <div class="accordion-body p-0">
+                    @if (Model.CompletedActivities.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">№</th>
+                                        <th>Контракт</th>
+                                        <th>Подрядчик</th>
+                                        <th>Тип</th>
+                                        <th class="text-end">Сумма контракта</th>
+                                        <th class="text-end">Фактическая сумма</th>
+                                        <th>Дата завершения</th>
+                                        <th>Оценка</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ var idx4 = 0; }
+                                    @foreach (var c in Model.CompletedActivities)
+                                    {
+                                        idx4++;
+                                        <tr>
+                                            <td class="ps-3">@idx4</td>
+                                            <td>
+                                                <a asp-action="Details" asp-route-id="@c.Id" class="text-decoration-none fw-bold">
+                                                    @c.ContractNumber
+                                                </a>
+                                            </td>
+                                            <td>@c.Contractor.Name</td>
+                                            <td>
+                                                @{
+                                                    var typeIcon4 = c.Type switch
+                                                    {
+                                                        ContractType.Works => "🏗️",
+                                                        ContractType.Consulting => "💼",
+                                                        ContractType.Goods => "📦",
+                                                        _ => "📄"
+                                                    };
+                                                }
+                                                @typeIcon4
+                                            </td>
+                                            <td class="text-end">$@c.FinalAmount.ToString("N0")</td>
+                                            <td class="text-end text-success fw-bold">$@c.PaidAmount.ToString("N0")</td>
+                                            <td>@(c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "—")</td>
+                                            <td>
+                                                @if (c.PerformanceRating.HasValue)
+                                                {
+                                                    var rBadge = c.PerformanceRating.Value switch
+                                                    {
+                                                        PerformanceRating.HighlySatisfactory => ("bg-success", "⭐ HS"),
+                                                        PerformanceRating.Satisfactory => ("bg-primary", "✅ S"),
+                                                        PerformanceRating.Unsatisfactory => ("bg-danger", "⚠️ U"),
+                                                        _ => ("bg-secondary", "—")
+                                                    };
+                                                    <span class="badge @rBadge.Item1">@rBadge.Item2</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr class="fw-bold">
+                                        <td class="ps-3" colspan="4">Итого</td>
+                                        <td class="text-end">$@Model.CompletedActivities.Sum(c => c.FinalAmount).ToString("N0")</td>
+                                        <td class="text-end text-success">$@Model.CompletedActivities.Sum(c => c.PaidAmount).ToString("N0")</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-hourglass fs-3 d-block mb-2"></i>
+                            Нет завершённых контрактов
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 5: Progress Summary -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table5">
+                    <i class="bi bi-bar-chart me-2 text-info"></i>
+                    <strong>5. Progress Summary</strong>
+                </button>
+            </h2>
+            <div id="table5" class="accordion-collapse collapse" data-bs-parent="#reportAccordion">
+                <div class="accordion-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr><th colspan="2">Статистика контрактов</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Всего контрактов</td><td class="text-end fw-bold">@Model.ProgressSummary.TotalContracts</td></tr>
+                                    <tr><td>🔄 В процессе / 🛡️ Гарантийный</td><td class="text-end fw-bold text-primary">@Model.ProgressSummary.OngoingContracts</td></tr>
+                                    <tr><td>✅ Завершено</td><td class="text-end fw-bold text-success">@Model.ProgressSummary.CompletedContracts</td></tr>
+                                    <tr><td>⏸️ Приостановлено</td><td class="text-end fw-bold text-warning">@Model.ProgressSummary.SuspendedContracts</td></tr>
+                                    <tr><td>❌ Расторгнуто</td><td class="text-end fw-bold text-danger">@Model.ProgressSummary.TerminatedContracts</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-bordered">
+                                <thead class="table-light">
+                                    <tr><th colspan="2">Финансовая сводка</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>Общая сумма контрактов</td><td class="text-end fw-bold">$@Model.ProgressSummary.TotalContractAmount.ToString("N0")</td></tr>
+                                    <tr><td>Общая сумма оплат</td><td class="text-end fw-bold text-success">$@Model.ProgressSummary.TotalPaidAmount.ToString("N0")</td></tr>
+                                    <tr>
+                                        <td>Средний % выполнения</td>
+                                        <td class="text-end">
+                                            <div class="d-flex align-items-center justify-content-end gap-2">
+                                                <div class="progress" style="width: 80px; height: 8px;">
+                                                    <div class="progress-bar bg-info" style="width: @Model.ProgressSummary.AverageWorkCompleted%"></div>
+                                                </div>
+                                                <strong>@Model.ProgressSummary.AverageWorkCompleted.ToString("N1")%</strong>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @{
+                                        var paymentRate = Model.ProgressSummary.TotalContractAmount > 0
+                                            ? (Model.ProgressSummary.TotalPaidAmount / Model.ProgressSummary.TotalContractAmount * 100)
+                                            : 0;
+                                    }
+                                    <tr>
+                                        <td>Освоение средств</td>
+                                        <td class="text-end">
+                                            <div class="d-flex align-items-center justify-content-end gap-2">
+                                                <div class="progress" style="width: 80px; height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: @paymentRate%"></div>
+                                                </div>
+                                                <strong>@paymentRate.ToString("N1")%</strong>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table 6: Summary by Category -->
+        <div class="accordion-item border-0 shadow-sm mb-3">
+            <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table6">
+                    <i class="bi bi-pie-chart me-2 text-purple"></i>
+                    <strong>6. Summary by Category</strong>
+                </button>
+            </h2>
+            <div id="table6" class="accordion-collapse collapse" data-bs-parent="#reportAccordion">
+                <div class="accordion-body p-0">
+                    @if (Model.CategorySummaries.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3">Категория</th>
+                                        <th class="text-center">Контрактов</th>
+                                        <th class="text-end">Общая сумма</th>
+                                        <th class="text-end">Оплачено</th>
+                                        <th class="text-end">% освоения</th>
+                                        <th>Ср. выполнение</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var cs in Model.CategorySummaries)
+                                    {
+                                        var absorptionRate = cs.TotalAmount > 0 ? (cs.PaidAmount / cs.TotalAmount * 100) : 0;
+                                        <tr>
+                                            <td class="ps-3 fw-bold">@cs.CategoryName</td>
+                                            <td class="text-center">@cs.Count</td>
+                                            <td class="text-end">$@cs.TotalAmount.ToString("N0")</td>
+                                            <td class="text-end text-success">$@cs.PaidAmount.ToString("N0")</td>
+                                            <td class="text-end">@absorptionRate.ToString("N1")%</td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <div class="progress" style="width: 60px; height: 6px;">
+                                                        <div class="progress-bar bg-info" style="width: @cs.AverageCompletion%"></div>
+                                                    </div>
+                                                    <small>@cs.AverageCompletion.ToString("N0")%</small>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr class="fw-bold">
+                                        <td class="ps-3">Итого</td>
+                                        <td class="text-center">@Model.CategorySummaries.Sum(cs => cs.Count)</td>
+                                        <td class="text-end">$@Model.CategorySummaries.Sum(cs => cs.TotalAmount).ToString("N0")</td>
+                                        <td class="text-end text-success">$@Model.CategorySummaries.Sum(cs => cs.PaidAmount).ToString("N0")</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">Нет данных по категориям</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
