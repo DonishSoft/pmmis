@@ -1,0 +1,215 @@
+@model PMMIS.Domain.Entities.Contractor
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = Model.Name;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var totalContractAmount = Model.Contracts.Sum(c => c.FinalAmount);
+    var totalPaid = Model.Contracts.Sum(c => c.PaidAmount);
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Подрядчики</a></li>
+            <li class="breadcrumb-item active">@Model.Name</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-building me-2"></i>@Model.Name</h2>
+            @if (!string.IsNullOrEmpty(Model.Country))
+            {
+                <p class="text-muted mb-0"><i class="bi bi-geo-alt me-1"></i>@Model.Country</p>
+            }
+        </div>
+        <div class="d-flex gap-2">
+            @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i> Редактировать
+                </a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Контрактов</div>
+                    <div class="fs-3 fw-bold text-primary">@Model.Contracts.Count</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Общая сумма</div>
+                    <div class="fs-3 fw-bold text-info">$@totalContractAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Оплачено</div>
+                    <div class="fs-3 fw-bold text-success">$@totalPaid.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">К оплате</div>
+                    <div class="fs-3 fw-bold text-warning">$@((totalContractAmount - totalPaid).ToString("N0"))</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Contracts List -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Контракты</h5>
+                    <span class="badge bg-secondary">@Model.Contracts.Count контрактов</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Contracts.Any())
+                    {
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Номер</th>
+                                    <th>Объём работ</th>
+                                    <th>Тип</th>
+                                    <th class="text-end">Сумма ($)</th>
+                                    <th>Срок</th>
+                                    <th class="text-center">Выполнено</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var contract in Model.Contracts.OrderBy(c => c.SigningDate))
+                                {
+                                    <tr>
+                                        <td>
+                                            <a asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">
+                                                @contract.ContractNumber
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span title="@contract.ScopeOfWork">
+                                                @(contract.ScopeOfWork.Length > 60 ? contract.ScopeOfWork[..60] + "..." : contract.ScopeOfWork)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @switch (contract.Type)
+                                            {
+                                                case ContractType.Works:
+                                                    <span class="badge bg-warning text-dark">Работы</span>
+                                                    break;
+                                                case ContractType.Consulting:
+                                                    <span class="badge bg-info">Консалт</span>
+                                                    break;
+                                                case ContractType.Goods:
+                                                    <span class="badge bg-primary">Товары</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td class="text-end fw-semibold">$@contract.FinalAmount.ToString("N0")</td>
+                                        <td>
+                                            <small>@contract.SigningDate.ToString("dd.MM.yyyy") — @contract.ContractEndDate.ToString("dd.MM.yyyy")</small>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (contract.WorkCompletedPercent >= 100)
+                                            {
+                                                <span class="badge bg-success">100%</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="progress" style="height: 20px; min-width: 60px;">
+                                                    <div class="progress-bar bg-info" style="width: @contract.WorkCompletedPercent%">
+                                                        @contract.WorkCompletedPercent%
+                                                    </div>
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Нет контрактов
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Contact Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Контактные данные</h5>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.ContactPerson))
+                    {
+                        <p class="mb-2"><i class="bi bi-person me-2"></i>@Model.ContactPerson</p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Email))
+                    {
+                        <p class="mb-2"><i class="bi bi-envelope me-2"></i><a href="mailto:@Model.Email">@Model.Email</a></p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Phone))
+                    {
+                        <p class="mb-2"><i class="bi bi-telephone me-2"></i>@Model.Phone</p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Address))
+                    {
+                        <p class="mb-0"><i class="bi bi-geo me-2"></i>@Model.Address</p>
+                    }
+                    @if (string.IsNullOrEmpty(Model.ContactPerson) && string.IsNullOrEmpty(Model.Email) && string.IsNullOrEmpty(Model.Phone) && string.IsNullOrEmpty(Model.Address))
+                    {
+                        <p class="text-muted mb-0 text-center">Контактные данные не указаны</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Документы</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Documents.Any())
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var doc in Model.Documents)
+                            {
+                                <li class="mb-2">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0 text-center">Нет документов</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
