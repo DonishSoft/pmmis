@@ -1,0 +1,7 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskFormViewModel
+@{
+    ViewData["Title"] = "Редактирование задачи";
+}
+
+@* Reuse Create.cshtml layout *@
+@await Html.PartialAsync("Create", Model)

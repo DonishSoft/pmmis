@@ -1,0 +1,179 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskIndexViewModel
+@{
+    var tasks = Model.Tasks;
+    var newCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.New);
+    var inProgressCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.InProgress);
+    var onHoldCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.OnHold);
+    var underReviewCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview);
+    var completedCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.Completed);
+    var cancelledCount = tasks.Count(t => t.Status == PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled);
+}
+
+<div id="kanban-board" style="margin-top: -10px;"></div>
+
+<script>
+(function() {
+    function initKanban() {
+        if (typeof ej === 'undefined' || typeof ej.kanban === 'undefined') {
+            setTimeout(initKanban, 100);
+            return;
+        }
+        
+        // Destroy existing instance if any
+        var existingKanban = document.getElementById('kanban-board');
+        if (existingKanban && existingKanban.ej2_instances && existingKanban.ej2_instances.length > 0) {
+            existingKanban.ej2_instances[0].destroy();
+        }
+        
+        var kanbanData = [
+            @foreach (var task in tasks)
+            {
+                var statusKey = task.Status switch
+                {
+                    PMMIS.Domain.Entities.ProjectTaskStatus.New => "New",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.InProgress => "InProgress",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.OnHold => "OnHold",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview => "UnderReview",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.Completed => "Completed",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled => "Cancelled",
+                    _ => "New"
+                };
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                var escapedSummary = (task.Description ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                if (escapedSummary.Length > 80) escapedSummary = escapedSummary.Substring(0, 80) + "...";
+                <text>
+                {
+                    Id: @task.Id,
+                    Title: '@Html.Raw(escapedTitle)',
+                    Status: '@statusKey',
+                    Summary: '@Html.Raw(escapedSummary)',
+                    DueDate: '@task.DueDate.ToString("dd.MM.yyyy")'
+                },
+                </text>
+            }
+        ];
+
+        var kanbanObj = new ej.kanban.Kanban({
+            dataSource: kanbanData,
+            keyField: 'Status',
+            locale: 'ru',
+            columns: [
+                { headerText: 'Новые - @newCount', keyField: 'New', allowToggle: true },
+                { headerText: 'В работе - @inProgressCount', keyField: 'InProgress', allowToggle: true },
+                { headerText: 'На паузе - @onHoldCount', keyField: 'OnHold', allowToggle: true },
+                { headerText: 'На проверке - @underReviewCount', keyField: 'UnderReview', allowToggle: true },
+                { headerText: 'Завершено - @completedCount', keyField: 'Completed', allowToggle: true },
+                { headerText: 'Отменено - @cancelledCount', keyField: 'Cancelled', allowToggle: true }
+            ],
+            cardSettings: {
+                headerField: 'Title',
+                contentField: 'Summary'
+            },
+            showItemCount: false,
+            allowDragAndDrop: true,
+            cardClick: function(args) {
+                window.location.href = '/Tasks/Details/' + args.data.Id;
+            },
+            dragStop: function(args) {
+                var taskId = args.data[0].Id;
+                var newStatus = args.data[0].Status;
+                var statusMap = { 'New': 0, 'InProgress': 1, 'OnHold': 2, 'UnderReview': 3, 'Completed': 4, 'Cancelled': 5 };
+                
+                fetch('/Tasks/ChangeStatus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'id=' + taskId + '&status=' + statusMap[newStatus]
+                }).then(r => r.json()).then(result => {
+                    if (!result.success) location.reload();
+                });
+            },
+            dialogOpen: function(args) { args.cancel = true; }
+        });
+        
+        kanbanObj.appendTo('#kanban-board');
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initKanban);
+    } else {
+        initKanban();
+    }
+})();
+</script>
+
+<style>
+    /* Professional Syncfusion Kanban styling with gradient colors and white text */
+    #kanban-board {
+        border: none;
+    }
+    #kanban-board .e-kanban-header .e-header-cells {
+        font-weight: 600;
+        font-size: 13px;
+        padding: 12px;
+        color: white !important;
+    }
+    #kanban-board .e-header-text {
+        color: white !important;
+    }
+    #kanban-board .e-item-count {
+        display: none !important;
+    }
+    
+    /* Status column colors with gradients */
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(1) { 
+        background: linear-gradient(135deg, #6c757d 0%, #545b62 100%) !important; 
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(2) { 
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important; 
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(3) { 
+        background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important; 
+        color: #212529 !important;
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(3) .e-header-text {
+        color: #212529 !important;
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(4) { 
+        background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%) !important; 
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(5) { 
+        background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important; 
+    }
+    #kanban-board .e-kanban-header .e-header-cells:nth-child(6) { 
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important; 
+    }
+    
+    #kanban-board .e-kanban-content .e-content-cells {
+        background: #f8f9fa;
+        padding: 8px;
+    }
+    #kanban-board .e-card {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 10px;
+        transition: all 0.2s ease;
+    }
+    #kanban-board .e-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    #kanban-board .e-card .e-card-header {
+        padding: 12px 14px 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #212529;
+        border-bottom: none;
+    }
+    #kanban-board .e-card .e-card-content {
+        padding: 0 14px 12px;
+        color: #6c757d;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    
+    /* Hide swimlane */
+    #kanban-board .e-swimlane-header {
+        display: none !important;
+    }
+</style>

@@ -1,0 +1,308 @@
+@model List<PMMIS.Domain.Entities.WorkProgress>
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Прогресс работ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var contracts = ViewBag.Contracts as List<Contract> ?? new List<Contract>();
+    var selectedContractId = ViewBag.SelectedContractId as int?;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-graph-up-arrow me-2"></i>Прогресс работ</h2>
+        <a asp-action="Create" asp-route-contractId="@selectedContractId" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Новый отчёт
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Контракт</label>
+                    <select name="contractId" class="form-select">
+                        <option value="">— Все контракты —</option>
+                        @foreach (var c in contracts)
+                        {
+                            <option value="@c.Id" selected="@(selectedContractId == c.Id)">@c.ContractNumber - @c.Contractor.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-funnel me-1"></i> Фильтр
+                    </button>
+                </div>
+                @if (selectedContractId.HasValue)
+                {
+                    <div class="col-md-2">
+                        <a asp-action="Timeline" asp-route-contractId="@selectedContractId" class="btn btn-outline-info w-100">
+                            <i class="bi bi-clock-history me-1"></i> Timeline
+                        </a>
+                    </div>
+                }
+                <div class="col-md-3 text-end">
+                    <span class="text-muted">Отчётов: <strong>@Model.Count</strong></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Progress Cards -->
+    <div class="row g-4">
+        @foreach (var item in Model)
+        {
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <div>
+                            <a asp-controller="Contracts" asp-action="Details" asp-route-id="@item.ContractId" class="fw-bold text-decoration-none">
+                                @item.Contract.ContractNumber
+                            </a>
+                            <span class="text-muted ms-2">@item.Contract.Contractor.Name</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            @{
+                                var (statusBadge, statusText) = item.ApprovalStatus switch
+                                {
+                                    AvrApprovalStatus.Draft => ("bg-secondary", "Черновик"),
+                                    AvrApprovalStatus.SubmittedForReview => ("bg-info", "На проверке"),
+                                    AvrApprovalStatus.ManagerApproved => ("bg-primary", "Одобрен менеджером"),
+                                    AvrApprovalStatus.DirectorApproved => ("bg-success", "Утверждён"),
+                                    AvrApprovalStatus.Rejected => ("bg-danger", "Отклонён"),
+                                    _ => ("bg-secondary", "Черновик")
+                                };
+                            }
+                            <span class="badge @statusBadge">@statusText</span>
+                            <span class="text-muted small">@item.ReportDate.ToString("dd.MM.yyyy")</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="flex-grow-1 me-3">
+                                <div class="progress" style="height: 25px; position: relative;">
+                                    @{
+                                        var progressColor = item.CompletedPercent >= 80 ? "bg-success" : 
+                                                           item.CompletedPercent >= 50 ? "bg-info" : 
+                                                           item.CompletedPercent >= 25 ? "bg-warning" : "bg-danger";
+                                    }
+                                    <div class="progress-bar @progressColor" style="width: @item.CompletedPercent%"></div>
+                                    @{
+                                        var textColor = item.CompletedPercent >= 50 ? "#fff" : "#212529";
+                                    }
+                                    <span style="position: absolute; left: 0; right: 0; text-align: center; line-height: 25px; font-weight: 600; font-size: 13px; color: @textColor; text-shadow: 0 0 2px rgba(0,0,0,0.15);">
+                                        @item.CompletedPercent.ToString("F1")%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="fs-4 fw-bold @(item.CompletedPercent >= 80 ? "text-success" : item.CompletedPercent >= 50 ? "text-info" : "text-warning")">
+                                @item.CompletedPercent.ToString("F0")%
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <p class="mb-2 text-muted">@item.Description</p>
+                        }
+
+                        @if (!string.IsNullOrEmpty(item.Issues))
+                        {
+                            <div class="alert alert-warning py-2 mb-2">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                <strong>Проблемы:</strong> @item.Issues
+                            </div>
+                        }
+
+                        @if (item.ApprovalStatus == AvrApprovalStatus.Rejected && !string.IsNullOrEmpty(item.RejectionReason))
+                        {
+                            <div class="alert alert-danger py-2 mb-2">
+                                <i class="bi bi-x-circle me-1"></i>
+                                <strong>Причина отклонения:</strong> @item.RejectionReason
+                            </div>
+                        }
+
+                        @if (item.Documents.Any())
+                        {
+                            <div class="mt-2">
+                                <small class="text-muted"><i class="bi bi-paperclip me-1"></i>@item.Documents.Count файлов</small>
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Редактировать
+                            </a>
+
+                            @* Approval workflow buttons *@
+                            @if (item.ApprovalStatus == AvrApprovalStatus.Draft || item.ApprovalStatus == AvrApprovalStatus.Rejected)
+                            {
+                                <form asp-action="SubmitForReview" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-info text-white">
+                                        <i class="bi bi-send me-1"></i>На проверку
+                                    </button>
+                                </form>
+                            }
+                            @if (item.ApprovalStatus == AvrApprovalStatus.SubmittedForReview)
+                            {
+                                <button type="button" class="btn btn-sm btn-success" 
+                                        data-bs-toggle="modal" data-bs-target="#approveModal-@item.Id">
+                                    <i class="bi bi-check-lg me-1"></i>Одобрить
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                                    <i class="bi bi-x-lg me-1"></i>Отклонить
+                                </button>
+                            }
+                            @if (item.ApprovalStatus == AvrApprovalStatus.ManagerApproved && User.IsInRole("PMU_ADMIN"))
+                            {
+                                <button type="button" class="btn btn-sm btn-success" 
+                                        data-bs-toggle="modal" data-bs-target="#directorApproveModal-@item.Id">
+                                    <i class="bi bi-check-circle me-1"></i>Утвердить (Директор)
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        data-bs-toggle="modal" data-bs-target="#rejectModal-@item.Id">
+                                    <i class="bi bi-x-lg me-1"></i>Отклонить
+                                </button>
+                            }
+
+                            @if (User.IsInRole("PMU_ADMIN"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline ms-auto" onsubmit="return confirm('Удалить отчёт?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Manager Approve Modal *@
+            @if (item.ApprovalStatus == AvrApprovalStatus.SubmittedForReview)
+            {
+                <div class="modal fade" id="approveModal-@item.Id" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form asp-action="ManagerApprove" asp-route-id="@item.Id" method="post">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Одобрить АВР</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Одобрить АВР по контракту <strong>@item.Contract.ContractNumber</strong>?</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Комментарий (необязательно)</label>
+                                        <textarea name="comment" class="form-control" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-lg me-1"></i>Одобрить
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Director Approve Modal *@
+            @if (item.ApprovalStatus == AvrApprovalStatus.ManagerApproved)
+            {
+                <div class="modal fade" id="directorApproveModal-@item.Id" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form asp-action="DirectorApprove" asp-route-id="@item.Id" method="post">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Утвердить АВР (Директор)</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        После утверждения автоматически будет создана платёжка для бухгалтерии.
+                                    </div>
+                                    <p>Утвердить АВР по контракту <strong>@item.Contract.ContractNumber</strong>?</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Комментарий (необязательно)</label>
+                                        <textarea name="comment" class="form-control" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle me-1"></i>Утвердить и создать платёжку
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Reject Modal *@
+            @if (item.ApprovalStatus == AvrApprovalStatus.SubmittedForReview || item.ApprovalStatus == AvrApprovalStatus.ManagerApproved)
+            {
+                <div class="modal fade" id="rejectModal-@item.Id" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form asp-action="Reject" asp-route-id="@item.Id" method="post">
+                                <div class="modal-header">
+                                    <h5 class="modal-title text-danger">Отклонить АВР</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Отклонить АВР по контракту <strong>@item.Contract.ContractNumber</strong>?</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Причина отклонения <span class="text-danger">*</span></label>
+                                        <textarea name="reason" class="form-control" rows="3" required 
+                                                  placeholder="Укажите причину отклонения..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="bi bi-x-lg me-1"></i>Отклонить
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        @if (!Model.Any())
+        {
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                        <p class="text-muted">Нет отчётов о прогрессе</p>
+                        <a asp-action="Create" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i> Добавить первый отчёт
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

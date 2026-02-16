@@ -1,0 +1,437 @@
+@using PMMIS.Web.Services
+@using PMMIS.Domain.Entities
+@inject IMenuPermissionService MenuPermissionService
+@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
+@{
+    Layout = null;
+    
+    // Get allowed menu keys for current user
+    var allowedMenuKeys = new HashSet<string>();
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        var userId = UserManager.GetUserId(User);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            allowedMenuKeys = await MenuPermissionService.GetAllowedMenuKeysForUserAsync(userId);
+        }
+    }
+    
+    bool CanView(string menuKey) => allowedMenuKeys.Contains(menuKey);
+}
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - PMMIS</title>
+    
+    <!-- Syncfusion Essential JS 2 Styles -->
+    <link rel="stylesheet" href="https://cdn.syncfusion.com/ej2/32.1.22/material.css" />
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <!-- Sidebar -->
+        <div class="sidebar bg-dark text-white" id="sidebar">
+            <div class="sidebar-header p-3 border-bottom border-secondary">
+                <h5 class="mb-0">
+                    <i class="bi bi-water me-2"></i>
+                    <span class="sidebar-text">PMMIS</span>
+                </h5>
+                <small class="sidebar-text text-muted">WSIP Project</small>
+            </div>
+            
+            @{
+                var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+                var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+            }
+            <nav class="nav flex-column p-2">
+                @if (CanView(MenuKeys.Home))
+                {
+                    <a class="nav-link text-white @(currentController == "Dashboard" ? "menu-active" : "")" asp-controller="Dashboard" asp-action="Index">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        <span class="sidebar-text">Главная</span>
+                    </a>
+                }
+                
+                @if (CanView(MenuKeys.Contracts) || CanView(MenuKeys.Contractors) || CanView(MenuKeys.Projects))
+                {
+                    <small class="text-muted px-3 mt-3 mb-1 sidebar-text">ОСНОВНОЕ</small>
+                }
+                
+                @if (CanView(MenuKeys.Contracts))
+                {
+                    <a class="nav-link text-white @(currentController == "Contracts" ? "menu-active" : "")" asp-controller="Contracts" asp-action="Index">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        <span class="sidebar-text">Контракты</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Contractors))
+                {
+                    <a class="nav-link text-white @(currentController == "Contractors" ? "menu-active" : "")" asp-controller="Contractors" asp-action="Index">
+                        <i class="bi bi-building me-2"></i>
+                        <span class="sidebar-text">Подрядчики</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Projects))
+                {
+                    <a class="nav-link text-white @(currentController == "Projects" ? "menu-active" : "")" asp-controller="Projects" asp-action="Index">
+                        <i class="bi bi-diagram-3 me-2"></i>
+                        <span class="sidebar-text">Проекты</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Procurement))
+                {
+                    <a class="nav-link text-white @(currentController == "Procurement" ? "menu-active" : "")" asp-controller="Procurement" asp-action="Index">
+                        <i class="bi bi-clipboard-check me-2"></i>
+                        <span class="sidebar-text">План закупок</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Payments))
+                {
+                    <a class="nav-link text-white @(currentController == "Payments" ? "menu-active" : "")" asp-controller="Payments" asp-action="Index">
+                        <i class="bi bi-cash-stack me-2"></i>
+                        <span class="sidebar-text">Платежи</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.WorkProgress))
+                {
+                    <a class="nav-link text-white @(currentController == "WorkProgress" ? "menu-active" : "")" asp-controller="WorkProgress" asp-action="Index">
+                        <i class="bi bi-graph-up-arrow me-2"></i>
+                        <span class="sidebar-text">Прогресс работ</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.WorkProgressReports))
+                {
+                    <a class="nav-link text-white @(currentController == "WorkProgressReports" ? "menu-active" : "")" asp-controller="WorkProgressReports" asp-action="Index">
+                        <i class="bi bi-file-earmark-check me-2"></i>
+                        <span class="sidebar-text">АВР</span>
+                    </a>
+                }
+                
+                @if (CanView(MenuKeys.Tasks) || CanView(MenuKeys.Notifications))
+                {
+                    <small class="text-muted px-3 mt-3 mb-1 sidebar-text">УПРАВЛЕНИЕ</small>
+                }
+                
+                @if (CanView(MenuKeys.Tasks))
+                {
+                    <a class="nav-link text-white @(currentController == "Tasks" ? "menu-active" : "")" asp-controller="Tasks" asp-action="Index">
+                        <i class="bi bi-list-check me-2"></i>
+                        <span class="sidebar-text">Задачи</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Notifications))
+                {
+                    <a class="nav-link text-white @(currentController == "Notifications" ? "menu-active" : "")" asp-controller="Notifications" asp-action="Index">
+                        <i class="bi bi-bell me-2"></i>
+                        <span class="sidebar-text">Уведомления</span>
+                    </a>
+                }
+                
+                @if (CanView(MenuKeys.Geography) || CanView(MenuKeys.Indicators) || CanView(MenuKeys.ReferenceData) || CanView(MenuKeys.Import))
+                {
+                    <small class="text-muted px-3 mt-3 mb-1 sidebar-text">СПРАВОЧНИКИ</small>
+                }
+                
+                @if (CanView(MenuKeys.Geography))
+                {
+                    <a class="nav-link text-white @(currentController == "Geography" ? "menu-active" : "")" asp-controller="Geography" asp-action="Index">
+                        <i class="bi bi-geo-alt me-2"></i>
+                        <span class="sidebar-text">География</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Indicators))
+                {
+                    <a class="nav-link text-white @(currentController == "Indicators" ? "menu-active" : "")" asp-controller="Indicators" asp-action="Index">
+                        <i class="bi bi-graph-up me-2"></i>
+                        <span class="sidebar-text">Индикаторы</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.ReferenceData))
+                {
+                    <a class="nav-link text-white @(currentController == "ReferenceData" ? "menu-active" : "")" asp-controller="ReferenceData" asp-action="Index">
+                        <i class="bi bi-book me-2"></i>
+                        <span class="sidebar-text">Справочники</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.CurrencyRates))
+                {
+                    <a class="nav-link text-white @(currentController == "Currency" ? "menu-active" : "")" asp-controller="Currency" asp-action="Index">
+                        <i class="bi bi-currency-exchange me-2"></i>
+                        <span class="sidebar-text">Курсы валют</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Import))
+                {
+                    <a class="nav-link text-white @(currentController == "Import" ? "menu-active" : "")" asp-controller="Import" asp-action="Index">
+                        <i class="bi bi-cloud-upload me-2"></i>
+                        <span class="sidebar-text">Импорт</span>
+                    </a>
+                }
+                
+                @if (CanView(MenuKeys.Reports) || CanView(MenuKeys.Documents))
+                {
+                    <small class="text-muted px-3 mt-3 mb-1 sidebar-text">ОТЧЁТНОСТЬ</small>
+                }
+                
+                @if (CanView(MenuKeys.Reports))
+                {
+                    <a class="nav-link text-white sidebar-submenu-toggle @(currentController == "Reports" ? "menu-active" : "")" 
+                       href="#submenu-reports" data-bs-toggle="collapse" role="button" 
+                       aria-expanded="@(currentController == "Reports" ? "true" : "false")">
+                        <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                        <span class="sidebar-text">Отчёты</span>
+                        <i class="bi bi-chevron-down sidebar-text ms-auto submenu-chevron"></i>
+                    </a>
+                    <div class="collapse @(currentController == "Reports" ? "show" : "")" id="submenu-reports">
+                        <nav class="nav flex-column sidebar-submenu">
+                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Payments" && currentController == "Reports" ? "submenu-active" : "")" 
+                               asp-controller="Reports" asp-action="Payments">
+                                <i class="bi bi-cash-coin me-2"></i>
+                                <span class="sidebar-text">Платежи</span>
+                            </a>
+                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Indicators" && currentController == "Reports" ? "submenu-active" : "")" 
+                               asp-controller="Reports" asp-action="Indicators">
+                                <i class="bi bi-graph-up-arrow me-2"></i>
+                                <span class="sidebar-text">Индикаторы</span>
+                            </a>
+                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "EmployeeKpi" && currentController == "Reports" ? "submenu-active" : "")" 
+                               asp-controller="Reports" asp-action="EmployeeKpi">
+                                <i class="bi bi-person-lines-fill me-2"></i>
+                                <span class="sidebar-text">KPI сотрудников</span>
+                            </a>
+                        </nav>
+                    </div>
+                }
+                @if (CanView(MenuKeys.Documents))
+                {
+                    <a class="nav-link text-white @(currentController == "Documents" ? "menu-active" : "")" asp-controller="Documents" asp-action="Index">
+                        <i class="bi bi-folder me-2"></i>
+                        <span class="sidebar-text">Документы</span>
+                    </a>
+                }
+                
+                @if (CanView(MenuKeys.Users) || CanView(MenuKeys.Roles) || CanView(MenuKeys.Settings))
+                {
+                    <small class="text-muted px-3 mt-3 mb-1 sidebar-text">АДМИНИСТРИРОВАНИЕ</small>
+                    
+                    @if (CanView(MenuKeys.Users))
+                    {
+                        <a class="nav-link text-white @(currentController == "Users" && currentAction != "Hierarchy" ? "menu-active" : "")" asp-controller="Users" asp-action="Index">
+                            <i class="bi bi-people me-2"></i>
+                            <span class="sidebar-text">Пользователи</span>
+                        </a>
+                        <a class="nav-link text-white @(currentAction == "Hierarchy" ? "menu-active" : "")" asp-controller="Users" asp-action="Hierarchy">
+                            <i class="bi bi-diagram-3 me-2"></i>
+                            <span class="sidebar-text">Иерархия</span>
+                        </a>
+                    }
+                    @if (CanView(MenuKeys.Roles))
+                    {
+                        <a class="nav-link text-white @(currentController == "Roles" ? "menu-active" : "")" asp-controller="Roles" asp-action="Index">
+                            <i class="bi bi-shield-lock me-2"></i>
+                            <span class="sidebar-text">Роли</span>
+                        </a>
+                    }
+                    @if (CanView(MenuKeys.Settings))
+                    {
+                        <a class="nav-link text-white @(currentController == "Settings" ? "menu-active" : "")" asp-controller="Settings" asp-action="Index">
+                            <i class="bi bi-gear me-2"></i>
+                            <span class="sidebar-text">Настройки</span>
+                        </a>
+                    }
+                }
+            </nav>
+        </div>
+        
+        <!-- Page Content -->
+        <div id="page-content-wrapper" class="flex-grow-1">
+            <!-- Top Navbar -->
+            <nav class="navbar navbar-light bg-white border-bottom px-4">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm" id="toggle-sidebar">
+                        <i class="bi bi-list"></i>
+                    </button>
+                </div>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Language Switcher -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-globe me-1"></i>
+                            @(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToUpper())
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="?culture=ru">🇷🇺 Русский</a></li>
+                            <li><a class="dropdown-item" href="?culture=tg">🇹🇯 Тоҷикӣ</a></li>
+                            <li><a class="dropdown-item" href="?culture=en">🇬🇧 English</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <button class="btn btn-outline-secondary btn-sm position-relative">
+                        <i class="bi bi-bell"></i>
+                    </button>
+                    
+                    <!-- User Menu -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>
+                            @User.Identity?.Name
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Профиль</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="bi bi-box-arrow-right me-2"></i>Выйти
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Main Content -->
+            <main class="p-4">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Syncfusion Essential JS 2 -->
+    <script src="https://cdn.syncfusion.com/ej2/32.1.22/dist/ej2.min.js"></script>
+    
+    <!-- Syncfusion License Registration for JS Components -->
+    <script>
+        if (typeof ej !== 'undefined' && ej.base) {
+            ej.base.registerLicense('Ngo9BigBOggjHTQxAR8/V1JGaF5cXGpCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdlWX1ednRRRGVZUkB1W0JWYEs=');
+        }
+    </script>
+    
+    <!-- Syncfusion Russian Localization (Kanban only) -->
+    <script>
+        if (typeof ej !== 'undefined' && ej.base && ej.base.L10n) {
+            // Load UI translations for Kanban
+            // NOTE: Calendar uses JS text replacement instead of locale:'ru' due to CLDR requirements
+            ej.base.L10n.load({
+                'ru': {
+
+                    'schedule': {
+                        'day': 'День',
+                        'week': 'Неделя',
+                        'workWeek': 'Рабочая неделя',
+                        'month': 'Месяц',
+                        'agenda': 'Повестка',
+                        'weekAgenda': 'Повестка недели',
+                        'workWeekAgenda': 'Повестка рабочей недели',
+                        'monthAgenda': 'Повестка месяца',
+                        'today': 'Сегодня',
+                        'noEvents': 'Нет событий',
+                        'emptyContainer': 'На этот день нет запланированных событий.',
+                        'allDay': 'Весь день',
+                        'start': 'Начало',
+                        'end': 'Конец',
+                        'more': 'ещё',
+                        'close': 'Закрыть',
+                        'cancel': 'Отмена',
+                        'noTitle': '(Без названия)',
+                        'delete': 'Удалить',
+                        'deleteEvent': 'Удалить событие',
+                        'deleteMultipleEvent': 'Удалить события',
+                        'selectedItems': 'Выбрано элементов',
+                        'deleteSeries': 'Удалить серию',
+                        'edit': 'Редактировать',
+                        'editSeries': 'Редактировать серию',
+                        'editEvent': 'Редактировать событие',
+                        'createEvent': 'Создать событие',
+                        'subject': 'Тема',
+                        'addTitle': 'Добавить название',
+                        'moreDetails': 'Подробнее',
+                        'save': 'Сохранить',
+                        'editContent': 'Вы хотите редактировать только это событие или всю серию?',
+                        'deleteRecurrenceContent': 'Вы хотите удалить только это событие или всю серию?',
+                        'deleteContent': 'Вы уверены, что хотите удалить это событие?',
+                        'deleteMultipleContent': 'Вы уверены, что хотите удалить выбранные события?',
+                        'newEvent': 'Новое событие',
+                        'title': 'Название',
+                        'location': 'Место',
+                        'description': 'Описание',
+                        'timezone': 'Часовой пояс',
+                        'startTimezone': 'Часовой пояс начала',
+                        'endTimezone': 'Часовой пояс окончания',
+                        'repeat': 'Повторять',
+                        'saveButton': 'Сохранить',
+                        'cancelButton': 'Отмена',
+                        'deleteButton': 'Удалить',
+                        'recurrence': 'Повторение',
+                        'wrongPattern': 'Неверный шаблон повторения.',
+                        'seriesChangeAlert': 'Изменения этой серии будут отменены.',
+                        'createError': 'Продолжительность события должна быть меньше частоты повторения.',
+                        'sameDayAlert': 'Два события не могут происходить в один день.',
+                        'editRecurrence': 'Редактировать повторение',
+                        'repeats': 'Повторяется',
+                        'alert': 'Внимание',
+                        'startEndError': 'Дата окончания должна быть позже даты начала.',
+                        'invalidDateError': 'Введённая дата недействительна.',
+                        'ok': 'ОК',
+                        'occurrence': 'Событие',
+                        'series': 'Серия',
+                        'previous': 'Назад',
+                        'next': 'Далее',
+                        'timelineDay': 'День',
+                        'timelineWeek': 'Неделя',
+                        'timelineWorkWeek': 'Рабочая неделя',
+                        'timelineMonth': 'Месяц'
+                    },
+                    'kanban': {
+                        'items': 'задач',
+                        'min': 'Мин.',
+                        'max': 'Макс.',
+                        'cardsSelected': 'Карточек выбрано',
+                        'addTitle': 'Добавить новую карточку',
+                        'editTitle': 'Редактировать карточку',
+                        'deleteTitle': 'Удалить карточку',
+                        'deleteContent': 'Вы уверены, что хотите удалить эту карточку?',
+                        'save': 'Сохранить',
+                        'delete': 'Удалить',
+                        'cancel': 'Отмена',
+                        'yes': 'Да',
+                        'no': 'Нет',
+                        'close': 'Закрыть',
+                        'noCard': 'Нет задач',
+                        'unassigned': 'Не назначено'
+                    },
+                    'calendar': {
+                        'today': 'Сегодня'
+                    }
+                }
+            });
+            // Note: setCulture('ru') removed - Calendar requires full CLDR data
+            // Kanban uses locale:'ru' in component config instead
+        }
+    </script>
+
+    
+    <script>
+        // Sidebar Toggle
+        document.getElementById('toggle-sidebar')?.addEventListener('click', function() {
+            document.getElementById('sidebar')?.classList.toggle('collapsed');
+        });
+    </script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

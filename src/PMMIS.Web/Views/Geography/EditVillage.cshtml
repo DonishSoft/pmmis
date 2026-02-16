@@ -1,0 +1,121 @@
+@model PMMIS.Domain.Entities.Village
+@{
+    var jamoat = ViewBag.Jamoat as PMMIS.Domain.Entities.Jamoat;
+    var district = jamoat?.District;
+    ViewData["Title"] = "Редактировать село";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="Jamoats" asp-route-districtId="@district?.Id">@district?.NameRu</a></li>
+            <li class="breadcrumb-item"><a asp-action="Villages" asp-route-jamoatId="@jamoat?.Id">@jamoat?.NameRu</a></li>
+            <li class="breadcrumb-item active">Редактировать</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>Редактировать: @Model.NameRu</h5>
+                    <form asp-action="DeleteVillage" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Удалить этот населённый пункт?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i> Удалить
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <form asp-action="EditVillage" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="JamoatId" />
+                        
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Номер</label>
+                                <input asp-for="Number" type="number" class="form-control" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Зона</label>
+                                <input asp-for="Zone" class="form-control" placeholder="2D" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Джамоат</label>
+                                <input type="text" class="form-control" value="@jamoat?.NameRu" disabled />
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch mt-4">
+                                    <input asp-for="IsCoveredByProject" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label">В охвате проекта</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Локализация названия</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">🇷🇺 Русский</label>
+                                <input asp-for="NameRu" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇹🇯 Тоҷикӣ</label>
+                                <input asp-for="NameTj" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇺🇸 English</label>
+                                <input asp-for="NameEn" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Демографические данные</h6>
+
+                        <div class="row g-3">
+                            <div class="col-12"><small class="text-muted">Базовые показатели (2020)</small></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Население 2020</label>
+                                <input asp-for="Population2020" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Домохозяйств 2020</label>
+                                <input asp-for="Households2020" type="number" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12"><small class="text-muted">Текущие показатели (2025)</small></div>
+                            <div class="col-md-3">
+                                <label class="form-label">Население</label>
+                                <input asp-for="PopulationCurrent" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Женщин</label>
+                                <input asp-for="FemalePopulation" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Домохозяйств</label>
+                                <input asp-for="HouseholdsCurrent" type="number" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="Villages" asp-route-jamoatId="@jamoat?.Id" class="btn btn-outline-secondary">Отмена</a>
+                            <a asp-action="VillageDetails" asp-route-id="@Model.Id" class="btn btn-outline-info ms-auto">
+                                <i class="bi bi-eye"></i> Школы и медучреждения
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

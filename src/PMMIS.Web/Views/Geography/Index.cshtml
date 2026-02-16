@@ -1,0 +1,117 @@
+@model List<PMMIS.Domain.Entities.District>
+@{
+    ViewData["Title"] = "География";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-geo-alt me-2"></i>Географические справочники</h2>
+        <div class="d-flex gap-2">
+            <a asp-action="TreeView" class="btn btn-outline-info">
+                <i class="bi bi-diagram-3 me-1"></i> TreeView
+            </a>
+            @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+            {
+                <a asp-action="CreateDistrict" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i> Добавить район
+                </a>
+            }
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="text-primary mb-0">@Model.Count</h3>
+                    <small class="text-muted">Районов</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-0">@Model.Sum(d => d.Jamoats.Count)</h3>
+                    <small class="text-muted">Джамоатов</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="text-info mb-0">@Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Count))</h3>
+                    <small class="text-muted">Населённых пунктов</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Districts Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Код</th>
+                        <th>Название (РУ)</th>
+                        <th>Номи (ТЈ)</th>
+                        <th class="text-center">Джамоатов</th>
+                        <th class="text-center">Сёл</th>
+                        <th class="text-end">Население</th>
+                        <th class="text-center" style="width: 150px;">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var district in Model.OrderBy(d => d.NameRu))
+                    {
+                        var villagesCount = district.Jamoats.Sum(j => j.Villages.Count);
+                        var population = district.Jamoats.Sum(j => j.Villages.Sum(v => v.PopulationCurrent));
+                        <tr>
+                            <td><code>@district.Code</code></td>
+                            <td>
+                                <a asp-action="Jamoats" asp-route-districtId="@district.Id" class="fw-bold text-decoration-none">
+                                    @district.NameRu
+                                </a>
+                            </td>
+                            <td>@district.NameTj</td>
+                            <td class="text-center">
+                                <span class="badge bg-success">@district.Jamoats.Count</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">@villagesCount</span>
+                            </td>
+                            <td class="text-end">@population.ToString("N0")</td>
+                            <td class="text-center">
+                                <a asp-action="EditDistrict" asp-route-id="@district.Id" class="btn btn-sm btn-outline-primary me-1" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Jamoats" asp-route-districtId="@district.Id" class="btn btn-sm btn-outline-info" title="Открыть джамоаты">
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Районы не найдены. Добавьте первый район.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

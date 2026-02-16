@@ -1,0 +1,390 @@
+@model PMMIS.Web.ViewModels.WorkProgress.WorkProgressFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Редактирование отчёта";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Прогресс работ</a></li>
+            <li class="breadcrumb-item active">Редактирование</li>
+        </ol>
+    </nav>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="WorkProgress.Id" />
+                <input type="hidden" asp-for="WorkProgress.CreatedAt" />
+                <input type="hidden" asp-for="WorkProgress.SubmittedByUserId" />
+                <input type="hidden" asp-for="WorkProgress.ApprovalStatus" />
+                <div asp-validation-summary="All" class="alert alert-danger validation-summary-errors mb-3"></div>
+                <style>.validation-summary-valid { display: none; }</style>
+
+                <!-- Approval Status Banner -->
+                @{
+                    var (statusBadge, statusText, statusIcon) = Model.WorkProgress.ApprovalStatus switch
+                    {
+                        AvrApprovalStatus.Draft => ("bg-secondary", "Черновик", "bi-pencil"),
+                        AvrApprovalStatus.SubmittedForReview => ("bg-info", "На проверке", "bi-clock"),
+                        AvrApprovalStatus.ManagerApproved => ("bg-primary", "Одобрен менеджером", "bi-check"),
+                        AvrApprovalStatus.DirectorApproved => ("bg-success", "Утверждён директором", "bi-check-circle"),
+                        AvrApprovalStatus.Rejected => ("bg-danger", "Отклонён", "bi-x-circle"),
+                        _ => ("bg-secondary", "Черновик", "bi-pencil")
+                    };
+                }
+                <div class="alert alert-light border mb-4 d-flex align-items-center">
+                    <span class="badge @statusBadge me-2"><i class="bi @statusIcon me-1"></i>@statusText</span>
+                    @if (Model.WorkProgress.ApprovalStatus == AvrApprovalStatus.Rejected && !string.IsNullOrEmpty(Model.WorkProgress.RejectionReason))
+                    {
+                        <span class="text-danger small"><strong>Причина:</strong> @Model.WorkProgress.RejectionReason</span>
+                    }
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Отчёт о прогрессе</h5>
+                        <span class="badge bg-primary fs-6">@Model.WorkProgress.CompletedPercent%</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Контракт</label>
+                                <select asp-for="WorkProgress.ContractId" asp-items="Model.Contracts" class="form-select">
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дата отчёта</label>
+                                <input type="date" asp-for="WorkProgress.ReportDate" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Выполнено (%)</label>
+                                <div class="input-group">
+                                    <input type="number" asp-for="WorkProgress.CompletedPercent" class="form-control" 
+                                           min="0" max="100" step="0.1" id="progressInput" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 10px;">
+                                    <div class="progress-bar bg-success" id="progressBar" style="width: @Model.WorkProgress.CompletedPercent%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Описание</label>
+                                <textarea asp-for="WorkProgress.Description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Проблемы</label>
+                                <textarea asp-for="WorkProgress.Issues" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.ContractIndicators?.Any() == true)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Прогресс по индикаторам</h5>
+                            <span class="badge bg-info">@Model.ContractIndicators.Count индикатор(ов)</span>
+                        </div>
+                        <div class="card-body">
+                            @for (var i = 0; i < Model.ContractIndicators.Count; i++)
+                            {
+                                var indicator = Model.ContractIndicators[i];
+                                <input type="hidden" name="ContractIndicators[@i].ContractIndicatorId" value="@indicator.ContractIndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorId" value="@indicator.IndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorCode" value="@indicator.IndicatorCode" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorName" value="@indicator.IndicatorName" />
+                                <input type="hidden" name="ContractIndicators[@i].Unit" value="@indicator.Unit" />
+                                <input type="hidden" name="ContractIndicators[@i].TargetValue" value="@indicator.TargetValue" />
+                                <input type="hidden" name="ContractIndicators[@i].PreviousAchieved" value="@indicator.PreviousAchieved" />
+
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-5">
+                                                <h6 class="mb-1">
+                                                    <span class="badge bg-secondary me-1">@indicator.IndicatorCode</span>
+                                                    @indicator.IndicatorName
+                                                </h6>
+                                                <small class="text-muted">
+                                                    Цель: <strong>@indicator.TargetValue.ToString("N0")</strong> @indicator.Unit
+                                                    | Достигнуто: <strong class="text-primary">@indicator.PreviousAchieved.ToString("N0")</strong>
+                                                </small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small">Прогресс в этом АВР</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" 
+                                                           name="ContractIndicators[@i].Value" 
+                                                           class="form-control indicator-value" 
+                                                           value="@indicator.Value"
+                                                           min="0" step="0.01"
+                                                           data-target="@indicator.TargetValue"
+                                                           data-previous="@indicator.PreviousAchieved"
+                                                           data-index="@i" />
+                                                    <span class="input-group-text">@indicator.Unit</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Общий прогресс</label>
+                                                <div class="progress" style="height: 20px;">
+                                                    @{
+                                                        var totalAchieved = indicator.PreviousAchieved + indicator.Value;
+                                                        var pct = indicator.TargetValue > 0
+                                                            ? Math.Min(100, (totalAchieved / indicator.TargetValue) * 100) : 0;
+                                                        var barClass = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-info" : pct >= 25 ? "bg-warning" : "bg-danger";
+                                                    }
+                                                    <div class="progress-bar @barClass progress-bar-@i" role="progressbar" style="width: @pct.ToString("F0")%">
+                                                        @pct.ToString("F1")%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <input type="text" name="ContractIndicators[@i].Notes"
+                                                   class="form-control form-control-sm" 
+                                                   value="@indicator.Notes" placeholder="Примечание..." />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- File Upload Section -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.ExistingDocuments?.Any() == true)
+                        {
+                            <h6 class="mb-3">Прикреплённые файлы</h6>
+                            <ul class="list-group mb-3">
+                                @foreach (var doc in Model.ExistingDocuments)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <a href="@doc.FilePath" target="_blank">
+                                            <i class="bi @(doc.Type == DocumentType.Photo ? "bi-image" : "bi-file-earmark") me-2"></i>
+                                            @(doc.Description ?? doc.OriginalFileName)
+                                        </a>
+                                        <form asp-action="DeleteDocument" method="post" class="d-inline"
+                                              onsubmit="return confirm('Удалить документ?')">
+                                            <input type="hidden" name="documentId" value="@doc.Id" />
+                                            <input type="hidden" name="workProgressId" value="@Model.WorkProgress.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </li>
+                                }
+                            </ul>
+                        }
+
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Добавить новые файлы</h6>
+                            <button type="button" class="btn btn-sm btn-success" id="addFileBtn">
+                                <i class="bi bi-plus-lg"></i> Добавить файл
+                            </button>
+                        </div>
+                        <div id="filesContainer">
+                            <!-- Dynamic file rows -->
+                        </div>
+                        <div id="noFiles" class="text-center text-muted py-3">
+                            <i class="bi bi-cloud-upload fs-3 d-block mb-1"></i>
+                            <small>Нажмите «Добавить файл»</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Сохранить
+                    </button>
+                    <a asp-action="Index" asp-route-contractId="@Model.WorkProgress.ContractId" class="btn btn-outline-secondary">Назад</a>
+                    
+                    @if (User.IsInRole("PMU_ADMIN"))
+                    {
+                        <form asp-action="Delete" asp-route-id="@Model.WorkProgress.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить отчёт?')">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i> Удалить
+                            </button>
+                        </form>
+                    }
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Контракт</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>@Model.WorkProgress.Contract?.ContractNumber</strong></p>
+                    <p class="text-muted mb-0 small">@Model.WorkProgress.Contract?.ScopeOfWork</p>
+                </div>
+            </div>
+
+            <!-- Approval History -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>История согласования</h6>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <small class="text-muted">Создан</small><br />
+                            <strong>@Model.WorkProgress.CreatedAt.ToString("dd.MM.yyyy HH:mm")</strong>
+                        </li>
+                        @if (Model.WorkProgress.SubmittedAt.HasValue)
+                        {
+                            <li class="list-group-item">
+                                <small class="text-muted">Отправлен на проверку</small><br />
+                                <strong>@Model.WorkProgress.SubmittedAt.Value.ToString("dd.MM.yyyy HH:mm")</strong>
+                            </li>
+                        }
+                        @if (Model.WorkProgress.ManagerReviewedAt.HasValue)
+                        {
+                            <li class="list-group-item">
+                                <small class="text-muted">Одобрен менеджером</small><br />
+                                <strong>@Model.WorkProgress.ManagerReviewedAt.Value.ToString("dd.MM.yyyy HH:mm")</strong>
+                                @if (!string.IsNullOrEmpty(Model.WorkProgress.ManagerComment))
+                                {
+                                    <br /><small class="text-muted">@Model.WorkProgress.ManagerComment</small>
+                                }
+                            </li>
+                        }
+                        @if (Model.WorkProgress.DirectorApprovedAt.HasValue)
+                        {
+                            <li class="list-group-item">
+                                <small class="text-muted">Утверждён директором</small><br />
+                                <strong>@Model.WorkProgress.DirectorApprovedAt.Value.ToString("dd.MM.yyyy HH:mm")</strong>
+                                @if (!string.IsNullOrEmpty(Model.WorkProgress.DirectorComment))
+                                {
+                                    <br /><small class="text-muted">@Model.WorkProgress.DirectorComment</small>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    const progressInput = document.getElementById('progressInput');
+    const progressBar = document.getElementById('progressBar');
+    
+    progressInput.addEventListener('input', function() {
+        const value = Math.min(100, Math.max(0, this.value));
+        progressBar.style.width = value + '%';
+        
+        progressBar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+        if (value >= 80) progressBar.classList.add('bg-success');
+        else if (value >= 50) progressBar.classList.add('bg-info');
+        else if (value >= 25) progressBar.classList.add('bg-warning');
+        else progressBar.classList.add('bg-danger');
+    });
+
+    // Handle indicator progress updates
+    document.querySelectorAll('.indicator-value').forEach(function(input) {
+        input.addEventListener('input', function() {
+            const index = this.dataset.index;
+            const target = parseFloat(this.dataset.target) || 0;
+            const previous = parseFloat(this.dataset.previous) || 0;
+            const value = parseFloat(this.value) || 0;
+            
+            const newTotal = previous + value;
+            const pct = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+            
+            const bar = document.querySelector('.progress-bar-' + index);
+            if (bar) {
+                bar.style.width = pct + '%';
+                bar.textContent = pct.toFixed(1) + '%';
+                
+                bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+                if (pct >= 80) bar.classList.add('bg-success');
+                else if (pct >= 50) bar.classList.add('bg-info');
+                else if (pct >= 25) bar.classList.add('bg-warning');
+                else bar.classList.add('bg-danger');
+            }
+        });
+    });
+
+    // ========================
+    // Dynamic File Upload
+    // ========================
+    function addFileRow() {
+        const container = document.getElementById('filesContainer');
+        const noFiles = document.getElementById('noFiles');
+        if (noFiles) noFiles.style.display = 'none';
+        
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 file-row align-items-center p-2 border rounded bg-white';
+        row.innerHTML = `
+            <div class="col-md-3">
+                <select class="form-select form-select-sm file-type-select">
+                    <option value="report">📄 Отчёт / Акт</option>
+                    <option value="photo">📷 Фотоматериал</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <input type="file" class="form-control form-control-sm file-input"
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+            </div>
+            <div class="col-md-2 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-file-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+        
+        row.querySelector('.remove-file-btn').addEventListener('click', () => {
+            row.remove();
+            if (container.children.length === 0 && noFiles) {
+                noFiles.style.display = 'block';
+            }
+        });
+    }
+    
+    document.getElementById('addFileBtn')?.addEventListener('click', addFileRow);
+    
+    // Before submit: assign correct names to file inputs
+    document.querySelector('form[method="post"][enctype]')?.addEventListener('submit', function() {
+        document.querySelectorAll('.file-row').forEach(row => {
+            const type = row.querySelector('.file-type-select')?.value;
+            const input = row.querySelector('.file-input');
+            if (input && input.files.length > 0) {
+                input.name = type === 'photo' ? 'PhotoFiles' : 'ReportFiles';
+            }
+        });
+    });
+</script>
+}

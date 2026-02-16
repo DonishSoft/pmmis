@@ -1,0 +1,276 @@
+@model PMMIS.Web.ViewModels.Currency.CurrencyRateViewModel
+@{
+    ViewData["Title"] = "Курсы валют НБТ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item active">Курсы валют НБТ</li>
+        </ol>
+    </nav>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-3">
+            <form method="get" class="row g-3 align-items-end" id="filterForm">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold"><i class="bi bi-currency-exchange me-1"></i>Валюта</label>
+                    <select name="currency" id="currencySelect" class="form-select">
+                        @foreach (var c in Model.AvailableCurrencies)
+                        {
+                            <option value="@c.CharCode" selected="@(c.CharCode == Model.SelectedCurrency)">
+                                @c.CharCode — @c.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold"><i class="bi bi-calendar-event me-1"></i>С</label>
+                    <input type="date" name="from" class="form-control" value="@Model.DateFrom.ToString("yyyy-MM-dd")" id="dateFrom" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold"><i class="bi bi-calendar-check me-1"></i>По</label>
+                    <input type="date" name="to" class="form-control" value="@Model.DateTo.ToString("yyyy-MM-dd")" id="dateTo" />
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="bi bi-search me-1"></i> Показать
+                        </button>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-period="1">1М</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-period="3">3М</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-period="6">6М</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Chart -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up me-2 text-primary"></i>
+                        <span id="chartTitle">@Model.SelectedCurrency / TJS</span>
+                    </h5>
+                    <div id="currentRateDisplay">
+                        @{
+                            var selectedRate = Model.TodayRates.FirstOrDefault(r => r.CharCode == Model.SelectedCurrency);
+                        }
+                        @if (selectedRate != null)
+                        {
+                            <span class="fs-4 fw-bold text-primary">@selectedRate.Value</span>
+                            <span class="text-muted ms-1">TJS</span>
+                            @if (selectedRate.Nominal > 1)
+                            {
+                                <span class="badge bg-secondary ms-2">за @selectedRate.Nominal</span>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 400px;">
+                        <canvas id="rateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Change Stats -->
+            @if (Model.ChartData.Count >= 2)
+            {
+                var first = Model.ChartData.First().Value;
+                var last = Model.ChartData.Last().Value;
+                var change = last - first;
+                var changePercent = first > 0 ? (change / first) * 100 : 0;
+                var isPositive = change >= 0;
+                var min = Model.ChartData.Min(p => p.Value);
+                var max = Model.ChartData.Max(p => p.Value);
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm text-center">
+                            <div class="card-body py-3">
+                                <div class="text-muted small mb-1">Изменение</div>
+                                <div class="fs-5 fw-bold @(isPositive ? "text-success" : "text-danger")">
+                                    @(isPositive ? "+" : "")@change.ToString("F4")
+                                </div>
+                                <div class="small @(isPositive ? "text-success" : "text-danger")">
+                                    @(isPositive ? "▲" : "▼") @Math.Abs(changePercent).ToString("F2")%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm text-center">
+                            <div class="card-body py-3">
+                                <div class="text-muted small mb-1">Минимум</div>
+                                <div class="fs-5 fw-bold text-info">@min.ToString("F4")</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm text-center">
+                            <div class="card-body py-3">
+                                <div class="text-muted small mb-1">Максимум</div>
+                                <div class="fs-5 fw-bold text-warning">@max.ToString("F4")</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm text-center">
+                            <div class="card-body py-3">
+                                <div class="text-muted small mb-1">Точек данных</div>
+                                <div class="fs-5 fw-bold">@Model.ChartData.Count</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Today's Rates Table -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>Курсы на @DateTime.Today.ToString("dd.MM.yyyy")
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table table-hover table-sm mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Валюта</th>
+                                    <th class="text-center">Ном.</th>
+                                    <th class="text-end">Курс (TJS)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var rate in Model.TodayRates)
+                                {
+                                    var isSelected = rate.CharCode == Model.SelectedCurrency;
+                                    <tr class="currency-row @(isSelected ? "table-primary" : "")" 
+                                        data-code="@rate.CharCode" style="cursor: pointer;">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge @(isSelected ? "bg-primary" : "bg-secondary") me-2" 
+                                                      style="width: 45px;">@rate.CharCode</span>
+                                                <small class="text-truncate" style="max-width: 130px;" title="@rate.Name">@rate.Name</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">@rate.Nominal</td>
+                                        <td class="text-end fw-semibold">@rate.Value.ToString("F4")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+    // Chart initialization
+    const ctx = document.getElementById('rateChart').getContext('2d');
+    const chartLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ChartData.Select(p => p.Date)));
+    const chartValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ChartData.Select(p => p.Value)));
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+
+    const rateChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: '@Model.SelectedCurrency / TJS',
+                data: chartValues,
+                borderColor: '#3b82f6',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: chartValues.length > 60 ? 0 : 3,
+                pointHoverRadius: 5,
+                pointBackgroundColor: '#3b82f6',
+                pointHoverBackgroundColor: '#1d4ed8'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    titleFont: { size: 13 },
+                    bodyFont: { size: 14, weight: 'bold' },
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(4) + ' TJS';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        maxTicksLimit: 12,
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    ticks: {
+                        font: { size: 11 },
+                        callback: function(value) {
+                            return value.toFixed(4);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Period quick buttons
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const months = parseInt(this.dataset.period);
+            const to = new Date();
+            const from = new Date();
+            from.setMonth(from.getMonth() - months);
+            
+            document.getElementById('dateFrom').value = from.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = to.toISOString().split('T')[0];
+            document.getElementById('filterForm').submit();
+        });
+    });
+
+    // Click on currency row in table to switch
+    document.querySelectorAll('.currency-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const code = this.dataset.code;
+            document.getElementById('currencySelect').value = code;
+            document.getElementById('filterForm').submit();
+        });
+    });
+</script>
+}

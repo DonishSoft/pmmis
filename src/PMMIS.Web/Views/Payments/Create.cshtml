@@ -1,0 +1,265 @@
+@model PMMIS.Web.ViewModels.Payments.PaymentFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Новый платёж";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Платежи</a></li>
+            <li class="breadcrumb-item active">Новый платёж</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Create" method="post">
+                <input type="hidden" asp-for="Payment.Id" />
+                
+                <!-- Validation Summary -->
+                <div asp-validation-summary="All" class="alert alert-danger validation-summary-errors mb-3"></div>
+                <style>
+                    .validation-summary-valid { display: none; }
+                </style>
+                
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Информация о платеже</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Контракт <span class="text-danger">*</span></label>
+                                <select asp-for="Payment.ContractId" asp-items="Model.Contracts" class="form-select" id="paymentContractId" required>
+                                    <option value="">— Выберите контракт —</option>
+                                </select>
+                                <span asp-validation-for="Payment.ContractId" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <!-- AVR (Work Progress) Selection -->
+                        <div class="row g-3 mt-2" id="avrSelectionGroup" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="form-label"><i class="bi bi-clipboard-check me-1"></i>АВР (Акт выполненных работ)</label>
+                                <select class="form-select" id="avrSelect" name="Payment.WorkProgressId">
+                                    <option value="">— Без привязки к АВР —</option>
+                                </select>
+                                <small class="text-muted" id="avrInfo"></small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Дата платежа <span class="text-danger">*</span></label>
+                                <input type="date" asp-for="Payment.PaymentDate" class="form-control" id="paymentDate" required />
+                                <span asp-validation-for="Payment.PaymentDate" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип платежа <span class="text-danger">*</span></label>
+                                <select asp-for="Payment.Type" class="form-select">
+                                    <option value="@((int)PaymentType.Advance)">💵 Аванс</option>
+                                    <option value="@((int)PaymentType.Interim)">📊 Промежуточный</option>
+                                    <option value="@((int)PaymentType.Final)">✅ Окончательный</option>
+                                    <option value="@((int)PaymentType.Retention)">🔒 Удержание</option>
+                                </select>
+                                <span asp-validation-for="Payment.Type" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Статус</label>
+                                <select asp-for="Payment.Status" class="form-select">
+                                    <option value="@((int)PaymentStatus.Pending)">⏳ Ожидает</option>
+                                    <option value="@((int)PaymentStatus.Approved)">✓ Одобрен</option>
+                                    <option value="@((int)PaymentStatus.Paid)">✅ Оплачен</option>
+                                    <option value="@((int)PaymentStatus.Rejected)">❌ Отклонён</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <!-- TJS amount (primary for TJS contracts) -->
+                            <div class="col-md-4" id="tjsPaymentGroup" style="display: none;">
+                                <label class="form-label">Сумма (TJS) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">SM</span>
+                                    <input type="number" asp-for="Payment.AmountTjs" class="form-control" id="paymentAmountTjs" step="0.01" min="0" />
+                                </div>
+                            </div>
+                            <!-- Exchange rate (for TJS contracts) -->
+                            <div class="col-md-4" id="tjsPaymentRateGroup" style="display: none;">
+                                <label class="form-label">Курс USD/TJS</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">📊</span>
+                                    <input type="number" asp-for="Payment.ExchangeRate" class="form-control" id="paymentExchangeRate" step="0.0001" readonly />
+                                </div>
+                                <small class="text-muted" id="paymentRateInfo">На дату платежа</small>
+                            </div>
+                            <!-- USD amount -->
+                            <div class="col-md-4" id="usdAmountGroup">
+                                <label class="form-label" id="amountLabel">Сумма (USD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text" id="amountPrefix">$</span>
+                                    <input type="number" asp-for="Payment.Amount" class="form-control" id="paymentAmountUsd" step="0.01" min="0" required />
+                                </div>
+                                <span asp-validation-for="Payment.Amount" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Номер счёта</label>
+                                <input type="text" asp-for="Payment.InvoiceNumber" class="form-control" placeholder="INV-2024-001" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Описание</label>
+                                <textarea asp-for="Payment.Description" class="form-control" rows="2" placeholder="Описание платежа..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Создать
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+    // Contract currency map: contractId -> { currency: 0=USD/1=TJS }
+    const contractCurrencies = {};
+    @foreach (var c in ViewBag.ContractCurrencies as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
+    {
+        @:contractCurrencies[@c.Id] = { currency: @c.Currency, rate: @(c.Rate != null ? ((decimal)c.Rate).ToString(System.Globalization.CultureInfo.InvariantCulture) : "null") };
+    }
+
+    const contractSelect = document.getElementById('paymentContractId');
+    const paymentDate = document.getElementById('paymentDate');
+    const paymentAmountUsd = document.getElementById('paymentAmountUsd');
+    const paymentAmountTjs = document.getElementById('paymentAmountTjs');
+    const paymentExchangeRate = document.getElementById('paymentExchangeRate');
+    const tjsPaymentGroup = document.getElementById('tjsPaymentGroup');
+    const tjsPaymentRateGroup = document.getElementById('tjsPaymentRateGroup');
+    const amountLabel = document.getElementById('amountLabel');
+    const paymentRateInfo = document.getElementById('paymentRateInfo');
+
+    function onContractChange() {
+        const contractId = contractSelect.value;
+        const info = contractCurrencies[contractId];
+        const isTjs = info && info.currency === 1;
+
+        tjsPaymentGroup.style.display = isTjs ? '' : 'none';
+        tjsPaymentRateGroup.style.display = isTjs ? '' : 'none';
+
+        if (isTjs) {
+            amountLabel.innerHTML = 'Сумма (USD) <small class="text-muted">авто</small>';
+            paymentAmountUsd.readOnly = true;
+            fetchPaymentRate();
+        } else {
+            amountLabel.innerHTML = 'Сумма (USD) <span class="text-danger">*</span>';
+            paymentAmountUsd.readOnly = false;
+            paymentAmountTjs.value = '';
+            paymentExchangeRate.value = '';
+        }
+    }
+
+    async function fetchPaymentRate() {
+        const dateVal = paymentDate?.value;
+        if (!dateVal) {
+            paymentRateInfo.textContent = 'Укажите дату платежа';
+            return;
+        }
+        paymentRateInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Загрузка...';
+        try {
+            const resp = await fetch(`/Currency/GetUsdRate?date=${dateVal}`);
+            const data = await resp.json();
+            if (data.rate) {
+                paymentExchangeRate.value = data.rate;
+                paymentRateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                calculateUsdFromTjs();
+            } else {
+                paymentRateInfo.textContent = 'Курс недоступен';
+            }
+        } catch (e) {
+            paymentRateInfo.textContent = 'Ошибка загрузки';
+        }
+    }
+
+    function calculateUsdFromTjs() {
+        const tjs = parseFloat(paymentAmountTjs.value) || 0;
+        const rate = parseFloat(paymentExchangeRate.value) || 0;
+        paymentAmountUsd.value = rate > 0 ? (tjs / rate).toFixed(2) : '';
+    }
+
+    contractSelect.addEventListener('change', () => {
+        onContractChange();
+        loadApprovedAvrs();
+    });
+    paymentDate.addEventListener('change', () => {
+        const info = contractCurrencies[contractSelect.value];
+        if (info && info.currency === 1) fetchPaymentRate();
+    });
+    if (paymentAmountTjs) paymentAmountTjs.addEventListener('input', calculateUsdFromTjs);
+
+    // === AVR Selection Logic ===
+    const avrSelectionGroup = document.getElementById('avrSelectionGroup');
+    const avrSelect = document.getElementById('avrSelect');
+    const avrInfo = document.getElementById('avrInfo');
+
+    async function loadApprovedAvrs() {
+        const contractId = contractSelect.value;
+        if (!contractId) {
+            avrSelectionGroup.style.display = 'none';
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/Payments/GetApprovedAvrs?contractId=${contractId}`);
+            const avrs = await resp.json();
+
+            // Clear existing options
+            avrSelect.innerHTML = '<option value="">— Без привязки к АВР —</option>';
+
+            if (avrs.length === 0) {
+                avrSelectionGroup.style.display = 'none';
+                avrInfo.textContent = '';
+                return;
+            }
+
+            // Populate options
+            avrs.forEach(avr => {
+                const opt = document.createElement('option');
+                opt.value = avr.id;
+                opt.textContent = avr.text;
+                avrSelect.appendChild(opt);
+            });
+
+            avrSelectionGroup.style.display = '';
+
+            // Auto-select if only 1 AVR
+            if (avrs.length === 1) {
+                avrSelect.value = avrs[0].id;
+                avrInfo.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Автоматически выбран единственный утверждённый АВР</span>';
+            } else {
+                avrInfo.innerHTML = `<span class="text-info"><i class="bi bi-info-circle me-1"></i>Найдено ${avrs.length} утверждённых АВР — выберите нужный</span>`;
+            }
+        } catch (e) {
+            avrSelectionGroup.style.display = 'none';
+            console.error('Error loading AVRs:', e);
+        }
+    }
+
+    // Init on load
+    if (contractSelect.value) {
+        onContractChange();
+        loadApprovedAvrs();
+    }
+    </script>
+}

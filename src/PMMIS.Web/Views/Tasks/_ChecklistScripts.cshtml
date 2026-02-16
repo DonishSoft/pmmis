@@ -1,0 +1,356 @@
+@using System.Text.Json
+@model PMMIS.Web.ViewModels.Tasks.TaskFormViewModel
+
+<style>
+    .checklist-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        border: 1px solid #e9ecef;
+    }
+    .checklist-header {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        background: #fff;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .checklist-title {
+        flex: 1;
+        font-weight: 600;
+        font-size: 14px;
+        border: none;
+        background: transparent;
+        outline: none;
+    }
+    .checklist-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .checklist-progress-bar {
+        width: 60px;
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .checklist-progress-fill {
+        height: 100%;
+        background: #198754;
+        transition: width 0.3s ease;
+    }
+    .checklist-toolbar button {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+    .checklist-toolbar button:hover {
+        background: #e9ecef;
+    }
+    .checklist-body {
+        padding: 8px 12px;
+    }
+    .checklist-items {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .checklist-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .checklist-item.important {
+        background: #fff3cd;
+        margin: 0 -12px;
+        padding: 8px 12px;
+    }
+    .checklist-item.indented {
+        margin-left: 24px;
+    }
+    .checklist-item-text {
+        flex: 1;
+        font-size: 13px;
+        border: none;
+        background: transparent;
+        outline: none;
+        padding: 0;
+    }
+    .checklist-item-text.checked {
+        text-decoration: line-through;
+        color: #6c757d;
+    }
+    .checklist-item-toolbar {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .checklist-item:hover .checklist-item-toolbar {
+        opacity: 1;
+    }
+    .checklist-item-toolbar button {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+    .checklist-item-toolbar button:hover {
+        background: #e9ecef;
+    }
+    .checklist-item-toolbar button.active {
+        color: #dc3545;
+    }
+    .add-item-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 0;
+    }
+    .add-item-input input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 13px;
+    }
+    .coexecutor-dropdown {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        min-width: 200px;
+    }
+    .coexecutor-dropdown .user-item {
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .coexecutor-dropdown .user-item:hover {
+        background: #f0f0f0;
+    }
+</style>
+
+<script>
+    // Checklist data
+    let checklists = @Html.Raw(JsonSerializer.Serialize(Model.Checklists, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    const availableUsers = @Html.Raw(JsonSerializer.Serialize(Model.AvailableAssignees.Select(u => new { id = u.Id, name = u.FullName }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    let checklistIdCounter = checklists.length > 0 ? Math.max(...checklists.map(c => c.id || 0)) + 1 : 1;
+    
+    function addNewChecklist(name = 'Чек-лист ' + (checklists.length + 1)) {
+        checklists.push({
+            id: checklistIdCounter++,
+            name: name,
+            items: []
+        });
+        renderChecklists();
+    }
+    
+    function deleteChecklist(idx) {
+        checklists.splice(idx, 1);
+        renderChecklists();
+    }
+    
+    function addChecklistItem(clIdx, text = '') {
+        if (!checklists[clIdx].items) checklists[clIdx].items = [];
+        checklists[clIdx].items.push({
+            text: text,
+            isCompleted: false,
+            isImportant: false,
+            isIndented: false,
+            coExecutorId: null,
+            coExecutorName: null
+        });
+        renderChecklists();
+    }
+    
+    function deleteChecklistItem(clIdx, itemIdx) {
+        checklists[clIdx].items.splice(itemIdx, 1);
+        renderChecklists();
+    }
+    
+    function toggleItemChecked(clIdx, itemIdx) {
+        checklists[clIdx].items[itemIdx].isCompleted = !checklists[clIdx].items[itemIdx].isCompleted;
+        renderChecklists();
+    }
+    
+    function toggleItemImportant(clIdx, itemIdx) {
+        checklists[clIdx].items[itemIdx].isImportant = !checklists[clIdx].items[itemIdx].isImportant;
+        renderChecklists();
+    }
+    
+    function toggleItemIndent(clIdx, itemIdx) {
+        checklists[clIdx].items[itemIdx].isIndented = !checklists[clIdx].items[itemIdx].isIndented;
+        renderChecklists();
+    }
+    
+    function updateItemText(clIdx, itemIdx, text) {
+        checklists[clIdx].items[itemIdx].text = text;
+    }
+    
+    function updateChecklistName(clIdx, name) {
+        checklists[clIdx].name = name;
+    }
+    
+    function showCoExecutorDropdown(clIdx, itemIdx, btn) {
+        // Remove existing dropdowns
+        document.querySelectorAll('.coexecutor-dropdown').forEach(d => d.remove());
+        
+        const dropdown = document.createElement('div');
+        dropdown.className = 'coexecutor-dropdown';
+        dropdown.innerHTML = `
+            <div class="user-item" onclick="setCoExecutor(${clIdx}, ${itemIdx}, null, 'Нет')">
+                <i class="bi bi-x text-muted me-2"></i>Без соисполнителя
+            </div>
+            ${availableUsers.map(u => `
+                <div class="user-item" onclick="setCoExecutor(${clIdx}, ${itemIdx}, '${u.id}', '${u.name}')">
+                    <i class="bi bi-person text-primary me-2"></i>${u.name}
+                </div>
+            `).join('')}
+        `;
+        
+        const rect = btn.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (rect.bottom + 5) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        document.body.appendChild(dropdown);
+        
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', function closeDropdown(e) {
+                if (!dropdown.contains(e.target) && e.target !== btn) {
+                    dropdown.remove();
+                    document.removeEventListener('click', closeDropdown);
+                }
+            });
+        }, 10);
+    }
+    
+    function setCoExecutor(clIdx, itemIdx, userId, userName) {
+        checklists[clIdx].items[itemIdx].coExecutorId = userId;
+        checklists[clIdx].items[itemIdx].coExecutorName = userId ? userName : null;
+        document.querySelectorAll('.coexecutor-dropdown').forEach(d => d.remove());
+        renderChecklists();
+    }
+    
+    function handleAddItemKeypress(e, clIdx) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const text = e.target.value.trim();
+            if (text) {
+                addChecklistItem(clIdx, text);
+                e.target.value = '';
+            }
+        }
+    }
+    
+    function getChecklistProgress(cl) {
+        const items = cl.items || [];
+        const checked = items.filter(i => i.isCompleted).length;
+        const total = items.length;
+        return {
+            checked,
+            total,
+            percent: total > 0 ? Math.round(checked / total * 100) : 0
+        };
+    }
+    
+    function renderChecklists() {
+        const container = document.getElementById('checklistsContainer');
+        if (!container) return;
+        
+        if (checklists.length === 0) {
+            container.innerHTML = '<p class="text-muted small">Нет чек-листов. Нажмите кнопку ниже чтобы добавить.</p>';
+            return;
+        }
+        
+        container.innerHTML = checklists.map((cl, clIdx) => {
+            const progress = getChecklistProgress(cl);
+            const items = cl.items || [];
+            
+            return `
+                <div class="checklist-card">
+                    <div class="checklist-header">
+                        <i class="bi bi-grip-vertical text-muted me-2"></i>
+                        <input type="text" class="checklist-title" value="${cl.name || 'Чек-лист'}" 
+                               onchange="updateChecklistName(${clIdx}, this.value)" />
+                        <div class="checklist-progress">
+                            <span>${progress.checked}/${progress.total}</span>
+                            <div class="checklist-progress-bar">
+                                <div class="checklist-progress-fill" style="width: ${progress.percent}%"></div>
+                            </div>
+                        </div>
+                        <div class="checklist-toolbar ms-2">
+                            <button type="button" title="Удалить чек-лист" onclick="deleteChecklist(${clIdx})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="checklist-body">
+                        <ul class="checklist-items">
+                            ${items.map((item, itemIdx) => `
+                                <li class="checklist-item ${item.isImportant ? 'important' : ''} ${item.isIndented ? 'indented' : ''}">
+                                    <i class="bi bi-grip-vertical text-muted" style="cursor: grab; font-size: 10px;"></i>
+                                    <input type="checkbox" ${item.isCompleted ? 'checked' : ''} 
+                                           onchange="toggleItemChecked(${clIdx}, ${itemIdx})" />
+                                    <input type="text" class="checklist-item-text ${item.isCompleted ? 'checked' : ''}" 
+                                           value="${item.text}" onchange="updateItemText(${clIdx}, ${itemIdx}, this.value)" />
+                                    ${item.coExecutorName ? `<span class="badge bg-info text-dark">${item.coExecutorName}</span>` : ''}
+                                    <div class="checklist-item-toolbar">
+                                        <button type="button" title="Важный" class="${item.isImportant ? 'active' : ''}"
+                                                onclick="toggleItemImportant(${clIdx}, ${itemIdx})">
+                                            <i class="bi bi-flag-fill"></i>
+                                        </button>
+                                        <button type="button" title="Отступ" class="${item.isIndented ? 'active' : ''}"
+                                                onclick="toggleItemIndent(${clIdx}, ${itemIdx})">
+                                            <i class="bi bi-text-indent-left"></i>
+                                        </button>
+                                        <button type="button" title="Соисполнитель" 
+                                                onclick="showCoExecutorDropdown(${clIdx}, ${itemIdx}, this)">
+                                            <i class="bi bi-person-plus"></i>
+                                        </button>
+                                        <button type="button" title="Удалить" onclick="deleteChecklistItem(${clIdx}, ${itemIdx})">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <div class="add-item-input">
+                            <i class="bi bi-plus text-muted"></i>
+                            <input type="text" placeholder="Добавить пункт" 
+                                   onkeypress="handleAddItemKeypress(event, ${clIdx})" />
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function prepareChecklistsJson() {
+        document.getElementById('checklistsJsonInput').value = JSON.stringify(checklists);
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        renderChecklists();
+    });
+</script>

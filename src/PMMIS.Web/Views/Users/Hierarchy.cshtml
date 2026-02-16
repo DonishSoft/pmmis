@@ -1,0 +1,419 @@
+@model List<PMMIS.Domain.Entities.ApplicationUser>
+@{
+    ViewData["Title"] = "Организационная структура";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var userRoles = ViewBag.UserRoles as Dictionary<string, string> ?? new();
+    
+    // Root users: no supervisor
+    var rootUsers = Model.Where(u => string.IsNullOrEmpty(u.SupervisorId)).ToList();
+    // Unassigned: no supervisor AND no subordinates
+    var usersWithSubordinates = Model.Where(u => !string.IsNullOrEmpty(u.SupervisorId)).Select(u => u.SupervisorId!).Distinct().ToHashSet();
+    var unassigned = rootUsers.Where(u => !usersWithSubordinates.Contains(u.Id) && !Model.Any(sub => sub.SupervisorId == u.Id)).ToList();
+    var treeRoots = rootUsers.Where(u => Model.Any(sub => sub.SupervisorId == u.Id) || usersWithSubordinates.Contains(u.Id)).ToList();
+    // Users with supervisor but also at the top (just in case)
+    var allInTree = Model.Where(u => !unassigned.Contains(u)).ToList();
+}
+
+@functions {
+    void RenderUserNode(PMMIS.Domain.Entities.ApplicationUser user, List<PMMIS.Domain.Entities.ApplicationUser> allUsers, Dictionary<string, string> roles, int depth)
+    {
+        var subordinates = allUsers.Where(u => u.SupervisorId == user.Id).OrderBy(u => u.LastName).ToList();
+        var bgClass = depth == 0 ? "bg-primary bg-opacity-10" : depth == 1 ? "bg-success bg-opacity-10" : "bg-info bg-opacity-10";
+        var iconClass = depth == 0 ? "bi-person-fill-gear text-primary" : depth == 1 ? "bi-person-fill text-success" : "bi-person text-info";
+        var role = roles.ContainsKey(user.Id) ? roles[user.Id] : "";
+        
+        <div class="tree-node mb-2" data-user-id="@user.Id">
+            <div class="d-flex align-items-center p-2 @bgClass rounded node-header" onclick="toggleNode(this)">
+                @if (subordinates.Any())
+                {
+                    <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                }
+                else
+                {
+                    <span class="me-4"></span>
+                }
+                
+                @if (!string.IsNullOrEmpty(user.PhotoPath))
+                {
+                    <img src="@user.PhotoPath" alt="" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+                }
+                else
+                {
+                    <i class="bi @iconClass me-2 fs-5"></i>
+                }
+                
+                <div class="flex-grow-1">
+                    <span class="fw-bold">@user.FullName</span>
+                    @if (!string.IsNullOrEmpty(user.Position))
+                    {
+                        <span class="text-muted ms-2 small">— @user.Position</span>
+                    }
+                </div>
+                
+                @if (!string.IsNullOrEmpty(role))
+                {
+                    <span class="badge bg-secondary me-2">@role</span>
+                }
+                <span class="badge bg-info me-2" title="Подчинённых">@subordinates.Count</span>
+                
+                <div class="edit-actions d-none ms-1">
+                    <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); openAddSubordinateModal('@user.Id')" title="Добавить подчинённого">
+                        <i class="bi bi-person-plus"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openEditPositionModal('@user.Id', '@(user.Position?.Replace("'", "\\'") ?? "")')" title="Изменить должность">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    @if (depth > 0)
+                    {
+                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); changeSupervisor('@user.Id')" title="Сменить руководителя">
+                            <i class="bi bi-arrow-up-right"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); removeFromHierarchy('@user.Id')" title="Удалить из иерархии">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+            
+            @if (subordinates.Any())
+            {
+                <div class="node-children ms-4 mt-1 border-start border-2 ps-3">
+                    @foreach (var sub in subordinates)
+                    {
+                        RenderUserNode(sub, allUsers, roles, depth + 1);
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-diagram-3 me-2"></i>Организационная структура</h2>
+        <div class="d-flex gap-2">
+            <button id="btnEditMode" class="btn btn-outline-warning" onclick="toggleEditMode()">
+                <i class="bi bi-pencil-square me-1"></i> Режим редактирования
+            </button>
+            <a asp-action="Index" class="btn btn-outline-primary">
+                <i class="bi bi-list me-1"></i> Список пользователей
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col">
+            <div class="card bg-primary text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0">@Model.Count</h4>
+                    <small>Всего сотрудников</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-success text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0">@treeRoots.Count</h4>
+                    <small>Руководителей</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-info text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0">@Model.Count(u => !string.IsNullOrEmpty(u.SupervisorId))</h4>
+                    <small>В подчинении</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-warning text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0">@unassigned.Count</h4>
+                    <small>Не в иерархии</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Mode Actions -->
+    <div id="editModeActions" class="mb-3 d-none">
+        <button class="btn btn-outline-secondary" onclick="toggleAllNodes(true)">
+            <i class="bi bi-arrows-expand"></i> Развернуть все
+        </button>
+        <button class="btn btn-outline-secondary" onclick="toggleAllNodes(false)">
+            <i class="bi bi-arrows-collapse"></i> Свернуть все
+        </button>
+    </div>
+
+    <!-- Tree View -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Дерево подчинённости</h5>
+        </div>
+        <div class="card-body">
+            <div class="tree-view" id="treeContainer">
+                @if (treeRoots.Any())
+                {
+                    @foreach (var root in treeRoots.OrderBy(u => u.LastName))
+                    {
+                        RenderUserNode(root, Model, userRoles, 0);
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>Иерархия пуста. Включите режим редактирования и назначьте руководителей через «Неназначенные сотрудники».
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Unassigned Users -->
+    @if (unassigned.Any())
+    {
+        <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-people me-2 text-warning"></i>Не в иерархии
+                    <span class="badge bg-warning text-dark ms-2">@unassigned.Count</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var user in unassigned)
+                    {
+                        var role = userRoles.ContainsKey(user.Id) ? userRoles[user.Id] : "";
+                        <div class="col-md-4 col-lg-3">
+                            <div class="card h-100 border">
+                                <div class="card-body p-3 text-center">
+                                    @if (!string.IsNullOrEmpty(user.PhotoPath))
+                                    {
+                                        <img src="@user.PhotoPath" alt="" class="rounded-circle mb-2" style="width:48px;height:48px;object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle fs-1 text-muted d-block mb-2"></i>
+                                    }
+                                    <h6 class="mb-1">@user.FullName</h6>
+                                    @if (!string.IsNullOrEmpty(user.Position))
+                                    {
+                                        <small class="text-muted d-block">@user.Position</small>
+                                    }
+                                    @if (!string.IsNullOrEmpty(role))
+                                    {
+                                        <span class="badge bg-secondary mt-1">@role</span>
+                                    }
+                                    <div class="mt-2 edit-actions d-none">
+                                        <button class="btn btn-sm btn-outline-success" onclick="addToHierarchy('@user.Id')">
+                                            <i class="bi bi-plus-lg me-1"></i>В иерархию
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal: Add Subordinate / Change Supervisor -->
+<div class="modal fade" id="hierarchyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="hierarchyModalTitle">Назначить</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="hierarchyModalBody">
+                <!-- Dynamic -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="btnModalSave" onclick="saveModal()">
+                    <i class="bi bi-check-lg me-1"></i>Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tree-view .node-header { cursor: pointer; transition: background-color 0.2s; }
+    .tree-view .node-header:hover { filter: brightness(0.95); }
+    .tree-view .toggle-icon { transition: transform 0.2s; }
+    .tree-view .collapsed .toggle-icon { transform: rotate(-90deg); }
+    .tree-view .collapsed + .node-children { display: none; }
+    .edit-mode .edit-actions { display: flex !important; gap: 0.25rem; }
+    .border-start.border-2 { border-color: #dee2e6 !important; }
+</style>
+
+@section Scripts {
+<script>
+    let editMode = false;
+    let modalMode = ''; // 'addSub', 'changeSup', 'addToTree', 'editPosition'
+    let modalUserId = '';
+
+    // All users data for selects
+    const allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(u => new { u.Id, Name = u.FullName, u.Position, u.SupervisorId }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+    function toggleEditMode() {
+        editMode = !editMode;
+        document.body.classList.toggle('edit-mode', editMode);
+        document.getElementById('editModeActions').classList.toggle('d-none', !editMode);
+        const btn = document.getElementById('btnEditMode');
+        btn.classList.toggle('btn-warning', editMode);
+        btn.classList.toggle('btn-outline-warning', !editMode);
+        btn.innerHTML = editMode
+            ? '<i class="bi bi-eye me-1"></i> Выйти из редактирования'
+            : '<i class="bi bi-pencil-square me-1"></i> Режим редактирования';
+    }
+
+    function toggleNode(header) {
+        if (!editMode || !event.target.closest('.edit-actions')) {
+            header.classList.toggle('collapsed');
+        }
+    }
+
+    function toggleAllNodes(expand) {
+        document.querySelectorAll('.node-header').forEach(h => {
+            if (expand) h.classList.remove('collapsed');
+            else h.classList.add('collapsed');
+        });
+    }
+
+    // Open modal: add subordinate to a user
+    function openAddSubordinateModal(supervisorId) {
+        modalMode = 'addSub';
+        modalUserId = supervisorId;
+        const supervisor = allUsers.find(u => u.id === supervisorId);
+        const available = allUsers.filter(u => u.id !== supervisorId && u.supervisorId !== supervisorId);
+        const options = available.map(u =>
+            `<option value="${u.id}">${u.name}${u.position ? ' (' + u.position + ')' : ''}</option>`
+        ).join('');
+
+        document.getElementById('hierarchyModalTitle').textContent = `Добавить подчинённого для ${supervisor?.name || ''}`;
+        document.getElementById('hierarchyModalBody').innerHTML = `
+            <label class="form-label">Выберите сотрудника</label>
+            <select id="modalSelect" class="form-select">
+                <option value="">— Выберите —</option>
+                ${options}
+            </select>
+        `;
+        new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
+    }
+
+    // Open modal: change supervisor
+    function changeSupervisor(userId) {
+        modalMode = 'changeSup';
+        modalUserId = userId;
+        const user = allUsers.find(u => u.id === userId);
+        const available = allUsers.filter(u => u.id !== userId);
+        const options = available.map(u =>
+            `<option value="${u.id}" ${u.id === user?.supervisorId ? 'selected' : ''}>${u.name}${u.position ? ' (' + u.position + ')' : ''}</option>`
+        ).join('');
+
+        document.getElementById('hierarchyModalTitle').textContent = `Сменить руководителя: ${user?.name || ''}`;
+        document.getElementById('hierarchyModalBody').innerHTML = `
+            <label class="form-label">Новый руководитель</label>
+            <select id="modalSelect" class="form-select">
+                <option value="">— Без руководителя (верхний уровень) —</option>
+                ${options}
+            </select>
+        `;
+        new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
+    }
+
+    // Open modal: add unassigned user to hierarchy
+    function addToHierarchy(userId) {
+        modalMode = 'addToTree';
+        modalUserId = userId;
+        const user = allUsers.find(u => u.id === userId);
+        const available = allUsers.filter(u => u.id !== userId);
+        const options = available.map(u =>
+            `<option value="${u.id}">${u.name}${u.position ? ' (' + u.position + ')' : ''}</option>`
+        ).join('');
+
+        document.getElementById('hierarchyModalTitle').textContent = `Назначить руководителя: ${user?.name || ''}`;
+        document.getElementById('hierarchyModalBody').innerHTML = `
+            <label class="form-label">Руководитель</label>
+            <select id="modalSelect" class="form-select">
+                ${options}
+            </select>
+        `;
+        new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
+    }
+
+    // Edit position modal
+    function openEditPositionModal(userId, currentPosition) {
+        modalMode = 'editPosition';
+        modalUserId = userId;
+        const user = allUsers.find(u => u.id === userId);
+
+        document.getElementById('hierarchyModalTitle').textContent = `Должность: ${user?.name || ''}`;
+        document.getElementById('hierarchyModalBody').innerHTML = `
+            <label class="form-label">Должность</label>
+            <input type="text" id="modalPosition" class="form-control" value="${currentPosition}" placeholder="Директор, Менеджер проекта..." />
+        `;
+        new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
+    }
+
+    // Save modal action
+    async function saveModal() {
+        try {
+            let url, body;
+            if (modalMode === 'editPosition') {
+                const position = document.getElementById('modalPosition').value;
+                url = '/Users/UpdatePositionJson';
+                body = { userId: modalUserId, position: position || null };
+            } else {
+                const select = document.getElementById('modalSelect');
+                const selectedId = select.value;
+                if (modalMode === 'addSub') {
+                    if (!selectedId) { alert('Выберите сотрудника'); return; }
+                    url = '/Users/SetSupervisorJson';
+                    body = { userId: selectedId, supervisorId: modalUserId };
+                } else {
+                    url = '/Users/SetSupervisorJson';
+                    body = { userId: modalUserId, supervisorId: selectedId || null };
+                }
+            }
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('hierarchyModal')).hide();
+                location.reload();
+            } else {
+                const text = await res.text();
+                alert('Ошибка: ' + text);
+            }
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
+
+    // Remove from hierarchy
+    async function removeFromHierarchy(userId) {
+        if (!confirm('Удалить из иерархии? Подчинённые этого пользователя станут неназначенными.')) return;
+        try {
+            const res = await fetch('/Users/RemoveFromHierarchyJson', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId })
+            });
+            if (res.ok) location.reload();
+            else alert('Ошибка: ' + await res.text());
+        } catch (e) { alert('Ошибка: ' + e.message); }
+    }
+</script>
+}

@@ -1,0 +1,153 @@
+@{
+    ViewData["Title"] = "Импорт данных";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cloud-upload me-2"></i>Импорт данных</h2>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Errors"] is List<string> errors && errors.Any())
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i><strong>Предупреждения:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var error in errors.Take(10))
+                {
+                    <li>@error</li>
+                }
+                @if (errors.Count > 10)
+                {
+                    <li>... и ещё @(errors.Count - 10) ошибок</li>
+                }
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Step 1: Download Template -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-1-circle me-2"></i>Шаг 1: Скачайте шаблон</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Скачайте Excel-шаблон с правильной структурой колонок для импорта данных.
+                    </p>
+                    <a asp-action="DownloadTemplate" class="btn btn-outline-primary">
+                        <i class="bi bi-download me-1"></i> Скачать шаблон Excel
+                    </a>
+                    
+                    <hr>
+                    
+                    <h6>Структура файла:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Лист</th>
+                                    <th>Данные</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Районы</td><td>Код, Названия (рус/тадж/англ)</td></tr>
+                                <tr><td>Джамоаты</td><td>Код района → Названия</td></tr>
+                                <tr><td>Сёла</td><td>Код джамоата → Демография</td></tr>
+                                <tr><td>Школы</td><td>Название села → Статистика</td></tr>
+                                <tr><td>Медучреждения</td><td>Название села → Статистика</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>Поля со * обязательны. Дубликаты пропускаются автоматически.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Upload File -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-2-circle me-2"></i>Шаг 2: Загрузите данные</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Заполните шаблон вашими данными и загрузите файл для импорта.
+                    </p>
+                    
+                    <form asp-action="Import" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label">Выберите Excel файл (.xlsx)</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required />
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-cloud-upload me-1"></i> Импортировать
+                        </button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <h6>Важно:</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Импорт выполняется <strong>последовательно</strong>: сначала районы, потом джамоаты и т.д.</li>
+                        <li>Для джамоатов укажите <strong>код или название района</strong></li>
+                        <li>Для сёл укажите <strong>код или название джамоата</strong></li>
+                        <li>Для школ/медучреждений укажите <strong>название села (рус)</strong></li>
+                        <li>Типы учреждений должны существовать в <a asp-controller="ReferenceData" asp-action="Index">Справочниках</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Data -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Пример данных</h5>
+        </div>
+        <div class="card-body">
+            <h6>Лист "Районы":</h6>
+            <table class="table table-sm table-bordered mb-4">
+                <thead class="table-light">
+                    <tr><th>Код</th><th>№ сортировки</th><th>Название (рус)*</th><th>Название (тадж)</th><th>Название (англ)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>DIS01</td><td>1</td><td>Исфара</td><td>Исфара</td><td>Isfara</td></tr>
+                    <tr><td>DIS02</td><td>2</td><td>Канибадам</td><td>Конибодом</td><td>Kanibadam</td></tr>
+                </tbody>
+            </table>
+
+            <h6>Лист "Джамоаты":</h6>
+            <table class="table table-sm table-bordered mb-4">
+                <thead class="table-light">
+                    <tr><th>Код района*</th><th>Код</th><th>№ сорт.</th><th>Название (рус)*</th><th>Название (тадж)</th><th>Название (англ)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>DIS01</td><td>JAM01</td><td>1</td><td>Навгилем</td><td>Навгилем</td><td>Navgilem</td></tr>
+                    <tr><td>Исфара</td><td></td><td>2</td><td>Чоркух</td><td>Чоркух</td><td>Chorkuh</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

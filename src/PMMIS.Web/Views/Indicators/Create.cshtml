@@ -1,0 +1,125 @@
+@model PMMIS.Domain.Entities.Indicator
+@{
+    ViewData["Title"] = "Создать индикатор";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var categories = ViewBag.Categories as List<PMMIS.Domain.Entities.IndicatorCategory> ?? new List<PMMIS.Domain.Entities.IndicatorCategory>();
+    var parentIndicators = ViewBag.ParentIndicators as List<PMMIS.Domain.Entities.Indicator> ?? new List<PMMIS.Domain.Entities.Indicator>();
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Индикаторы</a></li>
+            <li class="breadcrumb-item active">Создать индикатор</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Новый индикатор</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        <input type="hidden" asp-for="ParentIndicatorId" />
+                        
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Код <span class="text-danger">*</span></label>
+                                <input asp-for="Code" class="form-control" placeholder="IND-001" required />
+                                <span asp-validation-for="Code" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">№ сортировки</label>
+                                <input asp-for="SortOrder" type="number" class="form-control" value="0" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ед. измерения</label>
+                                <input asp-for="Unit" class="form-control" placeholder="%, чел., шт." data-val-required="" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Целевое значение</label>
+                                <input asp-for="TargetValue" type="number" step="0.01" class="form-control" placeholder="100" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Категория</label>
+                                <select asp-for="CategoryId" class="form-select">
+                                    <option value="">— Без категории —</option>
+                                    @foreach (var cat in categories)
+                                    {
+                                        <option value="@cat.Id">@cat.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип измерения</label>
+                                <select asp-for="MeasurementType" class="form-select">
+                                    <option value="@PMMIS.Domain.Entities.MeasurementType.Number">Число</option>
+                                    <option value="@PMMIS.Domain.Entities.MeasurementType.Percentage">Процент (%)</option>
+                                    <option value="@PMMIS.Domain.Entities.MeasurementType.YesNo">Да/Нет</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Родительский индикатор</label>
+                                <select asp-for="ParentIndicatorId" class="form-select">
+                                    <option value="">— Основной индикатор —</option>
+                                    @foreach (var parent in parentIndicators)
+                                    {
+                                        <option value="@parent.Id">@parent.Code: @parent.NameRu</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Источник географических данных</label>
+                                <select asp-for="GeoDataSource" class="form-select">
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.None">— Не связан с географией —</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.Population">🏘️ Население (текущее)</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.FemalePopulation">👩 Женское население</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.Households">🏠 Домохозяйства</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.SchoolCount">🏫 Количество школ</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.HealthFacilityCount">🏥 Количество медучреждений</option>
+                                    <option value="@PMMIS.Domain.Entities.GeoDataSource.SchoolStudents">🎓 Количество учеников</option>
+                                </select>
+                                <small class="text-muted">Если индикатор связан с географическими данными, при привязке к контракту можно будет выбрать конкретные сёла</small>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Название индикатора</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">🇷🇺 Русский <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" placeholder="Количество домохозяйств с доступом к воде" required />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">🇹🇯 Тоҷикӣ</label>
+                                <input asp-for="NameTj" class="form-control" data-val-required="" />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">🇺🇸 English</label>
+                                <input asp-for="NameEn" class="form-control" placeholder="Number of households with water access" data-val-required="" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Создать
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

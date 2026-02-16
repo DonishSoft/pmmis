@@ -1,0 +1,656 @@
+@model List<PMMIS.Domain.Entities.District>
+@{
+    ViewData["Title"] = "Структура географии";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var totalJamoats = Model.Sum(d => d.Jamoats.Count);
+    var totalVillages = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Count));
+    var totalSchools = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Sum(v => v.Schools.Count)));
+    var totalHealth = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Sum(v => v.HealthFacilities.Count)));
+    var canEdit = User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF");
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-diagram-3 me-2"></i>Структура географических данных</h2>
+        <div class="d-flex gap-2">
+            @if (canEdit)
+            {
+                <button id="btnEditMode" class="btn btn-outline-warning" onclick="toggleEditMode()">
+                    <i class="bi bi-pencil-square me-1"></i> Режим редактирования
+                </button>
+            }
+            <a asp-action="Index" class="btn btn-outline-primary">
+                <i class="bi bi-list"></i> Табличный вид
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col">
+            <div class="card bg-primary text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statDistricts">@Model.Count</h4>
+                    <small>Районов</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-success text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statJamoats">@totalJamoats</h4>
+                    <small>Джамоатов</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-info text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statVillages">@totalVillages</h4>
+                    <small>Сёл</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-warning text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statSchools">@totalSchools</h4>
+                    <small>Школ</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-danger text-white border-0">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statHealth">@totalHealth</h4>
+                    <small>Медучреждений</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Mode Actions -->
+    <div id="editModeActions" class="mb-3 d-none">
+        <button class="btn btn-primary" onclick="openModal('district')">
+            <i class="bi bi-plus-lg me-1"></i> Добавить район
+        </button>
+        <button class="btn btn-outline-secondary ms-2" onclick="toggleAllNodes(true)">
+            <i class="bi bi-arrows-expand"></i> Развернуть все
+        </button>
+        <button class="btn btn-outline-secondary" onclick="toggleAllNodes(false)">
+            <i class="bi bi-arrows-collapse"></i> Свернуть все
+        </button>
+    </div>
+
+    <!-- TreeView -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="tree-view" id="treeContainer">
+                @foreach (var district in Model.OrderBy(d => d.SortOrder).ThenBy(d => d.NameRu))
+                {
+                    <div class="tree-node district-node mb-3" data-id="@district.Id" data-type="district">
+                        <div class="d-flex align-items-center p-2 bg-primary bg-opacity-10 rounded node-header" onclick="toggleNode(this)">
+                            <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                            <i class="bi bi-geo-alt-fill text-primary me-2 fs-5"></i>
+                            <span class="fw-bold node-name">@district.NameRu</span>
+                            <code class="ms-2 small node-code">@district.Code</code>
+                            <span class="badge bg-success ms-auto">@district.Jamoats.Count</span>
+                            
+                            <div class="edit-actions d-none ms-2">
+                                <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); openModal('jamoat', 0, @district.Id)" title="Добавить джамоат">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openModal('district', @district.Id)" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteItem('district', @district.Id)" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="node-children ms-4 mt-2 border-start ps-3">
+                            @foreach (var jamoat in district.Jamoats.OrderBy(j => j.SortOrder).ThenBy(j => j.NameRu))
+                            {
+                                <div class="tree-node jamoat-node mb-2" data-id="@jamoat.Id" data-type="jamoat" data-parent="@district.Id">
+                                    <div class="d-flex align-items-center p-2 bg-success bg-opacity-10 rounded node-header" onclick="toggleNode(this)">
+                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <i class="bi bi-building text-success me-2"></i>
+                                        <span class="node-name">@jamoat.NameRu</span>
+                                        <code class="ms-2 small text-muted node-code">@jamoat.Code</code>
+                                        <span class="badge bg-info ms-auto">@jamoat.Villages.Count</span>
+                                        
+                                        <div class="edit-actions d-none ms-2">
+                                            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); openModal('village', 0, @jamoat.Id)" title="Добавить село">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openModal('jamoat', @jamoat.Id)" title="Редактировать">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteItem('jamoat', @jamoat.Id)" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="node-children ms-4 mt-1 border-start ps-3">
+                                        @foreach (var village in jamoat.Villages.OrderBy(v => v.SortOrder).ThenBy(v => v.Number))
+                                        {
+                                            <div class="tree-node village-node mb-1" data-id="@village.Id" data-type="village" data-parent="@jamoat.Id">
+                                                <div class="d-flex align-items-center p-1 bg-info bg-opacity-10 rounded small node-header" onclick="toggleNode(this)">
+                                                    <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                                    <i class="bi bi-house text-info me-2"></i>
+                                                    <span class="node-name">@village.NameRu</span>
+                                                    @if (village.IsCoveredByProject)
+                                                    {
+                                                        <i class="bi bi-check-circle-fill text-success ms-1" title="В охвате проекта"></i>
+                                                    }
+                                                    <span class="text-muted ms-2">@village.PopulationCurrent.ToString("N0") чел.</span>
+                                                    
+                                                    @if (village.Schools.Any())
+                                                    {
+                                                        <span class="badge bg-warning text-dark ms-2">
+                                                            <i class="bi bi-mortarboard"></i> @village.Schools.Count
+                                                        </span>
+                                                    }
+                                                    @if (village.HealthFacilities.Any())
+                                                    {
+                                                        <span class="badge bg-danger ms-1">
+                                                            <i class="bi bi-hospital"></i> @village.HealthFacilities.Count
+                                                        </span>
+                                                    }
+                                                    
+                                                    <div class="edit-actions d-none ms-auto">
+                                                        <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); openModal('school', 0, @village.Id)" title="Добавить школу">
+                                                            <i class="bi bi-mortarboard"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); openModal('health', 0, @village.Id)" title="Добавить медучреждение">
+                                                            <i class="bi bi-hospital"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openModal('village', @village.Id)" title="Редактировать">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteItem('village', @village.Id)" title="Удалить">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="node-children ms-4 mt-1 ps-3" style="font-size: 0.85rem;">
+                                                    @foreach (var school in village.Schools.OrderBy(s => s.SortOrder).ThenBy(s => s.Number))
+                                                    {
+                                                        <div class="d-flex align-items-center text-warning facility-item" data-id="@school.Id" data-type="school">
+                                                            <i class="bi bi-mortarboard-fill me-1"></i>
+                                                            <span class="node-name">Школа №@school.Number: @(school.Name ?? "")</span>
+                                                            <span class="text-muted ms-2">(@school.TotalStudents уч.)</span>
+                                                            @if (school.HasWaterSupply) { <span class="ms-1">💧</span> }
+                                                            @if (school.HasSanitation) { <span class="ms-1">🚿</span> }
+                                                            <div class="edit-actions d-none ms-auto">
+                                                                <button class="btn btn-sm btn-link text-primary p-0" onclick="openModal('school', @school.Id)"><i class="bi bi-pencil"></i></button>
+                                                                <button class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="deleteItem('school', @school.Id)"><i class="bi bi-trash"></i></button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    @foreach (var hf in village.HealthFacilities.OrderBy(h => h.SortOrder))
+                                                    {
+                                                        <div class="d-flex align-items-center text-danger facility-item" data-id="@hf.Id" data-type="health">
+                                                            <i class="bi bi-hospital-fill me-1"></i>
+                                                            <span class="node-name">@(hf.Name ?? "Медучреждение")</span>
+                                                            <span class="text-muted ms-2">(@hf.TotalStaff чел.)</span>
+                                                            @if (hf.HasWaterSupply) { <span class="ms-1">💧</span> }
+                                                            @if (hf.HasSanitation) { <span class="ms-1">🚿</span> }
+                                                            <div class="edit-actions d-none ms-auto">
+                                                                <button class="btn btn-sm btn-link text-primary p-0" onclick="openModal('health', @hf.Id)"><i class="bi bi-pencil"></i></button>
+                                                                <button class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="deleteItem('health', @hf.Id)"><i class="bi bi-trash"></i></button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (!jamoat.Villages.Any())
+                                        {
+                                            <div class="text-muted small fst-italic">Сёла не добавлены</div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            @if (!district.Jamoats.Any())
+                            {
+                                <div class="text-muted small fst-italic">Джамоаты не добавлены</div>
+                            }
+                        </div>
+                    </div>
+                }
+                @if (!Model.Any())
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>Данные не найдены. Включите режим редактирования и добавьте первый район.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Universal Modal -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Добавить</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="btnSave" onclick="saveItem()">
+                    <i class="bi bi-check-lg me-1"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tree-view .border-start { border-color: #dee2e6 !important; }
+    .tree-view .node-header { cursor: pointer; transition: background-color 0.2s; }
+    .tree-view .node-header:hover { filter: brightness(0.95); }
+    .tree-view .toggle-icon { transition: transform 0.2s; }
+    .tree-view .collapsed .toggle-icon { transform: rotate(-90deg); }
+    .tree-view .collapsed + .node-children { display: none; }
+    .edit-mode .edit-actions { display: flex !important; gap: 0.25rem; }
+    .facility-item { padding: 2px 0; }
+</style>
+
+<script>
+    let editMode = false;
+    let currentType = '';
+    let currentId = 0;
+    let parentId = 0;
+    let educationTypes = [];
+    let healthTypes = [];
+
+    // Toggle edit mode
+    function toggleEditMode() {
+        editMode = !editMode;
+        document.body.classList.toggle('edit-mode', editMode);
+        document.getElementById('editModeActions').classList.toggle('d-none', !editMode);
+        document.getElementById('btnEditMode').classList.toggle('btn-warning', editMode);
+        document.getElementById('btnEditMode').classList.toggle('btn-outline-warning', !editMode);
+        document.getElementById('btnEditMode').innerHTML = editMode 
+            ? '<i class="bi bi-eye me-1"></i> Выйти из редактирования' 
+            : '<i class="bi bi-pencil-square me-1"></i> Режим редактирования';
+    }
+
+    // Toggle tree node expand/collapse
+    function toggleNode(header) {
+        if (!editMode || !event.target.closest('.edit-actions')) {
+            header.classList.toggle('collapsed');
+        }
+    }
+
+    // Toggle all nodes
+    function toggleAllNodes(expand) {
+        document.querySelectorAll('.node-header').forEach(h => {
+            if (expand) h.classList.remove('collapsed');
+            else h.classList.add('collapsed');
+        });
+    }
+
+    // Load reference data
+    async function loadReferenceData() {
+        try {
+            const [eduRes, healthRes] = await Promise.all([
+                fetch('/Geography/GetEducationTypesJson'),
+                fetch('/Geography/GetHealthFacilityTypesJson')
+            ]);
+            educationTypes = await eduRes.json();
+            healthTypes = await healthRes.json();
+        } catch(e) { console.error(e); }
+    }
+    loadReferenceData();
+
+    // Open modal for add/edit
+    async function openModal(type, id = 0, parent = 0) {
+        currentType = type;
+        currentId = id;
+        parentId = parent;
+        
+        const isEdit = id > 0;
+        let title = '';
+        let body = '';
+        let data = {};
+
+        // Load existing data if editing
+        if (isEdit) {
+            const endpoint = {
+                district: 'GetDistrictJson',
+                jamoat: 'GetJamoatJson',
+                village: 'GetVillageJson',
+                school: 'GetSchoolJson',
+                health: 'GetHealthFacilityJson'
+            }[type];
+            const res = await fetch(`/Geography/${endpoint}?id=${id}`);
+            data = await res.json();
+        }
+
+        switch(type) {
+            case 'district':
+                title = isEdit ? 'Редактировать район' : 'Добавить район';
+                body = `
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Код</label>
+                            <input type="text" id="fCode" class="form-control" value="${data.code || ''}" placeholder="DIS01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">№ сортировки</label>
+                            <input type="number" id="fSortOrder" class="form-control" value="${data.sortOrder || 0}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">🇷🇺 Название (рус) <span class="text-danger">*</span></label>
+                            <input type="text" id="fNameRu" class="form-control" value="${data.nameRu || ''}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇹🇯 Название (тадж)</label>
+                            <input type="text" id="fNameTj" class="form-control" value="${data.nameTj || ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇺🇸 Название (англ)</label>
+                            <input type="text" id="fNameEn" class="form-control" value="${data.nameEn || ''}">
+                        </div>
+                    </div>`;
+                break;
+            case 'jamoat':
+                title = isEdit ? 'Редактировать джамоат' : 'Добавить джамоат';
+                body = `
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Код</label>
+                            <input type="text" id="fCode" class="form-control" value="${data.code || ''}" placeholder="JAM01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">№ сортировки</label>
+                            <input type="number" id="fSortOrder" class="form-control" value="${data.sortOrder || 0}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">🇷🇺 Название (рус) <span class="text-danger">*</span></label>
+                            <input type="text" id="fNameRu" class="form-control" value="${data.nameRu || ''}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇹🇯 Название (тадж)</label>
+                            <input type="text" id="fNameTj" class="form-control" value="${data.nameTj || ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇺🇸 Название (англ)</label>
+                            <input type="text" id="fNameEn" class="form-control" value="${data.nameEn || ''}">
+                        </div>
+                    </div>`;
+                break;
+            case 'village':
+                title = isEdit ? 'Редактировать село' : 'Добавить село';
+                body = `
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Зона</label>
+                            <input type="text" id="fZone" class="form-control" value="${data.zone || ''}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">№ п/п</label>
+                            <input type="number" id="fNumber" class="form-control" value="${data.number || 0}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">№ сортировки</label>
+                            <input type="number" id="fSortOrder" class="form-control" value="${data.sortOrder || 0}">
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch mt-4">
+                                <input type="checkbox" id="fCovered" class="form-check-input" ${data.isCoveredByProject ? 'checked' : ''}>
+                                <label class="form-check-label">В охвате проекта</label>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">🇷🇺 Название (рус) <span class="text-danger">*</span></label>
+                            <input type="text" id="fNameRu" class="form-control" value="${data.nameRu || ''}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇹🇯 Название (тадж)</label>
+                            <input type="text" id="fNameTj" class="form-control" value="${data.nameTj || ''}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">🇺🇸 Название (англ)</label>
+                            <input type="text" id="fNameEn" class="form-control" value="${data.nameEn || ''}">
+                        </div>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted"><i class="bi bi-people me-1"></i>Демография</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Население (2020)</label>
+                            <input type="number" id="fPop2020" class="form-control" value="${data.population2020 || 0}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Население (текущее)</label>
+                            <input type="number" id="fPopCurrent" class="form-control" value="${data.populationCurrent || 0}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Из них женщин</label>
+                            <input type="number" id="fFemale" class="form-control" value="${data.femalePopulation || 0}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Домохозяйств (2020)</label>
+                            <input type="number" id="fHH2020" class="form-control" value="${data.households2020 || 0}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Домохозяйств (текущее)</label>
+                            <input type="number" id="fHHCurrent" class="form-control" value="${data.householdsCurrent || 0}">
+                        </div>
+                    </div>`;
+                break;
+            case 'school':
+                title = isEdit ? 'Редактировать школу' : 'Добавить школу';
+                const eduOptions = educationTypes.map(t => `<option value="${t.id}" ${data.typeId == t.id ? 'selected' : ''}>${t.name}</option>`).join('');
+                body = `
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Тип учреждения</label>
+                            <select id="fTypeId" class="form-select"><option value="">—</option>${eduOptions}</select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">№</label>
+                            <input type="number" id="fNumber" class="form-control" value="${data.number || 0}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Сорт.</label>
+                            <input type="number" id="fSortOrder" class="form-control" value="${data.sortOrder || 0}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Название</label>
+                            <input type="text" id="fName" class="form-control" value="${data.name || ''}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-3"><label class="form-label">Всего учащихся</label><input type="number" id="fTotalStudents" class="form-control" value="${data.totalStudents || 0}"></div>
+                        <div class="col-md-3"><label class="form-label">Девочек</label><input type="number" id="fFemaleStudents" class="form-control" value="${data.femaleStudents || 0}"></div>
+                        <div class="col-md-3"><label class="form-label">Учителей</label><input type="number" id="fTeachers" class="form-control" value="${data.teachersCount || 0}"></div>
+                        <div class="col-md-3"><label class="form-label">Женщин-учителей</label><input type="number" id="fFemaleTeachers" class="form-control" value="${data.femaleTeachersCount || 0}"></div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-3"><div class="form-check form-switch"><input type="checkbox" id="fWater" class="form-check-input" ${data.hasWaterSupply ? 'checked' : ''}><label class="form-check-label">💧 Водоснабжение</label></div></div>
+                        <div class="col-md-3"><div class="form-check form-switch"><input type="checkbox" id="fSanitation" class="form-check-input" ${data.hasSanitation ? 'checked' : ''}><label class="form-check-label">🚿 Санитария</label></div></div>
+                    </div>
+                    <div class="mt-3"><label class="form-label">Примечания</label><textarea id="fNotes" class="form-control" rows="2">${data.notes || ''}</textarea></div>`;
+                break;
+            case 'health':
+                title = isEdit ? 'Редактировать медучреждение' : 'Добавить медучреждение';
+                const hfOptions = healthTypes.map(t => `<option value="${t.id}" ${data.typeId == t.id ? 'selected' : ''}>${t.name}</option>`).join('');
+                body = `
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Тип учреждения</label>
+                            <select id="fTypeId" class="form-select"><option value="">—</option>${hfOptions}</select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Сорт.</label>
+                            <input type="number" id="fSortOrder" class="form-control" value="${data.sortOrder || 0}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Название</label>
+                            <input type="text" id="fName" class="form-control" value="${data.name || ''}">
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Всего персонала</label><input type="number" id="fTotalStaff" class="form-control" value="${data.totalStaff || 0}"></div>
+                        <div class="col-md-4"><label class="form-label">Из них женщин</label><input type="number" id="fFemaleStaff" class="form-control" value="${data.femaleStaff || 0}"></div>
+                        <div class="col-md-4"><label class="form-label">Пациентов/день</label><input type="number" id="fPatientsPerDay" class="form-control" value="${data.patientsPerDay || 0}"></div>
+                    </div>
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-3"><div class="form-check form-switch"><input type="checkbox" id="fWater" class="form-check-input" ${data.hasWaterSupply ? 'checked' : ''}><label class="form-check-label">💧 Водоснабжение</label></div></div>
+                        <div class="col-md-3"><div class="form-check form-switch"><input type="checkbox" id="fSanitation" class="form-check-input" ${data.hasSanitation ? 'checked' : ''}><label class="form-check-label">🚿 Санитария</label></div></div>
+                    </div>
+                    <div class="mt-3"><label class="form-label">Примечания</label><textarea id="fNotes" class="form-control" rows="2">${data.notes || ''}</textarea></div>`;
+                break;
+        }
+
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalBody').innerHTML = body;
+        new bootstrap.Modal(document.getElementById('itemModal')).show();
+    }
+
+    // Save item
+    async function saveItem() {
+        let endpoint = '';
+        let data = { id: currentId };
+
+        switch(currentType) {
+            case 'district':
+                endpoint = 'SaveDistrictJson';
+                data = { ...data, 
+                    code: document.getElementById('fCode').value,
+                    sortOrder: parseInt(document.getElementById('fSortOrder').value) || 0,
+                    nameRu: document.getElementById('fNameRu').value,
+                    nameTj: document.getElementById('fNameTj').value,
+                    nameEn: document.getElementById('fNameEn').value
+                };
+                break;
+            case 'jamoat':
+                endpoint = 'SaveJamoatJson';
+                data = { ...data,
+                    districtId: parentId || undefined,
+                    code: document.getElementById('fCode').value,
+                    sortOrder: parseInt(document.getElementById('fSortOrder').value) || 0,
+                    nameRu: document.getElementById('fNameRu').value,
+                    nameTj: document.getElementById('fNameTj').value,
+                    nameEn: document.getElementById('fNameEn').value
+                };
+                break;
+            case 'village':
+                endpoint = 'SaveVillageJson';
+                data = { ...data,
+                    jamoatId: parentId || undefined,
+                    zone: document.getElementById('fZone').value,
+                    number: parseInt(document.getElementById('fNumber').value) || 0,
+                    sortOrder: parseInt(document.getElementById('fSortOrder').value) || 0,
+                    nameRu: document.getElementById('fNameRu').value,
+                    nameTj: document.getElementById('fNameTj').value,
+                    nameEn: document.getElementById('fNameEn').value,
+                    population2020: parseInt(document.getElementById('fPop2020').value) || 0,
+                    populationCurrent: parseInt(document.getElementById('fPopCurrent').value) || 0,
+                    femalePopulation: parseInt(document.getElementById('fFemale').value) || 0,
+                    households2020: parseInt(document.getElementById('fHH2020').value) || 0,
+                    householdsCurrent: parseInt(document.getElementById('fHHCurrent').value) || 0,
+                    isCoveredByProject: document.getElementById('fCovered').checked
+                };
+                break;
+            case 'school':
+                endpoint = 'SaveSchoolJson';
+                data = { ...data,
+                    villageId: parentId || undefined,
+                    typeId: parseInt(document.getElementById('fTypeId').value) || null,
+                    number: parseInt(document.getElementById('fNumber').value) || 0,
+                    sortOrder: parseInt(document.getElementById('fSortOrder').value) || 0,
+                    name: document.getElementById('fName').value,
+                    totalStudents: parseInt(document.getElementById('fTotalStudents').value) || 0,
+                    femaleStudents: parseInt(document.getElementById('fFemaleStudents').value) || 0,
+                    teachersCount: parseInt(document.getElementById('fTeachers').value) || 0,
+                    femaleTeachersCount: parseInt(document.getElementById('fFemaleTeachers').value) || 0,
+                    hasWaterSupply: document.getElementById('fWater').checked,
+                    hasSanitation: document.getElementById('fSanitation').checked,
+                    notes: document.getElementById('fNotes').value
+                };
+                break;
+            case 'health':
+                endpoint = 'SaveHealthFacilityJson';
+                data = { ...data,
+                    villageId: parentId || undefined,
+                    typeId: parseInt(document.getElementById('fTypeId').value) || null,
+                    sortOrder: parseInt(document.getElementById('fSortOrder').value) || 0,
+                    name: document.getElementById('fName').value,
+                    totalStaff: parseInt(document.getElementById('fTotalStaff').value) || 0,
+                    femaleStaff: parseInt(document.getElementById('fFemaleStaff').value) || 0,
+                    patientsPerDay: parseInt(document.getElementById('fPatientsPerDay').value) || 0,
+                    hasWaterSupply: document.getElementById('fWater').checked,
+                    hasSanitation: document.getElementById('fSanitation').checked,
+                    notes: document.getElementById('fNotes').value
+                };
+                break;
+        }
+
+        try {
+            const res = await fetch(`/Geography/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('itemModal')).hide();
+                location.reload(); // Reload to show updated data
+            } else {
+                alert('Ошибка сохранения: ' + await res.text());
+            }
+        } catch(e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
+
+    // Delete item
+    async function deleteItem(type, id) {
+        if (!confirm('Удалить этот элемент и все связанные данные?')) return;
+        
+        const endpoint = {
+            district: 'DeleteDistrictJson',
+            jamoat: 'DeleteJamoatJson',
+            village: 'DeleteVillageJson',
+            school: 'DeleteSchoolJson',
+            health: 'DeleteHealthFacilityJson'
+        }[type];
+
+        try {
+            const res = await fetch(`/Geography/${endpoint}?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка удаления');
+            }
+        } catch(e) {
+            alert('Ошибка: ' + e.message);
+        }
+    }
+</script>

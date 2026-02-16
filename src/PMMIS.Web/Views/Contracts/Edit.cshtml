@@ -1,0 +1,925 @@
+@model PMMIS.Web.ViewModels.Contracts.ContractFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Редактирование контракта";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var contract = Model.Contract;
+}
+
+<style>
+    .user-ddl-item { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+    .user-ddl-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 12px; flex-shrink: 0; }
+    .user-ddl-info { display: flex; flex-direction: column; min-width: 0; }
+    .user-ddl-name { font-weight: 500; font-size: 13px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-ddl-position { font-size: 11px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-ddl-value { display: flex; align-items: center; gap: 8px; }
+    .user-ddl-value .user-ddl-avatar { width: 24px; height: 24px; font-size: 10px; }
+    .user-ddl-value .user-ddl-name { font-size: 13px; }
+    #curatorDropdown_popup, #pmDropdown_popup { min-width: 380px !important; }
+</style>
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Контракты</a></li>
+            <li class="breadcrumb-item active">@contract.ContractNumber</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-10">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Contract.Id" />
+                <input type="hidden" asp-for="Contract.CreatedAt" />
+                <input type="hidden" name="MilestonesJson" id="milestonesJson" />
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Основная информация</h5>
+                        <a asp-action="Details" asp-route-id="@contract.Id" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i> Просмотр
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Номер контракта <span class="text-danger">*</span></label>
+                                <input type="text" asp-for="Contract.ContractNumber" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип контракта</label>
+                                <select asp-for="Contract.Type" class="form-select">
+                                    <option value="@((int)ContractType.Works)">🏗️ Строительные работы</option>
+                                    <option value="@((int)ContractType.Consulting)">💼 Консультационные услуги</option>
+                                    <option value="@((int)ContractType.Goods)">📦 Товары</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Подрядчик</label>
+                                <select asp-for="Contract.ContractorId" class="form-select">
+                                    @foreach (var c in Model.Contractors)
+                                    {
+                                        <option value="@c.Id" selected="@(contract.ContractorId == c.Id)">@c.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Объём работ (RU)</label>
+                                <textarea asp-for="Contract.ScopeOfWork" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Объём работ (TJ)</label>
+                                <textarea asp-for="Contract.ScopeOfWorkTj" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Объём работ (EN)</label>
+                                <textarea asp-for="Contract.ScopeOfWorkEn" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Привязка к проекту</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Проект</label>
+                                <select asp-for="Contract.ProjectId" class="form-select">
+                                    @foreach (var p in Model.Projects)
+                                    {
+                                        <option value="@p.Id" selected="@(contract.ProjectId == p.Id)">@p.Code - @p.NameRu</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Подкомпонент</label>
+                                <select asp-for="Contract.SubComponentId" class="form-select">
+                                    <option value="">— Не выбран —</option>
+                                    @foreach (var sc in Model.SubComponents)
+                                    {
+                                        <option value="@sc.Id" selected="@(contract.SubComponentId == sc.Id)">@sc.Component.NameRu - @sc.Code: @sc.NameRu</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label"><i class="bi bi-cart-check me-1"></i>Позиция плана закупок</label>
+                                <select asp-for="Contract.ProcurementPlanId" class="form-select">
+                                    <option value="">— Не привязан к плану закупок —</option>
+                                    @foreach (var pp in Model.ProcurementPlans)
+                                    {
+                                        <option value="@pp.Id" selected="@(contract.ProcurementPlanId == pp.Id)">@pp.ReferenceNo — @pp.Description (@pp.Method, @pp.EstimatedAmount.ToString("N0") USD)</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Свяжите контракт с позицией из плана закупок</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Куратор и Менеджер проекта -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Ответственные лица</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Куратор контракта</label>
+                                <input type="hidden" asp-for="Contract.CuratorId" id="curatorValue" />
+                                <input type="text" id="curatorDropdown" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Менеджер проекта</label>
+                                <input type="hidden" asp-for="Contract.ProjectManagerId" id="pmValue" />
+                                <input type="text" id="pmDropdown" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Сроки</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Дата подписания</label>
+                                <input type="date" asp-for="Contract.SigningDate" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дата завершения</label>
+                                <input type="date" asp-for="Contract.ContractEndDate" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Продлён до</label>
+                                <input type="date" asp-for="Contract.ExtendedToDate" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            @if (contract.RemainingDays < 0)
+                            {
+                                <span class="badge bg-danger fs-6">⚠️ Просрочен на @Math.Abs(contract.RemainingDays) дней</span>
+                            }
+                            else if (contract.RemainingDays < 30)
+                            {
+                                <span class="badge bg-warning fs-6">⏰ Осталось @contract.RemainingDays дней</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success fs-6">✓ Осталось @contract.RemainingDays дней</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-currency-dollar me-2"></i>Финансы</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Валюта контракта</label>
+                                <select asp-for="Contract.Currency" class="form-select" id="contractCurrency">
+                                    <option value="0">💵 USD — Доллар</option>
+                                    <option value="1">🇹🇯 TJS — Сомони</option>
+                                </select>
+                            </div>
+                            <!-- TJS mode: TJS is primary input -->
+                            <div class="col-md-3" id="tjsAmountGroup" style="@(Model.Contract.Currency == ContractCurrency.TJS ? "" : "display: none;")">
+                                <label class="form-label">Сумма контракта (TJS) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">SM</span>
+                                    <input type="number" asp-for="Contract.AmountTjs" class="form-control" id="contractAmountTjs" step="0.01" min="0" />
+                                </div>
+                            </div>
+                            <div class="col-md-3" id="tjsRateGroup" style="@(Model.Contract.Currency == ContractCurrency.TJS ? "" : "display: none;")">
+                                <label class="form-label">Курс USD/TJS</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">📊</span>
+                                    <input type="number" asp-for="Contract.ExchangeRate" class="form-control" id="contractExchangeRate" step="0.0001" readonly />
+                                </div>
+                                <small class="text-muted" id="rateInfo">На дату подписания</small>
+                            </div>
+                            <!-- USD amount: primary in USD mode, auto-calculated in TJS mode -->
+                            <div class="col-md-3">
+                                <label class="form-label" id="usdAmountLabel">Сумма контракта (USD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" asp-for="Contract.ContractAmount" class="form-control" id="contractAmountUsd" step="0.01" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Дополнительно (USD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" asp-for="Contract.AdditionalAmount" class="form-control" step="0.01" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Экономия (USD)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" asp-for="Contract.SavedAmount" class="form-control" step="0.01" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Выполнено (%)</label>
+                                <div class="input-group">
+                                    <input type="number" asp-for="Contract.WorkCompletedPercent" class="form-control" min="0" max="100" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="text-muted small">Итоговая сумма</div>
+                                        <div class="fs-4 fw-bold text-primary">$@contract.FinalAmount.ToString("N0")</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="text-muted small">Оплачено</div>
+                                        <div class="fs-4 fw-bold text-success">$@contract.PaidAmount.ToString("N0") <small class="text-muted">(@contract.PaidPercent.ToString("N1")%)</small></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <div class="text-muted small">К оплате</div>
+                                        <div class="fs-4 fw-bold text-warning">$@contract.RemainingAmount.ToString("N0")</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Индикаторы контракта -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Индикаторы контракта</h5>
+                        <button type="button" class="btn btn-sm btn-success" id="addIndicatorBtn">
+                            <i class="bi bi-plus-lg"></i> Добавить индикатор
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Укажите индикаторы, которые должен достичь подрядчик по этому контракту.
+                        </p>
+                        <div id="indicatorsContainer">
+                            <!-- Existing and dynamic indicator rows -->
+                        </div>
+                        <div id="noIndicators" class="text-center text-muted py-3" style="display: @(Model.ExistingContractIndicators.Any() ? "none" : "block");">
+                            <i class="bi bi-bar-chart fs-4 d-block mb-2"></i>
+                            Нет добавленных индикаторов
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Промежуточные этапы (Milestones) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Промежуточные этапы</h5>
+                        <button type="button" class="btn btn-sm btn-success" id="addMilestoneBtn">
+                            <i class="bi bi-plus-lg"></i> Добавить этап
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="milestonesContainer"></div>
+                        <div id="noMilestones" class="text-center text-muted py-3">
+                            <i class="bi bi-flag fs-4 d-block mb-2"></i>
+                            Нет добавленных этапов
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Документы контракта -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.ExistingDocuments?.Any() == true)
+                        {
+                            <h6 class="mb-3">Прикреплённые файлы</h6>
+                            <ul class="list-group mb-3">
+                                @foreach (var doc in Model.ExistingDocuments)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <a href="@doc.FilePath" target="_blank">
+                                            <i class="bi bi-file-earmark me-2"></i>@(doc.Description ?? doc.OriginalFileName)
+                                        </a>
+                                        <form asp-action="DeleteDocument" method="post" class="d-inline"
+                                              onsubmit="return confirm('Удалить документ?')">
+                                            <input type="hidden" name="documentId" value="@doc.Id" />
+                                            <input type="hidden" name="contractId" value="@Model.Contract.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        <h6 class="mb-2">Добавить новые файлы</h6>
+                        <input type="file" name="Documents" class="form-control" multiple 
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+                        <small class="text-muted">PDF, Word, Excel, изображения</small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Сохранить
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                    
+                    @if (User.IsInRole("PMU_ADMIN"))
+                    {
+                        <form asp-action="Delete" asp-route-id="@contract.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить контракт?')">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i> Удалить
+                            </button>
+                        </form>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script id="userItemTpl" type="text/x-template">
+    <div class="user-ddl-item">
+        <div class="user-ddl-avatar" style="background: ${color}">${initials}</div>
+        <div class="user-ddl-info">
+            <span class="user-ddl-name">${name}</span>
+            <span class="user-ddl-position">${position}</span>
+        </div>
+    </div>
+</script>
+<script id="userValueTpl" type="text/x-template">
+    <div class="user-ddl-value">
+        <div class="user-ddl-avatar" style="background: ${color}">${initials}</div>
+        <span class="user-ddl-name">${name}</span>
+    </div>
+</script>
+<script>
+    // Indicator data with MeasurementType, MaxValue, and GeoDataSource
+    const indicatorsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Indicators.Select(i => new { 
+        i.Id, i.Code, Name = i.NameRu, Unit = i.Unit, 
+        MeasurementType = (int)i.MeasurementType, 
+        MaxValue = i.TargetValue,
+        GeoDataSource = (int)i.GeoDataSource,
+        CategoryName = i.Category != null ? i.Category.Name : ""
+    })));
+    const existingIndicators = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ExistingContractIndicators.Select(ci => new { ci.IndicatorId, ci.TargetValue, ci.AchievedValue, ci.Notes })));
+    const contractId = @Model.Contract.Id;
+    let indicatorIndex = 0;
+    let allocations = {}; // { indicatorId: allocatedSum }
+    let villagesData = null;
+    let existingVillageSelections = {}; // { indicatorId: [villageId, ...] }
+
+    const geoSourceLabels = {
+        1: '🏘️ Население',
+        2: '👩 Женское население', 
+        3: '🏠 Домохозяйства',
+        4: '🏫 Школы',
+        5: '🏥 Медучреждения',
+        6: '🎓 Ученики'
+    };
+
+    const geoSourceFields = {
+        1: 'population',
+        2: 'femalePopulation',
+        3: 'households',
+        4: 'schoolCount',
+        5: 'healthFacilityCount',
+        6: 'schoolStudents'
+    };
+
+    // Load allocations excluding current contract
+    async function loadAllocations() {
+        try {
+            const resp = await fetch(`/Contracts/GetIndicatorAllocations?excludeContractId=${contractId}`);
+            const data = await resp.json();
+            data.forEach(a => { allocations[a.indicatorId] = a.allocated; });
+        } catch(e) { console.warn('Failed to load allocations', e); }
+    }
+
+    async function loadVillagesData() {
+        try {
+            const resp = await fetch('/Contracts/GetVillagesData');
+            villagesData = await resp.json();
+        } catch(e) { console.warn('Failed to load villages data', e); }
+    }
+
+    async function loadExistingVillageSelections() {
+        try {
+            const resp = await fetch(`/Contracts/GetContractIndicatorVillages?contractId=${contractId}`);
+            const data = await resp.json();
+            data.forEach(item => { existingVillageSelections[item.indicatorId] = item.villageIds; });
+        } catch(e) { console.warn('Failed to load existing village selections', e); }
+    }
+
+    function getAvailable(indicator) {
+        if (!indicator || indicator.MaxValue == null || indicator.MaxValue == 0) return null;
+        const allocated = allocations[indicator.Id] || 0;
+        return Math.max(0, indicator.MaxValue - allocated);
+    }
+
+    function formatNumber(n) {
+        if (n == null) return '—';
+        return new Intl.NumberFormat('ru-RU').format(n);
+    }
+
+    function buildVillagePanel(idx, geoSource, selectedVillageIds = []) {
+        if (!villagesData) return '<div class="text-muted small">Загрузка данных...</div>';
+        const field = geoSourceFields[geoSource];
+        const label = geoSourceLabels[geoSource];
+        
+        let html = `<div class="village-selection-panel border rounded p-3 mt-2" style="max-height:300px; overflow-y:auto; background:#f8f9fa;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong class="small"><i class="bi bi-geo-alt me-1"></i>Выберите сёла (${label})</strong>
+                <span class="badge bg-primary village-counter-${idx}">0 выбрано</span>
+            </div>`;
+        
+        for (const district of villagesData) {
+            const distVillages = [];
+            for (const jamoat of district.jamoats) {
+                for (const v of jamoat.villages) distVillages.push(v);
+            }
+            if (distVillages.length === 0) continue;
+            
+            html += `<div class="mb-2">
+                <div class="fw-bold small text-primary border-bottom pb-1 mb-1 d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2 district-cb-${idx}" data-district="${district.id}" />
+                    📍 ${district.name}
+                </div>`;
+            
+            for (const jamoat of district.jamoats) {
+                if (jamoat.villages.length === 0) continue;
+                html += `<div class="ms-3 mb-1">
+                    <div class="small text-muted d-flex align-items-center">
+                        <input type="checkbox" class="form-check-input me-2 jamoat-cb-${idx}" data-jamoat="${jamoat.id}" data-district="${district.id}" />
+                        ${jamoat.name}
+                    </div>`;
+                for (const v of jamoat.villages) {
+                    const checked = selectedVillageIds.includes(v.id) ? 'checked' : '';
+                    const val = v[field] || 0;
+                    html += `<div class="ms-3 d-flex align-items-center">
+                        <input type="checkbox" class="form-check-input me-1 village-cb-${idx}" 
+                               name="SelectedIndicators[${idx}].VillageIds" value="${v.id}" 
+                               data-jamoat="${jamoat.id}" data-district="${district.id}" data-val="${val}" ${checked} />
+                        <span class="small">${v.name}</span>
+                        <span class="badge bg-light text-dark ms-auto small">${formatNumber(val)}</span>
+                    </div>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+        
+        html += `<div class="mt-2 pt-2 border-top">
+            <strong class="small">Итого: <span class="geo-total-${idx} text-success">0</span></strong>
+        </div></div>`;
+        return html;
+    }
+
+    function setupVillageCheckboxes(idx, geoSource, targetInput) {
+        const villageCbs = document.querySelectorAll(`.village-cb-${idx}`);
+        const districtCbs = document.querySelectorAll(`.district-cb-${idx}`);
+        const jamoatCbs = document.querySelectorAll(`.jamoat-cb-${idx}`);
+        const counter = document.querySelector(`.village-counter-${idx}`);
+        const totalSpan = document.querySelector(`.geo-total-${idx}`);
+
+        function updateTotal() {
+            let total = 0;
+            let count = 0;
+            villageCbs.forEach(cb => {
+                if (cb.checked) {
+                    total += parseFloat(cb.dataset.val) || 0;
+                    count++;
+                }
+            });
+            if (counter) counter.textContent = `${count} выбрано`;
+            if (totalSpan) totalSpan.textContent = formatNumber(total);
+            targetInput.value = total;
+        }
+
+        villageCbs.forEach(cb => cb.addEventListener('change', () => {
+            updateTotal();
+            updateParentCheckboxes(idx, cb.dataset.jamoat, cb.dataset.district);
+        }));
+
+        districtCbs.forEach(dcb => dcb.addEventListener('change', () => {
+            const distId = dcb.dataset.district;
+            villageCbs.forEach(cb => { if (cb.dataset.district == distId) cb.checked = dcb.checked; });
+            jamoatCbs.forEach(jcb => { if (jcb.dataset.district == distId) jcb.checked = dcb.checked; });
+            updateTotal();
+        }));
+
+        jamoatCbs.forEach(jcb => jcb.addEventListener('change', () => {
+            const jamId = jcb.dataset.jamoat;
+            villageCbs.forEach(cb => { if (cb.dataset.jamoat == jamId) cb.checked = jcb.checked; });
+            updateTotal();
+            updateDistrictCheckbox(idx, jcb.dataset.district);
+        }));
+
+        // Initial calculation for pre-selected villages
+        updateTotal();
+        // Update parent checkboxes for pre-selected
+        villageCbs.forEach(cb => {
+            if (cb.checked) updateParentCheckboxes(idx, cb.dataset.jamoat, cb.dataset.district);
+        });
+    }
+
+    function updateParentCheckboxes(idx, jamoatId, districtId) {
+        const jamCbs = document.querySelectorAll(`.village-cb-${idx}[data-jamoat="${jamoatId}"]`);
+        const jamParent = document.querySelector(`.jamoat-cb-${idx}[data-jamoat="${jamoatId}"]`);
+        if (jamParent) {
+            jamParent.checked = [...jamCbs].every(cb => cb.checked);
+        }
+        updateDistrictCheckbox(idx, districtId);
+    }
+
+    function updateDistrictCheckbox(idx, districtId) {
+        const distCbs = document.querySelectorAll(`.village-cb-${idx}[data-district="${districtId}"]`);
+        const distParent = document.querySelector(`.district-cb-${idx}[data-district="${districtId}"]`);
+        if (distParent) {
+            distParent.checked = [...distCbs].every(cb => cb.checked);
+        }
+    }
+
+    function addIndicatorRow(indicatorId = '', targetValue = '', notes = '', achievedValue = 0) {
+        const container = document.getElementById('indicatorsContainer');
+        const noIndicators = document.getElementById('noIndicators');
+        noIndicators.style.display = 'none';
+
+        const row = document.createElement('div');
+        row.className = 'row g-3 mb-3 indicator-row align-items-end p-2 border rounded bg-light';
+        
+        const idx = indicatorIndex;
+
+        // Progress display for existing indicators
+        const progressHtml = achievedValue > 0 ? `
+            <div class="col-12">
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: ${targetValue > 0 ? Math.min(100, achievedValue / targetValue * 100) : 0}%;">
+                        ${achievedValue} / ${targetValue}
+                    </div>
+                </div>
+            </div>
+        ` : '';
+
+        row.innerHTML = `
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Индикатор</label>
+                <select name="SelectedIndicators[${idx}].IndicatorId" class="form-select indicator-select" required>
+                    <option value="">— Выберите индикатор —</option>
+                    ${indicatorsData.map(i => `<option value="${i.Id}" ${i.Id == indicatorId ? 'selected' : ''} 
+                        data-type="${i.MeasurementType}" data-max="${i.MaxValue ?? ''}" 
+                        data-geo="${i.GeoDataSource}"
+                        data-category="${i.CategoryName}">${i.Code} - ${i.Name}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3 target-col">
+                <label class="form-label fw-semibold">Целевое значение <span class="text-danger">*</span></label>
+                <input type="number" name="SelectedIndicators[${idx}].TargetValue" class="form-control target-input" 
+                       value="${targetValue}" step="0.01" min="0.01" placeholder="0.00" required />
+                <div class="indicator-info mt-1" style="display:none;"></div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Примечание</label>
+                <input type="text" name="SelectedIndicators[${idx}].Notes" class="form-control" 
+                       value="${notes || ''}" placeholder="Описание..." />
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-indicator-btn" title="Удалить">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            ${progressHtml}
+            <div class="col-12 village-panel-container" style="display:none;"></div>
+        `;
+        container.appendChild(row);
+        indicatorIndex++;
+
+        const select = row.querySelector('.indicator-select');
+        const targetCol = row.querySelector('.target-col');
+        const targetInput = row.querySelector('.target-input');
+        const infoDiv = row.querySelector('.indicator-info');
+        const villagePanelContainer = row.querySelector('.village-panel-container');
+
+        function updateIndicatorUI() {
+            const opt = select.selectedOptions[0];
+            if (!opt || !opt.value) {
+                targetCol.style.display = '';
+                targetInput.type = 'number';
+                targetInput.required = true;
+                targetInput.removeAttribute('max');
+                infoDiv.style.display = 'none';
+                villagePanelContainer.style.display = 'none';
+                villagePanelContainer.innerHTML = '';
+                return;
+            }
+            const mType = parseInt(opt.dataset.type);
+            const maxVal = opt.dataset.max ? parseFloat(opt.dataset.max) : null;
+            const geoSource = parseInt(opt.dataset.geo || '0');
+            const indicator = indicatorsData.find(i => i.Id == opt.value);
+            
+            if (mType === 2) {
+                targetInput.type = 'hidden';
+                targetInput.value = '1';
+                targetInput.required = false;
+                targetInput.removeAttribute('max');
+                infoDiv.innerHTML = '<span class="badge bg-info fs-6"><i class="bi bi-toggle-on me-1"></i>Качественный (Да/Нет)</span>';
+                infoDiv.style.display = 'block';
+                targetCol.querySelector('.form-label').style.display = 'none';
+                villagePanelContainer.style.display = 'none';
+                villagePanelContainer.innerHTML = '';
+            } else {
+                targetInput.type = 'number';
+                targetInput.required = true;
+                targetCol.querySelector('.form-label').style.display = '';
+                
+                if (maxVal != null && maxVal > 0) {
+                    const available = getAvailable(indicator);
+                    const unit = mType === 1 ? '%' : '';
+                    if (available != null) {
+                        targetInput.max = available;
+                        infoDiv.innerHTML = `
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Макс: <strong>${formatNumber(maxVal)}${unit}</strong> · 
+                                Доступно: <strong class="${available <= 0 ? 'text-danger' : 'text-success'}">${formatNumber(available)}${unit}</strong>
+                            </small>`;
+                    } else {
+                        targetInput.removeAttribute('max');
+                        infoDiv.innerHTML = `<small class="text-muted"><i class="bi bi-info-circle me-1"></i>Макс: <strong>${formatNumber(maxVal)}${unit}</strong></small>`;
+                    }
+                    infoDiv.style.display = 'block';
+                } else {
+                    targetInput.removeAttribute('max');
+                    infoDiv.style.display = 'none';
+                }
+                
+                // Show village selection panel for geo-linked indicators
+                if (geoSource > 0 && villagesData) {
+                    const existingVillages = existingVillageSelections[parseInt(opt.value)] || [];
+                    villagePanelContainer.innerHTML = buildVillagePanel(idx, geoSource, existingVillages);
+                    villagePanelContainer.style.display = '';
+                    setupVillageCheckboxes(idx, geoSource, targetInput);
+                } else {
+                    villagePanelContainer.style.display = 'none';
+                    villagePanelContainer.innerHTML = '';
+                }
+            }
+        }
+
+        select.addEventListener('change', updateIndicatorUI);
+        if (indicatorId) updateIndicatorUI();
+
+        row.querySelector('.remove-indicator-btn').addEventListener('click', function() {
+            row.remove();
+            if (container.children.length === 0) {
+                noIndicators.style.display = 'block';
+            }
+        });
+    }
+
+    // Load existing indicators after all data is ready
+    document.addEventListener('DOMContentLoaded', async function() {
+        await Promise.all([loadAllocations(), loadVillagesData(), loadExistingVillageSelections()]);
+        existingIndicators.forEach(ei => {
+            addIndicatorRow(ei.IndicatorId, ei.TargetValue, ei.Notes, ei.AchievedValue);
+        });
+    });
+
+    document.getElementById('addIndicatorBtn').addEventListener('click', function() {
+        addIndicatorRow();
+    });
+
+    // ========================
+    // Milestones Management
+    // ========================
+    let milestoneIndex = 0;
+    const frequencies = [
+        { value: 0, label: 'Разовый' },
+        { value: 1, label: 'Месячный' },
+        { value: 2, label: 'Квартальный' },
+        { value: 3, label: 'Полугодовой' },
+        { value: 4, label: 'Годовой' }
+    ];
+    const existingMilestones = @Html.Raw(Model.MilestonesJson ?? "[]");
+
+    function addMilestoneRow(data = {}) {
+        const container = document.getElementById('milestonesContainer');
+        document.getElementById('noMilestones').style.display = 'none';
+
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-3 milestone-row align-items-end p-2 border rounded bg-light';
+        row.innerHTML = `
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Название (RU)</label>
+                <input type="text" class="form-control milestone-title" value="${data.title || ''}" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Срок</label>
+                <input type="date" class="form-control milestone-date" value="${data.dueDate || ''}" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Периодичность</label>
+                <select class="form-select milestone-freq">
+                    ${frequencies.map(f => `<option value="${f.value}" ${f.value == (data.frequency ?? 0) ? 'selected' : ''}>${f.label}</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-2 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-milestone-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+            <div class="col-md-6 mt-2">
+                <input type="text" class="form-control form-control-sm milestone-title-tj" value="${data.titleTj || ''}" placeholder="Название (TJ)" />
+            </div>
+            <div class="col-md-6 mt-2">
+                <input type="text" class="form-control form-control-sm milestone-title-en" value="${data.titleEn || ''}" placeholder="Title (EN)" />
+            </div>
+            <div class="col-12 mt-1">
+                <textarea class="form-control form-control-sm milestone-desc" rows="1" placeholder="Описание...">${data.description || ''}</textarea>
+            </div>
+        `;
+        container.appendChild(row);
+        milestoneIndex++;
+
+        row.querySelector('.remove-milestone-btn').addEventListener('click', () => {
+            row.remove();
+            if (container.children.length === 0) document.getElementById('noMilestones').style.display = 'block';
+            collectMilestones();
+        });
+        row.querySelectorAll('input, select, textarea').forEach(el => el.addEventListener('change', collectMilestones));
+    }
+
+    function collectMilestones() {
+        const rows = document.querySelectorAll('.milestone-row');
+        const milestones = [];
+        let order = 0;
+        rows.forEach(row => {
+            milestones.push({
+                title: row.querySelector('.milestone-title')?.value || '',
+                titleTj: row.querySelector('.milestone-title-tj')?.value || '',
+                titleEn: row.querySelector('.milestone-title-en')?.value || '',
+                description: row.querySelector('.milestone-desc')?.value || '',
+                dueDate: row.querySelector('.milestone-date')?.value || '',
+                frequency: parseInt(row.querySelector('.milestone-freq')?.value) || 0,
+                sortOrder: order++
+            });
+        });
+        document.getElementById('milestonesJson').value = JSON.stringify(milestones);
+    }
+
+    document.getElementById('addMilestoneBtn').addEventListener('click', () => addMilestoneRow());
+
+    // Pre-populate existing milestones
+    if (existingMilestones.length > 0) {
+        existingMilestones.forEach(m => addMilestoneRow(m));
+        collectMilestones();
+    }
+
+    // Collect milestones before form submit
+    document.querySelector('form').addEventListener('submit', collectMilestones);
+
+    // === Currency selector logic ===
+    const currencySelect = document.getElementById('contractCurrency');
+    const tjsRateGroup = document.getElementById('tjsRateGroup');
+    const tjsAmountGroup = document.getElementById('tjsAmountGroup');
+    const contractAmountUsd = document.getElementById('contractAmountUsd');
+    const contractExchangeRate = document.getElementById('contractExchangeRate');
+    const contractAmountTjs = document.getElementById('contractAmountTjs');
+    const signingDateInput = document.getElementById('Contract_SigningDate');
+    const rateInfo = document.getElementById('rateInfo');
+
+    function toggleCurrencyFields() {
+        const isTjs = currencySelect.value === '1';
+        tjsRateGroup.style.display = isTjs ? '' : 'none';
+        tjsAmountGroup.style.display = isTjs ? '' : 'none';
+        if (isTjs) {
+            // TJS mode: TJS is editable, USD is calculated
+            contractAmountTjs.removeAttribute('readonly');
+            contractAmountUsd.setAttribute('readonly', 'readonly');
+            document.getElementById('usdAmountLabel').innerHTML = 'Сумма (USD) <small class="text-muted">авто</small>';
+            if (!contractExchangeRate.value) {
+                fetchRate();
+            }
+        } else {
+            // USD mode: USD is editable, no TJS fields
+            contractAmountUsd.removeAttribute('readonly');
+            document.getElementById('usdAmountLabel').innerHTML = 'Сумма контракта (USD)';
+            contractExchangeRate.value = '';
+            contractAmountTjs.value = '';
+        }
+    }
+
+    async function fetchRate() {
+        const dateVal = signingDateInput?.value;
+        if (!dateVal) {
+            rateInfo.textContent = 'Укажите дату подписания';
+            return;
+        }
+        rateInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Загрузка курса...';
+        try {
+            const resp = await fetch(`/Currency/GetUsdRate?date=${dateVal}`);
+            const data = await resp.json();
+            if (data.rate) {
+                contractExchangeRate.value = data.rate;
+                rateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                calculateUsdFromTjs();
+            } else {
+                rateInfo.textContent = 'Курс недоступен на эту дату';
+            }
+        } catch (e) {
+            rateInfo.textContent = 'Ошибка загрузки курса';
+        }
+    }
+
+    function calculateUsdFromTjs() {
+        const tjs = parseFloat(contractAmountTjs.value) || 0;
+        const rate = parseFloat(contractExchangeRate.value) || 0;
+        contractAmountUsd.value = rate > 0 ? (tjs / rate).toFixed(2) : '';
+    }
+
+    currencySelect.addEventListener('change', toggleCurrencyFields);
+    if (signingDateInput) signingDateInput.addEventListener('change', () => { if (currencySelect.value === '1') fetchRate(); });
+    contractAmountTjs.addEventListener('input', calculateUsdFromTjs);
+
+    // Initialize fields on page load
+    toggleCurrencyFields();
+
+    // === Syncfusion DropDownList for Curator and PM ===
+    const avatarColors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        return parts.length >= 2 ? (parts[0][0] + parts[1][0]) : parts[0].substring(0, 2);
+    }
+    function getColor(name) {
+        let hash = 0;
+        for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return avatarColors[Math.abs(hash) % avatarColors.length];
+    }
+
+    const usersData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.Users.Select(u => new { id = u.Id, name = u.FullName, position = u.Position ?? "" }),
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+    ));
+    const usersDdlData = usersData.map(u => ({ ...u, initials: getInitials(u.name), color: getColor(u.name) }));
+
+    function initUserDropdown(inputId, hiddenId, placeholder) {
+        const el = document.getElementById(inputId);
+        const currentVal = document.getElementById(hiddenId).value;
+        if (!el) return;
+        const ddl = new ej.dropdowns.DropDownList({
+            dataSource: usersDdlData,
+            fields: { value: 'id', text: 'name' },
+            placeholder: placeholder,
+            popupHeight: '280px',
+            allowFiltering: true,
+            filterBarPlaceholder: 'Поиск сотрудника...',
+            showClearButton: true,
+            itemTemplate: document.getElementById('userItemTpl').innerHTML,
+            valueTemplate: document.getElementById('userValueTpl').innerHTML,
+            value: currentVal || null,
+            change: function(args) {
+                document.getElementById(hiddenId).value = args.value || '';
+            }
+        });
+        ddl.appendTo(el);
+    }
+
+    initUserDropdown('curatorDropdown', 'curatorValue', '— Не назначен —');
+    initUserDropdown('pmDropdown', 'pmValue', '— Не назначен —');
+</script>
+}

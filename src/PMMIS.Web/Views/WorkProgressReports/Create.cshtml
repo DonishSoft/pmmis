@@ -1,0 +1,431 @@
+@model PMMIS.Web.ViewModels.WorkProgress.WorkProgressFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Новый АВР";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Реестр АВР</a></li>
+            <li class="breadcrumb-item active">Новый АВР</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-plus me-2"></i>Акт выполненных работ</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Контракт <span class="text-danger">*</span></label>
+                                <select asp-for="WorkProgress.ContractId" asp-items="Model.Contracts" class="form-select" required id="contractSelect">
+                                    <option value="">— Выберите контракт —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дата отчёта <span class="text-danger">*</span></label>
+                                <input type="date" asp-for="WorkProgress.ReportDate" class="form-control" required />
+                            </div>
+                        </div>
+
+
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Описание выполненных работ</label>
+                                <textarea asp-for="WorkProgress.Description" class="form-control" rows="3" 
+                                          placeholder="Опишите выполненные работы за период..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Проблемы и риски</label>
+                                <textarea asp-for="WorkProgress.Issues" class="form-control" rows="2" 
+                                          placeholder="Укажите проблемы, задержки, риски (если есть)..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indicator Progress Section -->
+                @if (Model.ContractIndicators?.Any() == true)
+                {
+                    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-info">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Прогресс по индикаторам</h5>
+                        </div>
+                        <div class="card-body">
+                            @for (int i = 0; i < Model.ContractIndicators.Count; i++)
+                            {
+                                var ci = Model.ContractIndicators[i];
+                                <input type="hidden" name="ContractIndicators[@i].ContractIndicatorId" value="@ci.ContractIndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorId" value="@ci.IndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorCode" value="@ci.IndicatorCode" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorName" value="@ci.IndicatorName" />
+                                <input type="hidden" name="ContractIndicators[@i].Unit" value="@ci.Unit" />
+                                <input type="hidden" name="ContractIndicators[@i].TargetValue" value="@ci.TargetValue" />
+                                <input type="hidden" name="ContractIndicators[@i].PreviousAchieved" value="@ci.PreviousAchieved" />
+                                <input type="hidden" name="ContractIndicators[@i].GeoDataSource" value="@((int)ci.GeoDataSource)" />
+
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <span class="badge bg-secondary me-2">@ci.IndicatorCode</span>
+                                                <strong>@ci.IndicatorName</strong>
+                                                @if (ci.HasGeoChecklist)
+                                                {
+                                                    <span class="badge bg-info ms-2" title="Географическая привязка">
+                                                        <i class="bi bi-geo-alt-fill"></i> Чеклист
+                                                    </span>
+                                                }
+                                            </div>
+                                            <span class="badge bg-light text-dark">
+                                                Цель: @ci.TargetValue @ci.Unit
+                                            </span>
+                                        </div>
+
+                                        @if (ci.HasGeoChecklist)
+                                        {
+                                            <!-- Geographic Checklist Mode -->
+                                            <div class="geo-checklist" data-index="@i" data-target="@ci.TargetValue" data-previous="@ci.PreviousAchieved">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <small class="text-muted">
+                                                        @{
+                                                            var itemTypeLabel = ci.GeoDataSource switch
+                                                            {
+                                                                GeoDataSource.Population or GeoDataSource.FemalePopulation or GeoDataSource.Households => "Сёла",
+                                                                GeoDataSource.SchoolCount or GeoDataSource.SchoolStudents => "Школы",
+                                                                GeoDataSource.HealthFacilityCount => "Медучреждения",
+                                                                _ => "Объекты"
+                                                            };
+                                                        }
+                                                        <i class="bi bi-geo-alt me-1"></i>@itemTypeLabel (@ci.GeoItems.Count)
+                                                    </small>
+                                                    <div>
+                                                        <button type="button" class="btn btn-sm btn-outline-success geo-check-all" data-index="@i">
+                                                            <i class="bi bi-check-all"></i> Все
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary geo-uncheck-all" data-index="@i">
+                                                            <i class="bi bi-x-lg"></i> Снять
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="list-group list-group-flush">
+                                                    @for (int j = 0; j < ci.GeoItems.Count; j++)
+                                                    {
+                                                        var geo = ci.GeoItems[j];
+                                                        <input type="hidden" name="ContractIndicators[@i].GeoItems[@j].ItemId" value="@geo.ItemId" />
+                                                        <input type="hidden" name="ContractIndicators[@i].GeoItems[@j].ItemType" value="@((int)geo.ItemType)" />
+                                                        <input type="hidden" name="ContractIndicators[@i].GeoItems[@j].Name" value="@geo.Name" />
+                                                        <input type="hidden" name="ContractIndicators[@i].GeoItems[@j].Description" value="@geo.Description" />
+                                                        <input type="hidden" name="ContractIndicators[@i].GeoItems[@j].NumericValue" value="@geo.NumericValue" />
+                                                        
+                                                        <label class="list-group-item list-group-item-action d-flex align-items-center py-2">
+                                                            <input type="checkbox" 
+                                                                   name="ContractIndicators[@i].GeoItems[@j].IsChecked" value="true"
+                                                                   class="form-check-input me-3 geo-item-check" 
+                                                                   data-index="@i" data-value="@geo.NumericValue" 
+                                                                   @(geo.IsChecked ? "checked" : "") />
+                                                            @{
+                                                                var geoIcon = geo.ItemType switch
+                                                                {
+                                                                    GeoItemType.Village => "bi-house-fill text-info",
+                                                                    GeoItemType.School => "bi-mortarboard-fill text-warning",
+                                                                    GeoItemType.HealthFacility => "bi-hospital-fill text-danger",
+                                                                    _ => "bi-geo-alt"
+                                                                };
+                                                            }
+                                                            <i class="bi @geoIcon me-2"></i>
+                                                            <div class="flex-grow-1">
+                                                                <span>@geo.Name</span>
+                                                                <small class="text-muted d-block">@geo.Description</small>
+                                                            </div>
+                                                            <span class="badge bg-light text-dark">@geo.NumericValue</span>
+                                                        </label>
+                                                    }
+                                                </div>
+                                                
+                                                <!-- Hidden value field that gets auto-calculated -->
+                                                <input type="hidden" name="ContractIndicators[@i].Value" class="geo-calculated-value" data-index="@i" value="0" />
+                                                
+                                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                                    <small class="text-muted">
+                                                        Отмечено: <strong class="geo-checked-count" data-index="@i">0</strong> из @ci.GeoItems.Count
+                                                    </small>
+                                                    <div class="w-50">
+                                                        <div class="progress" style="height: 20px;">
+                                                            @{
+                                                                var percent = ci.TargetValue > 0 ? Math.Min(100, (ci.PreviousAchieved / ci.TargetValue) * 100) : 0;
+                                                                var barClass = percent >= 80 ? "bg-success" : percent >= 50 ? "bg-info" : percent >= 25 ? "bg-warning" : "bg-danger";
+                                                            }
+                                                            <div class="progress-bar @barClass" id="indicatorBar_@i"
+                                                                 style="width: @percent.ToString("F0")%">
+                                                                @ci.PreviousAchieved / @ci.TargetValue
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mt-2">
+                                                <label class="form-label small text-muted mb-1">Примечания</label>
+                                                <input type="text" name="ContractIndicators[@i].Notes" 
+                                                       value="@ci.Notes" class="form-control form-control-sm"
+                                                       placeholder="Комментарий..." />
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <!-- Classic Numeric Input Mode -->
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small text-muted mb-1">Значение в этом АВР</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" name="ContractIndicators[@i].Value" 
+                                                               value="@ci.Value" class="form-control indicator-value"
+                                                               min="0" step="0.01" 
+                                                               data-target="@ci.TargetValue" 
+                                                               data-previous="@ci.PreviousAchieved"
+                                                               data-index="@i" />
+                                                        <span class="input-group-text">@ci.Unit</span>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small text-muted mb-1">Примечания</label>
+                                                    <input type="text" name="ContractIndicators[@i].Notes" 
+                                                           value="@ci.Notes" class="form-control form-control-sm"
+                                                           placeholder="Комментарий..." />
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small text-muted mb-1">Прогресс</label>
+                                                    <div class="progress" style="height: 20px;">
+                                                        @{
+                                                            var pct = ci.TargetValue > 0 ? Math.Min(100, (ci.PreviousAchieved / ci.TargetValue) * 100) : 0;
+                                                            var cls = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-info" : pct >= 25 ? "bg-warning" : "bg-danger";
+                                                        }
+                                                        <div class="progress-bar @cls" id="indicatorBar_@i" 
+                                                             style="width: @pct.ToString("F0")%">
+                                                            @ci.PreviousAchieved / @ci.TargetValue
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- File Upload Section -->
+                <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы и фотоматериалы</h5>
+                        <button type="button" class="btn btn-sm btn-success" id="addFileBtn">
+                            <i class="bi bi-plus-lg"></i> Добавить файл
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="filesContainer"></div>
+                        <div id="noFiles" class="text-center text-muted py-4">
+                            <i class="bi bi-cloud-upload fs-1 d-block mb-2"></i>
+                            Нажмите «Добавить файл» для загрузки документов и фотографий
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Поддерживаемые форматы: PDF, Word, Excel, изображения (JPG, PNG)
+                        </small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Создать
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle me-2"></i>Подсказка</h6>
+                    <p class="small text-muted mb-2">
+                        <strong>АВР</strong> — Акт выполненных работ. Документ подтверждает приёмку работ за отчётный период.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        После создания АВР автоматически создаётся задача на проверку документа и 
+                        обновляется процент выполнения контракта.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+
+
+    // Indicator progress bar live updates
+    document.querySelectorAll('.indicator-value').forEach(input => {
+        input.addEventListener('input', function() {
+            const idx = this.dataset.index;
+            const target = parseFloat(this.dataset.target) || 0;
+            const previous = parseFloat(this.dataset.previous) || 0;
+            const value = parseFloat(this.value) || 0;
+            const newTotal = previous + value;
+            const percent = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+
+            const bar = document.getElementById('indicatorBar_' + idx);
+            if (bar) {
+                bar.style.width = percent.toFixed(0) + '%';
+                bar.textContent = newTotal + ' / ' + target;
+                bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+                if (percent >= 80) bar.classList.add('bg-success');
+                else if (percent >= 50) bar.classList.add('bg-info');
+                else if (percent >= 25) bar.classList.add('bg-warning');
+                else bar.classList.add('bg-danger');
+            }
+        });
+    });
+
+    // ========================
+    // Geographic Checklist
+    // ========================
+    function updateGeoChecklist(index) {
+        const checkboxes = document.querySelectorAll(`.geo-item-check[data-index="${index}"]`);
+        let total = 0;
+        let checked = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                total += parseFloat(cb.dataset.value) || 0;
+                checked++;
+            }
+        });
+        
+        // Update hidden value field
+        const valueField = document.querySelector(`.geo-calculated-value[data-index="${index}"]`);
+        if (valueField) valueField.value = total;
+        
+        // Update count display
+        const countEl = document.querySelector(`.geo-checked-count[data-index="${index}"]`);
+        if (countEl) countEl.textContent = checked;
+        
+        // Update progress bar
+        const container = document.querySelector(`.geo-checklist[data-index="${index}"]`);
+        if (container) {
+            const target = parseFloat(container.dataset.target) || 0;
+            const previous = parseFloat(container.dataset.previous) || 0;
+            const newTotal = previous + total;
+            const percent = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+            
+            const bar = document.getElementById('indicatorBar_' + index);
+            if (bar) {
+                bar.style.width = percent.toFixed(0) + '%';
+                bar.textContent = newTotal + ' / ' + target;
+                bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+                if (percent >= 80) bar.classList.add('bg-success');
+                else if (percent >= 50) bar.classList.add('bg-info');
+                else if (percent >= 25) bar.classList.add('bg-warning');
+                else bar.classList.add('bg-danger');
+            }
+        }
+    }
+
+    // Checkbox change handlers
+    document.querySelectorAll('.geo-item-check').forEach(cb => {
+        cb.addEventListener('change', function() {
+            updateGeoChecklist(this.dataset.index);
+        });
+    });
+
+    // Check All / Uncheck All buttons
+    document.querySelectorAll('.geo-check-all').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const idx = this.dataset.index;
+            document.querySelectorAll(`.geo-item-check[data-index="${idx}"]`).forEach(cb => cb.checked = true);
+            updateGeoChecklist(idx);
+        });
+    });
+    document.querySelectorAll('.geo-uncheck-all').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const idx = this.dataset.index;
+            document.querySelectorAll(`.geo-item-check[data-index="${idx}"]`).forEach(cb => cb.checked = false);
+            updateGeoChecklist(idx);
+        });
+    });
+
+    // Initialize geo checklists on page load
+    document.querySelectorAll('.geo-checklist').forEach(container => {
+        updateGeoChecklist(container.dataset.index);
+    });
+
+    // Contract change — reload with new indicators
+    document.getElementById('contractSelect')?.addEventListener('change', function() {
+        const contractId = this.value;
+        if (contractId) {
+            window.location.href = '@Url.Action("Create")' + '?contractId=' + contractId;
+        }
+    });
+
+    // ========================
+    // Dynamic File Upload
+    // ========================
+    function addFileRow() {
+        const container = document.getElementById('filesContainer');
+        document.getElementById('noFiles').style.display = 'none';
+        
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 file-row align-items-center p-2 border rounded bg-light';
+        row.innerHTML = `
+            <div class="col-md-3">
+                <select class="form-select form-select-sm file-type-select">
+                    <option value="report">📄 Отчёт / Акт</option>
+                    <option value="photo">📷 Фотоматериал</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <input type="file" class="form-control form-control-sm file-input"
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+            </div>
+            <div class="col-md-2 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-file-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+        
+        row.querySelector('.remove-file-btn').addEventListener('click', () => {
+            row.remove();
+            if (container.children.length === 0) {
+                document.getElementById('noFiles').style.display = 'block';
+            }
+        });
+    }
+    
+    document.getElementById('addFileBtn').addEventListener('click', addFileRow);
+    
+    // Before submit: assign correct names to file inputs
+    document.querySelector('form').addEventListener('submit', function() {
+        document.querySelectorAll('.file-row').forEach(row => {
+            const type = row.querySelector('.file-type-select')?.value;
+            const input = row.querySelector('.file-input');
+            if (input && input.files.length > 0) {
+                input.name = type === 'photo' ? 'PhotoFiles' : 'ReportFiles';
+            }
+        });
+    });
+</script>
+}

@@ -1,0 +1,249 @@
+@model PMMIS.Web.ViewModels.Roles.RolePermissionsViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Права доступа";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var role = Model.Role;
+    var menuKeys = Model.MenuKeys;
+    var permissions = Model.Permissions;
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Роли</a></li>
+            <li class="breadcrumb-item"><a asp-action="Edit" asp-route-id="@role?.Id">@role?.Name</a></li>
+            <li class="breadcrumb-item active">Права доступа</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-shield-lock me-2"></i>@role?.Name</h2>
+            <p class="text-muted mb-0">@role?.Description</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form asp-action="GrantFullAccess" asp-route-id="@role?.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Предоставить полный доступ ко всем модулям?')">
+                    <i class="bi bi-check-all me-1"></i> Полный доступ
+                </button>
+            </form>
+            <form asp-action="GrantViewOnly" asp-route-id="@role?.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-info" onclick="return confirm('Предоставить доступ только для просмотра?')">
+                    <i class="bi bi-eye me-1"></i> Только просмотр
+                </button>
+            </form>
+            <form asp-action="RevokeAll" asp-route-id="@role?.Id" method="post" class="d-inline">
+                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Отозвать все права доступа?')">
+                    <i class="bi bi-x-circle me-1"></i> Отозвать все
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form asp-action="Permissions" asp-route-id="@role?.Id" method="post">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-table me-2"></i>Матрица прав доступа</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="selectAllView()">
+                        <i class="bi bi-eye"></i> Выбрать все "Просмотр"
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearAll()">
+                        <i class="bi bi-x"></i> Очистить
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 220px">Модуль</th>
+                                <th class="text-center" style="width: 100px">
+                                    <i class="bi bi-eye text-primary me-1"></i>Просмотр
+                                </th>
+                                <th class="text-center" style="width: 110px">
+                                    <i class="bi bi-globe text-info me-1"></i>Все данные
+                                </th>
+                                <th class="text-center" style="width: 100px">
+                                    <i class="bi bi-plus-circle text-success me-1"></i>Создание
+                                </th>
+                                <th class="text-center" style="width: 100px">
+                                    <i class="bi bi-pencil text-warning me-1"></i>Редактирование
+                                </th>
+                                <th class="text-center" style="width: 100px">
+                                    <i class="bi bi-trash text-danger me-1"></i>Удаление
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var groupedModules = new Dictionary<string, List<string>>
+                                {
+                                    { "ОСНОВНОЕ", new List<string> { "Home", "Contracts", "Contractors", "Projects", "Procurement", "Payments", "WorkProgress", "WorkProgressReports" } },
+                                    { "УПРАВЛЕНИЕ", new List<string> { "Tasks", "Notifications" } },
+                                    { "СПРАВОЧНИКИ", new List<string> { "Geography", "Indicators", "ReferenceData", "CurrencyRates", "Import" } },
+                                    { "ОТЧЁТЫ И ДОКУМЕНТЫ", new List<string> { "Reports", "Documents" } },
+                                    { "АДМИНИСТРИРОВАНИЕ", new List<string> { "Users", "Roles", "Settings" } }
+                                };
+                            }
+                            
+                            @foreach (var group in groupedModules)
+                            {
+                                <tr class="table-secondary">
+                                    <td colspan="6" class="fw-bold small text-muted py-2">
+                                        <i class="bi bi-folder me-1"></i>@group.Key
+                                    </td>
+                                </tr>
+                                
+                                @foreach (var key in group.Value)
+                                {
+                                    if (!menuKeys.ContainsKey(key)) continue;
+                                    
+                                    var perm = permissions.GetValueOrDefault(key);
+                                    var canView = perm?.CanView ?? false;
+                                    var canViewAll = perm?.CanViewAll ?? false;
+                                    var canCreate = perm?.CanCreate ?? false;
+                                    var canEdit = perm?.CanEdit ?? false;
+                                    var canDelete = perm?.CanDelete ?? false;
+                                    
+                                    // Modules that support data filtering
+                                    var viewAllModules = new[] { "Contracts", "Contractors", "Payments", "WorkProgressReports" };
+                                    var supportsViewAll = viewAllModules.Contains(key);
+                                    
+                                    <tr>
+                                        <td>
+                                            <span class="fw-semibold">@menuKeys[key]</span>
+                                            <br>
+                                            <small class="text-muted">@key</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input type="checkbox" class="form-check-input permission-checkbox view-checkbox" 
+                                                       name="permissions[@key].CanView" value="true" 
+                                                       @(canView ? "checked" : "") 
+                                                       id="view_@key"
+                                                       onchange="handleViewChange(this, '@key')">
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (supportsViewAll)
+                                            {
+                                                <div class="form-check d-flex justify-content-center" title="Без галочки — только свои данные">
+                                                    <input type="checkbox" class="form-check-input permission-checkbox viewall-checkbox" 
+                                                           name="permissions[@key].CanViewAll" value="true" 
+                                                           @(canViewAll ? "checked" : "")
+                                                           id="viewall_@key"
+                                                           @(!canView ? "disabled" : "")>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input type="checkbox" class="form-check-input permission-checkbox create-checkbox" 
+                                                       name="permissions[@key].CanCreate" value="true" 
+                                                       @(canCreate ? "checked" : "")
+                                                       id="create_@key"
+                                                       @(!canView ? "disabled" : "")>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input type="checkbox" class="form-check-input permission-checkbox edit-checkbox" 
+                                                       name="permissions[@key].CanEdit" value="true" 
+                                                       @(canEdit ? "checked" : "")
+                                                       id="edit_@key"
+                                                       @(!canView ? "disabled" : "")>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center">
+                                                <input type="checkbox" class="form-check-input permission-checkbox delete-checkbox" 
+                                                       name="permissions[@key].CanDelete" value="true" 
+                                                       @(canDelete ? "checked" : "")
+                                                       id="delete_@key"
+                                                       @(!canView ? "disabled" : "")>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Создание, редактирование и удаление доступны только при включённом просмотре
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i> Сохранить права
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    // When View is unchecked, disable and uncheck Create/Edit/Delete/ViewAll
+    function handleViewChange(checkbox, key) {
+        const isChecked = checkbox.checked;
+        const viewAllCb = document.getElementById('viewall_' + key);
+        const createCb = document.getElementById('create_' + key);
+        const editCb = document.getElementById('edit_' + key);
+        const deleteCb = document.getElementById('delete_' + key);
+        
+        if (!isChecked) {
+            if (viewAllCb) { viewAllCb.checked = false; viewAllCb.disabled = true; }
+            createCb.checked = false;
+            editCb.checked = false;
+            deleteCb.checked = false;
+        } else {
+            if (viewAllCb) viewAllCb.disabled = false;
+        }
+        
+        createCb.disabled = !isChecked;
+        editCb.disabled = !isChecked;
+        deleteCb.disabled = !isChecked;
+    }
+    
+    // Select all View checkboxes
+    function selectAllView() {
+        document.querySelectorAll('.view-checkbox').forEach(cb => {
+            cb.checked = true;
+            const key = cb.id.replace('view_', '');
+            handleViewChange(cb, key);
+        });
+    }
+    
+    // Clear all checkboxes
+    function clearAll() {
+        document.querySelectorAll('.permission-checkbox').forEach(cb => {
+            cb.checked = false;
+            if (!cb.classList.contains('view-checkbox')) {
+                cb.disabled = true;
+            }
+        });
+    }
+</script>
+}

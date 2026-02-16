@@ -1,0 +1,94 @@
+@model PMMIS.Domain.Entities.Project
+@{
+    ViewData["Title"] = "Редактирование проекта";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <h2>
+            <i class="bi bi-pencil me-2"></i>Редактирование проекта
+        </h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                <li class="breadcrumb-item"><a asp-action="Index">Проекты</a></li>
+                <li class="breadcrumb-item active">Редактирование</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <h6 class="text-uppercase text-muted mb-3">Основная информация</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="Code" class="form-label">Код проекта <span class="text-danger">*</span></label>
+                                <input asp-for="Code" class="form-control" placeholder="WSIP-1" />
+                                <span asp-validation-for="Code" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-8">
+                                <label asp-for="NameRu" class="form-label">Название (RU) <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" placeholder="Название проекта" />
+                                <span asp-validation-for="NameRu" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label asp-for="NameTj" class="form-label">Название (TJ)</label>
+                                <input asp-for="NameTj" class="form-control" placeholder="Номи лоиҳа" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="NameEn" class="form-label">Название (EN)</label>
+                                <input asp-for="NameEn" class="form-control" placeholder="Project name" />
+                            </div>
+                        </div>
+
+                        <h6 class="text-uppercase text-muted mb-3 mt-4">Сроки и бюджет</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="StartDate" class="form-label">Дата начала <span class="text-danger">*</span></label>
+                                <input asp-for="StartDate" type="date" class="form-control" />
+                                <span asp-validation-for="StartDate" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="EndDate" class="form-label">Дата окончания</label>
+                                <input asp-for="EndDate" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="TotalBudget" class="form-label">Бюджет (USD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input asp-for="TotalBudget" type="number" step="0.01" min="0" class="form-control" />
+                                </div>
+                                <span asp-validation-for="TotalBudget" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Сохранить изменения
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,196 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskIndexViewModel
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        @if (Model.Tasks.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 45%">Задача</th>
+                            <th>Исполнитель</th>
+                            <th>Приоритет</th>
+                            <th>Статус</th>
+                            <th>Дедлайн</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model.Tasks)
+                        {
+                            <tr class="@(task.IsOverdue ? "table-danger" : "")">
+                                <td>
+                                    <div class="d-flex align-items-start gap-2">
+                                        <div class="form-check mt-1">
+                                            <input type="checkbox" class="form-check-input task-complete" 
+                                                   data-task-id="@task.Id" 
+                                                   @(task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.Completed ? "checked" : "") />
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <a asp-action="Details" asp-route-id="@task.Id" 
+                                               class="text-decoration-none fw-semibold @(task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.Completed ? "text-muted text-decoration-line-through" : "")">
+                                                @task.Title
+                                            </a>
+                                            @if (!string.IsNullOrEmpty(task.Description))
+                                            {
+                                                <div class="small text-muted text-truncate" style="max-width: 400px;">
+                                                    @task.Description
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (task.Assignee != null)
+                                    {
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px; font-size: 12px;">
+                                                @task.Assignee.FirstName?.FirstOrDefault()@task.Assignee.LastName?.FirstOrDefault()
+                                            </div>
+                                            <span class="small">@task.Assignee.FullName</span>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @switch (task.Priority)
+                                    {
+                                        case PMMIS.Domain.Entities.TaskPriority.Critical:
+                                            <span class="badge bg-danger">Критический</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.TaskPriority.High:
+                                            <span class="badge bg-warning text-dark">Высокий</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.TaskPriority.Normal:
+                                            <span class="badge bg-info">Нормальный</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary">Низкий</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>
+                                    @switch (task.Status)
+                                    {
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.New:
+                                            <span class="badge bg-light text-dark border">Новая</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.InProgress:
+                                            <span class="badge bg-primary">В работе</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.OnHold:
+                                            <span class="badge bg-secondary">На паузе</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview:
+                                            <span class="badge bg-warning text-dark">На проверке</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.Completed:
+                                            <span class="badge bg-success">Завершена</span>
+                                            break;
+                                        case PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled:
+                                            <span class="badge bg-dark">Отменена</span>
+                                            break;
+                                    }
+                                </td>
+                                <td>
+                                    <div class="@(task.IsOverdue ? "text-danger fw-bold" : (task.DaysUntilDue <= 3 && task.DaysUntilDue >= 0 ? "text-warning" : ""))">
+                                        <i class="bi bi-calendar3 me-1"></i>@task.DueDate.ToString("dd.MM.yyyy")
+                                    </div>
+                                    @if (task.IsOverdue)
+                                    {
+                                        <small class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Просрочена</small>
+                                    }
+                                    else if (task.DaysUntilDue <= 3 && task.DaysUntilDue >= 0)
+                                    {
+                                        <small class="text-warning">Осталось @task.DaysUntilDue дн.</small>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="Details" asp-route-id="@task.Id" class="btn btn-outline-primary" title="Просмотр">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@task.Id" class="btn btn-outline-secondary" title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if (Model.TotalPages > 1)
+            {
+                <div class="card-footer bg-transparent border-0">
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 justify-content-center">
+                            @for (var i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Index"
+                                       asp-route-page="@i"
+                                       asp-route-status="@Model.StatusFilter"
+                                       asp-route-priority="@Model.PriorityFilter"
+                                       asp-route-assignee="@Model.AssigneeFilter"
+                                       asp-route-search="@Model.SearchTerm">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-clipboard-check text-muted" style="font-size: 4rem;"></i>
+                </div>
+                <h5 class="text-muted fw-normal">Создайте задачу</h5>
+                <p class="text-muted small mb-4">
+                    Здесь будет список задач, которые вы выполняете или поручаете<br>своим сотрудникам.
+                </p>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+                    <i class="bi bi-plus-lg me-1"></i>Создать задачу
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+// Quick task completion toggle
+document.querySelectorAll('.task-complete').forEach(checkbox => {
+    checkbox.addEventListener('change', async function() {
+        const taskId = this.dataset.taskId;
+        const newStatus = this.checked ? 4 : 1; // Completed or InProgress
+        
+        try {
+            const response = await fetch('/Tasks/ChangeStatus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${taskId}&status=${newStatus}`
+            });
+            const result = await response.json();
+            if (!result.success) {
+                this.checked = !this.checked;
+                alert(result.error || 'Ошибка');
+            } else {
+                const row = this.closest('tr');
+                const titleLink = row.querySelector('a[href*="Details"]');
+                if (this.checked) {
+                    titleLink.classList.add('text-muted', 'text-decoration-line-through');
+                } else {
+                    titleLink.classList.remove('text-muted', 'text-decoration-line-through');
+                }
+            }
+        } catch (error) {
+            this.checked = !this.checked;
+            console.error('Error:', error);
+        }
+    });
+});
+</script>

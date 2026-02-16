@@ -1,0 +1,82 @@
+@model PMMIS.Domain.Entities.Jamoat
+@{
+    var district = ViewBag.District as PMMIS.Domain.Entities.District;
+    ViewData["Title"] = "Редактировать джамоат";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="Jamoats" asp-route-districtId="@district?.Id">@district?.NameRu</a></li>
+            <li class="breadcrumb-item active">Редактировать</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="bi bi-pencil me-2"></i>Редактировать: @Model.NameRu</h5>
+                    <form asp-action="DeleteJamoat" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Удалить этот джамоат и все связанные данные?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i> Удалить
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <form asp-action="EditJamoat" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="DistrictId" />
+
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Код</label>
+                                <input asp-for="Code" class="form-control" placeholder="JAM01" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">№ сортировки</label>
+                                <input asp-for="SortOrder" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Район</label>
+                                <input type="text" class="form-control" value="@district?.NameRu" disabled />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Локализация названия</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">🇷🇺 Русский <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇹🇯 Тоҷикӣ <span class="text-danger">*</span></label>
+                                <input asp-for="NameTj" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇺🇸 English <span class="text-danger">*</span></label>
+                                <input asp-for="NameEn" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="Jamoats" asp-route-districtId="@district?.Id" class="btn btn-outline-secondary">Отмена</a>
+                            <a asp-action="Villages" asp-route-jamoatId="@Model.Id" class="btn btn-outline-info ms-auto">
+                                <i class="bi bi-geo"></i> Сёла джамоата
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

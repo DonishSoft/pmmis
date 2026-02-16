@@ -1,0 +1,276 @@
+@model PMMIS.Web.ViewModels.Payments.PaymentIndexViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Платежи";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cash-stack me-2"></i>Платежи</h2>
+        <a asp-action="Create" asp-route-contractId="@Model.SelectedContractId" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Новый платёж
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Warning"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-x-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="text-muted small">Всего</div>
+                    <div class="fs-3 fw-bold text-primary">$@Model.TotalAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="text-muted small">Оплачено</div>
+                    <div class="fs-3 fw-bold text-success">$@Model.PaidAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <div class="text-muted small">Ожидает</div>
+                    <div class="fs-3 fw-bold text-warning">$@Model.PendingAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Контракт</label>
+                    <select name="contractId" class="form-select">
+                        <option value="">— Все контракты —</option>
+                        @foreach (var c in Model.Contracts)
+                        {
+                            <option value="@c.Id" selected="@(Model.SelectedContractId == c.Id)">@c.ContractNumber - @c.Contractor.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Статус</label>
+                    <select name="status" class="form-select">
+                        <option value="">— Все —</option>
+                        <option value="@((int)PaymentStatus.Pending)" selected="@(Model.SelectedStatus == PaymentStatus.Pending)">Ожидает</option>
+                        <option value="@((int)PaymentStatus.Approved)" selected="@(Model.SelectedStatus == PaymentStatus.Approved)">Одобрен</option>
+                        <option value="@((int)PaymentStatus.Paid)" selected="@(Model.SelectedStatus == PaymentStatus.Paid)">Оплачен</option>
+                        <option value="@((int)PaymentStatus.Rejected)" selected="@(Model.SelectedStatus == PaymentStatus.Rejected)">Отклонён</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-funnel me-1"></i> Фильтр
+                    </button>
+                </div>
+                <div class="col-md-3 text-end">
+                    <span class="text-muted">Найдено: <strong>@Model.Payments.Count()</strong></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Дата</th>
+                        <th>Контракт</th>
+                        <th>Подрядчик</th>
+                        <th class="text-center">Тип</th>
+                        <th class="text-end">Сумма (USD)</th>
+                        <th class="text-center">Статус</th>
+                        <th style="width: 180px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var payment in Model.Payments)
+                    {
+                        <tr>
+                            <td>@payment.PaymentDate.ToString("dd.MM.yyyy")</td>
+                            <td>
+                                <a asp-controller="Contracts" asp-action="Details" asp-route-id="@payment.ContractId" class="text-decoration-none">
+                                    @payment.Contract.ContractNumber
+                                </a>
+                            </td>
+                            <td>@payment.Contract.Contractor.Name</td>
+                            <td class="text-center">
+                                @switch (payment.Type)
+                                {
+                                    case PaymentType.Advance:
+                                        <span class="badge bg-info">Аванс</span>
+                                        break;
+                                    case PaymentType.Interim:
+                                        <span class="badge bg-primary">Промежуточный</span>
+                                        break;
+                                    case PaymentType.Final:
+                                        <span class="badge bg-success">Окончательный</span>
+                                        break;
+                                    case PaymentType.Retention:
+                                        <span class="badge bg-secondary">Удержание</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="text-end fw-semibold">$@payment.Amount.ToString("N0")</td>
+                            <td class="text-center">
+                                @switch (payment.Status)
+                                {
+                                    case PaymentStatus.Pending:
+                                        <span class="badge bg-warning text-dark">⏳ Ожидает</span>
+                                        break;
+                                    case PaymentStatus.Approved:
+                                        <span class="badge bg-info">✓ Одобрен</span>
+                                        break;
+                                    case PaymentStatus.Paid:
+                                        <span class="badge bg-success">✅ Оплачен</span>
+                                        break;
+                                    case PaymentStatus.Rejected:
+                                        <span class="badge bg-danger">❌ Отклонён</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="text-end">
+                                @* Workflow buttons based on status *@
+                                @if (payment.Status == PaymentStatus.Pending)
+                                {
+                                    <form asp-action="Approve" asp-route-id="@payment.Id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Одобрить">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Отклонить" 
+                                            data-bs-toggle="modal" data-bs-target="#rejectModal" 
+                                            data-payment-id="@payment.Id" data-payment-amount="@payment.Amount.ToString("N0")">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                }
+                                @if (payment.Status == PaymentStatus.Approved)
+                                {
+                                    <form asp-action="MarkAsPaid" asp-route-id="@payment.Id" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-primary" title="Отметить как оплачено">
+                                            <i class="bi bi-cash-stack"></i>
+                                        </button>
+                                    </form>
+                                }
+                                @if (payment.Status == PaymentStatus.Rejected && !string.IsNullOrEmpty(payment.RejectionReason))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="@payment.RejectionReason">
+                                        <i class="bi bi-info-circle"></i>
+                                    </button>
+                                }
+                                
+                                <a asp-action="Edit" asp-route-id="@payment.Id" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                @if (User.IsInRole("PMU_ADMIN"))
+                                {
+                                    <form asp-action="Delete" asp-route-id="@payment.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить платёж?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Payments.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Нет платежей
+                                <br>
+                                <a asp-action="Create" class="btn btn-primary btn-sm mt-3">
+                                    <i class="bi bi-plus-lg me-1"></i> Добавить платёж
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="rejectForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">
+                        <i class="bi bi-x-circle text-danger me-2"></i>Отклонить платёж
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Сумма платежа: <strong id="rejectAmount"></strong> USD</p>
+                    <div class="mb-3">
+                        <label for="rejectionReason" class="form-label">Причина отклонения <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejectionReason" name="rejectionReason" rows="3" required 
+                                  placeholder="Укажите причину отклонения платежа..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-lg me-1"></i>Отклонить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Handle rejection modal
+    var rejectModal = document.getElementById('rejectModal');
+    rejectModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var paymentId = button.getAttribute('data-payment-id');
+        var paymentAmount = button.getAttribute('data-payment-amount');
+        
+        var form = document.getElementById('rejectForm');
+        form.action = '/Payments/Reject/' + paymentId;
+        
+        document.getElementById('rejectAmount').textContent = '$' + paymentAmount;
+        document.getElementById('rejectionReason').value = '';
+    });
+</script>
+}
+

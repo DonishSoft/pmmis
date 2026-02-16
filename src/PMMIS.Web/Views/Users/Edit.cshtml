@@ -1,0 +1,238 @@
+@model PMMIS.Web.ViewModels.Users.UserEditViewModel
+@{
+    ViewData["Title"] = "Редактировать пользователя";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var user = Model.User;
+    var currentRole = Model.UserRoles.FirstOrDefault() ?? "";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Пользователи</a></li>
+            <li class="breadcrumb-item active">@Model.User.FullName</li>
+        </ol>
+    </nav>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="id" value="@user.Id" />
+                
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>Личные данные</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Photo -->
+                        <div class="mb-4 text-center">
+                            <div class="mb-3">
+                                <div id="photoPreview" class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px; overflow: hidden;">
+                                    @if (!string.IsNullOrEmpty(user.PhotoPath))
+                                    {
+                                        <img src="@user.PhotoPath" style="width: 100%; height: 100%; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <span class="fs-2 text-muted">@user.FirstName.Substring(0, 1)@user.LastName.Substring(0, 1)</span>
+                                    }
+                                </div>
+                            </div>
+                            <label class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-camera me-1"></i> Изменить фото
+                                <input type="file" name="photo" accept="image/*" class="d-none" onchange="previewPhoto(this)" />
+                            </label>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Фамилия <span class="text-danger">*</span></label>
+                                <input type="text" name="lastName" class="form-control" value="@user.LastName" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Имя <span class="text-danger">*</span></label>
+                                <input type="text" name="firstName" class="form-control" value="@user.FirstName" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Отчество</label>
+                                <input type="text" name="middleName" class="form-control" value="@user.MiddleName" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Пол</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="gender" id="genderMale" value="Male" @(user.Gender == PMMIS.Domain.Entities.Gender.Male ? "checked" : "") />
+                                    <label class="btn btn-outline-primary" for="genderMale">
+                                        <i class="bi bi-gender-male me-1"></i> Мужской
+                                    </label>
+                                    <input type="radio" class="btn-check" name="gender" id="genderFemale" value="Female" @(user.Gender == PMMIS.Domain.Entities.Gender.Female ? "checked" : "") />
+                                    <label class="btn btn-outline-danger" for="genderFemale">
+                                        <i class="bi bi-gender-female me-1"></i> Женский
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Дата рождения</label>
+                                <input type="date" name="birthDate" class="form-control" value="@(user.BirthDate?.ToString("yyyy-MM-dd"))" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" value="@user.Email" disabled />
+                                <small class="text-muted">Email нельзя изменить</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Статус</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input type="checkbox" name="isActive" class="form-check-input" value="true" @(user.IsActive ? "checked" : "") />
+                                    <label class="form-check-label">Активен</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Роль</h5>
+                    </div>
+                    <div class="card-body">
+                        <select name="selectedRole" class="form-select">
+                            <option value="">— Без роли —</option>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <option value="@role.Name" selected="@(currentRole == role.Name)">
+                                    @role.Name - @(role.Description ?? "")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Организационная структура</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Должность</label>
+                                <input type="text" name="position" class="form-control" 
+                                       value="@user.Position" 
+                                       placeholder="Например: Директор, Глава бухгалтерии" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Руководитель</label>
+                                <select name="supervisorId" class="form-select">
+                                    <option value="">— Нет руководителя (верхний уровень) —</option>
+                                    @foreach (var u in Model.AllUsers)
+                                    {
+                                        <option value="@u.Id" selected="@(user.SupervisorId == u.Id)">
+                                            @u.FullName @(string.IsNullOrEmpty(u.Position) ? "" : $"({u.Position})")
+                                        </option>
+                                    }
+                                </select>
+                                <small class="text-muted">Выберите кому подчиняется данный сотрудник</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Документы</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(user.ContractScanPath))
+                        {
+                            <div class="mb-3">
+                                <span class="text-success"><i class="bi bi-check-circle me-1"></i> Контракт загружен</span>
+                                <a href="@user.ContractScanPath" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="bi bi-eye"></i> Просмотреть
+                                </a>
+                            </div>
+                        }
+                        <label class="form-label">Скан трудового контракта</label>
+                        <input type="file" name="contractScan" class="form-control" accept=".pdf,.jpg,.jpeg,.png" />
+                        <small class="text-muted">Загрузите новый файл для замены</small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Сохранить
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Password Reset -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-key me-2"></i>Сброс пароля</h6>
+                </div>
+                <div class="card-body">
+                    <form asp-action="ResetPassword" method="post">
+                        <input type="hidden" name="userId" value="@user.Id" />
+                        <div class="mb-3">
+                            <label class="form-label">Новый пароль</label>
+                            <input type="password" name="newPassword" class="form-control" minlength="6" required />
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Сбросить пароль?')">
+                            <i class="bi bi-key me-1"></i> Сбросить пароль
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Информация</h6>
+                </div>
+                <div class="card-body small">
+                    <p><strong>ID:</strong> @user.Id</p>
+                    <p><strong>Создан:</strong> @user.CreatedAt.ToString("dd.MM.yyyy HH:mm")</p>
+                    @if (user.LastLoginAt.HasValue)
+                    {
+                        <p><strong>Последний вход:</strong> @user.LastLoginAt.Value.ToString("dd.MM.yyyy HH:mm")</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewPhoto(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photoPreview').innerHTML = 
+                '<img src="' + e.target.result + '" style="width: 100%; height: 100%; object-fit: cover;">';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>

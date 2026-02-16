@@ -1,0 +1,113 @@
+@model PMMIS.Domain.Entities.Village
+@{
+    var jamoat = ViewBag.Jamoat as PMMIS.Domain.Entities.Jamoat;
+    ViewData["Title"] = "Добавить село";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="Jamoats" asp-route-districtId="@jamoat?.District?.Id">@jamoat?.District?.NameRu</a></li>
+            <li class="breadcrumb-item"><a asp-action="Villages" asp-route-jamoatId="@jamoat?.Id">@jamoat?.NameRu</a></li>
+            <li class="breadcrumb-item active">Добавить село</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Новое село / населённый пункт</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateVillage" method="post">
+                        <input type="hidden" asp-for="JamoatId" />
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Джамоат</label>
+                                <input type="text" class="form-control" value="@jamoat?.NameRu" disabled />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">№ <span class="text-danger">*</span></label>
+                                <input asp-for="Number" type="number" class="form-control" required />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Зона</label>
+                                <input asp-for="Zone" class="form-control" placeholder="2D" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">В охвате проекта</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input asp-for="IsCoveredByProject" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label">Да</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Название населённого пункта</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">🇷🇺 Русский <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇹🇯 Тоҷикӣ <span class="text-danger">*</span></label>
+                                <input asp-for="NameTj" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇺🇸 English <span class="text-danger">*</span></label>
+                                <input asp-for="NameEn" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-people me-2"></i>Демографические данные (текущие)</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Население</label>
+                                <input asp-for="PopulationCurrent" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Женщин</label>
+                                <input asp-for="FemalePopulation" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Домохозяйств</label>
+                                <input asp-for="HouseholdsCurrent" type="number" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-clock-history me-2"></i>Базовые данные (2020)</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Население 2020</label>
+                                <input asp-for="Population2020" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Домохозяйств 2020</label>
+                                <input asp-for="Households2020" type="number" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="Villages" asp-route-jamoatId="@jamoat?.Id" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

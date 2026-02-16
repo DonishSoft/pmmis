@@ -1,0 +1,423 @@
+@model PMMIS.Web.ViewModels.Reports.PaymentReportViewModel
+
+<!-- Summary Statistics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Всего контрактов</div>
+                        <div class="fs-2 fw-bold text-primary">@Model.TotalContracts</div>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-file-earmark-text text-primary fs-4"></i>
+                    </div>
+                </div>
+                <div class="text-muted small mt-2">@Model.TotalPayments платежей</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Запланировано</div>
+                        <div class="fs-4 fw-bold text-dark">$@Model.TotalPlannedUsd.ToString("N2")</div>
+                    </div>
+                    <div class="bg-info bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-calculator text-info fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Оплачено</div>
+                        <div class="fs-4 fw-bold text-success">$@Model.TotalPaidUsd.ToString("N2")</div>
+                    </div>
+                    <div class="bg-success bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-check-circle text-success fs-4"></i>
+                    </div>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: @Model.OverallPaidPercent.ToString("F0")%"></div>
+                </div>
+                <div class="text-muted small mt-1">@Model.OverallPaidPercent.ToString("F1")% от плана</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Остаток</div>
+                        <div class="fs-4 fw-bold @(Model.TotalDifference >= 0 ? "text-warning" : "text-danger")">
+                            $@Model.TotalDifference.ToString("N2")
+                        </div>
+                    </div>
+                    <div class="@(Model.TotalDifference >= 0 ? "bg-warning" : "bg-danger") bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-arrow-left-right @(Model.TotalDifference >= 0 ? "text-warning" : "text-danger") fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Планируемые vs Оплаченные (по контрактам)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="contractsBarChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0">
+                <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Распределение оплат</h6>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="paymentDoughnut" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contracts Table with Payments -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0">
+        <h6 class="mb-0"><i class="bi bi-table me-2"></i>Детализация по контрактам</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>Контракт</th>
+                        <th>Подрядчик</th>
+                        <th>Валюта</th>
+                        <th class="text-end">План</th>
+                        <th class="text-end">Оплачено</th>
+                        <th class="text-end">Курсовая разница</th>
+                        <th class="text-end">Остаток</th>
+                        <th class="text-center">%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var contract in Model.Contracts)
+                    {
+                        var rowId = $"payments-{contract.ContractId}";
+                        <tr class="cursor-pointer" data-bs-toggle="collapse" data-bs-target="#@rowId">
+                            <td>
+                                <i class="bi bi-chevron-right collapse-icon" data-target="#@rowId"></i>
+                            </td>
+                            <td>
+                                <a asp-controller="Contracts" asp-action="Edit" asp-route-id="@contract.ContractId"
+                                   class="fw-semibold text-decoration-none" onclick="event.stopPropagation();">
+                                    @contract.ContractNumber
+                                </a>
+                                <br><small class="text-muted">@contract.ProjectName</small>
+                            </td>
+                            <td>@contract.ContractorName</td>
+                            <td>
+                                @if (contract.CurrencyLabel == "TJS")
+                                {
+                                    <span class="badge bg-info-subtle text-info-emphasis">🇹🇯 TJS</span>
+                                    @if (contract.ExchangeRate.HasValue)
+                                    {
+                                        <br><small class="text-muted">Курс: @contract.ExchangeRate.Value.ToString("F4")</small>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success-subtle text-success-emphasis">💵 USD</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (contract.CurrencyLabel == "TJS" && contract.PlannedTjs.HasValue)
+                                {
+                                    <span class="fw-semibold">@contract.PlannedTjs.Value.ToString("N2") TJS</span>
+                                    <br><small class="text-muted">= $@contract.PlannedUsd.ToString("N2")</small>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold">$@contract.PlannedUsd.ToString("N2")</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (contract.CurrencyLabel == "TJS" && contract.PaidTjs.HasValue && contract.PaidTjs > 0)
+                                {
+                                    <span class="fw-semibold text-success">@contract.PaidTjs.Value.ToString("N2") TJS</span>
+                                    <br><small class="text-muted">= $@contract.PaidUsd.ToString("N2")</small>
+                                }
+                                else
+                                {
+                                    <span class="fw-semibold text-success">$@contract.PaidUsd.ToString("N2")</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (contract.ExchangeGainLoss.HasValue && contract.ExchangeGainLoss != 0)
+                                {
+                                    var gl = contract.ExchangeGainLoss.Value;
+                                    <span class="fw-semibold @(gl > 0 ? "text-success" : "text-danger")">
+                                        @(gl > 0 ? "▲" : "▼") $@Math.Abs(gl).ToString("N2")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end fw-semibold @(contract.Difference >= 0 ? "text-warning" : "text-danger")">
+                                $@contract.Difference.ToString("N2")
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex align-items-center gap-1">
+                                    <div class="progress flex-grow-1" style="height: 6px; min-width: 50px;">
+                                        <div class="progress-bar @(contract.PaidPercent >= 100 ? "bg-success" : "bg-primary")"
+                                             style="width: @Math.Min(contract.PaidPercent, 100).ToString("F0")%"></div>
+                                    </div>
+                                    <small class="fw-semibold" style="min-width: 40px;">@contract.PaidPercent.ToString("F0")%</small>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Nested payments -->
+                        <tr class="collapse" id="@rowId">
+                             <td colspan="9" class="p-0 bg-light">
+                                @if (contract.Payments.Any())
+                                {
+                                    <table class="table table-sm mb-0 ms-4" style="max-width: calc(100% - 2rem);">
+                                        <thead>
+                                            <tr class="text-muted small">
+                                                <th>Дата</th>
+                                                <th>Тип</th>
+                                                <th>Статус</th>
+                                                <th class="text-end">Сумма (TJS)</th>
+                                                <th class="text-end">Курс оплаты</th>
+                                                <th class="text-end">USD (по курсу контракта)</th>
+                                                <th class="text-end">USD (по курсу оплаты)</th>
+                                                <th class="text-end">Курсовая разница</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var payment in contract.Payments)
+                                            {
+                                                <tr>
+                                                    <td>@payment.PaymentDate.ToString("dd.MM.yyyy")</td>
+                                                    <td>@payment.TypeLabel</td>
+                                                    <td><span class="badge @payment.StatusClass">@payment.StatusLabel</span></td>
+                                                    <td class="text-end">
+                                                        @if (payment.AmountTjs.HasValue)
+                                                        {
+                                                            <span>@payment.AmountTjs.Value.ToString("N2") <small class="text-muted">TJS</small></span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if (payment.ExchangeRate.HasValue)
+                                                        {
+                                                            @payment.ExchangeRate.Value.ToString("F4")
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if (payment.UsdAtContractRate.HasValue)
+                                                        {
+                                                            <span>$@payment.UsdAtContractRate.Value.ToString("N2")</span>
+                                                            <br><small class="text-muted">курс @(payment.ContractExchangeRate?.ToString("F4") ?? "—")</small>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if (payment.UsdAtPaymentRate.HasValue)
+                                                        {
+                                                            <span>$@payment.UsdAtPaymentRate.Value.ToString("N2")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                    <td class="text-end">
+                                                        @if (payment.ExchangeGainLoss.HasValue && payment.ExchangeGainLoss != 0)
+                                                        {
+                                                            var pgl = payment.ExchangeGainLoss.Value;
+                                                            <span class="fw-semibold @(pgl > 0 ? "text-success" : "text-danger")">
+                                                                @(pgl > 0 ? "▲" : "▼") $@Math.Abs(pgl).ToString("N2")
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <div class="p-3 text-muted text-center">
+                                        <i class="bi bi-inbox me-1"></i> Нет платежей
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="4">ИТОГО</td>
+                        <td class="text-end">$@Model.TotalPlannedUsd.ToString("N2")</td>
+                        <td class="text-end text-success">$@Model.TotalPaidUsd.ToString("N2")</td>
+                        <td class="text-end">
+                            @{
+                                var totalGainLoss = Model.Contracts.Where(c => c.ExchangeGainLoss.HasValue).Sum(c => c.ExchangeGainLoss!.Value);
+                            }
+                            @if (totalGainLoss != 0)
+                            {
+                                <span class="@(totalGainLoss > 0 ? "text-success" : "text-danger")">
+                                    @(totalGainLoss > 0 ? "▲" : "▼") $@Math.Abs(totalGainLoss).ToString("N2")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td class="text-end @(Model.TotalDifference >= 0 ? "text-warning" : "text-danger")">
+                            $@Model.TotalDifference.ToString("N2")
+                        </td>
+                        <td class="text-center">@Model.OverallPaidPercent.ToString("F0")%</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .collapse-icon { transition: transform 0.2s; }
+    .collapse-icon.rotated { transform: rotate(90deg); }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    // Collapse chevron animation
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(row => {
+        const target = row.querySelector('.collapse-icon');
+        const collapseEl = document.querySelector(target?.dataset.target);
+        if (collapseEl) {
+            collapseEl.addEventListener('show.bs.collapse', () => target.classList.add('rotated'));
+            collapseEl.addEventListener('hide.bs.collapse', () => target.classList.remove('rotated'));
+        }
+    });
+
+    // Chart data from model
+    const contractLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Contracts.Select(c => c.ContractNumber)));
+    const plannedData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Contracts.Select(c => c.PlannedUsd)));
+    const paidData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Contracts.Select(c => c.PaidUsd)));
+
+    // Bar chart: planned vs paid per contract
+    new Chart(document.getElementById('contractsBarChart'), {
+        type: 'bar',
+        data: {
+            labels: contractLabels,
+            datasets: [
+                {
+                    label: 'Запланировано ($)',
+                    data: plannedData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Оплачено ($)',
+                    data: paidData,
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits: 2})}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: v => '$' + v.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+
+    // Doughnut: payment distribution by contract
+    const doughnutColors = [
+        '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6',
+        '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
+    ];
+    new Chart(document.getElementById('paymentDoughnut'), {
+        type: 'doughnut',
+        data: {
+            labels: contractLabels,
+            datasets: [{
+                data: paidData,
+                backgroundColor: doughnutColors.slice(0, contractLabels.length),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.label}: $${ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2})}`
+                    }
+                }
+            }
+        }
+    });
+</script>

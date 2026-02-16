@@ -1,0 +1,226 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskKpiViewModel
+@{
+    ViewData["Title"] = "KPI Задачи";
+}
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-graph-up me-2"></i>KPI Дашборд</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Задачи</a></li>
+                    <li class="breadcrumb-item active">KPI</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportKpi" asp-route-from="@Model.FromDate.ToString("yyyy-MM-dd")" asp-route-to="@Model.ToDate.ToString("yyyy-MM-dd")" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a asp-action="Index" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-1"></i>К задачам
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form asp-action="Kpi" method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">От</label>
+                    <input type="date" name="from" class="form-control" value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">До</label>
+                    <input type="date" name="to" class="form-control" value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- User KPI -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Мои показатели</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-primary">@Model.UserKpi.TotalTasks</h3>
+                                <small class="text-muted">Всего задач</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-success">@Model.UserKpi.CompletedTasks</h3>
+                                <small class="text-muted">Завершено</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-info">@Model.UserKpi.CompletedOnTime</h3>
+                                <small class="text-muted">Вовремя</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-warning">@Model.UserKpi.CompletedLate</h3>
+                                <small class="text-muted">С просрочкой</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-danger">@Model.UserKpi.OverdueTasks</h3>
+                                <small class="text-muted">Просрочены</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0">@Model.UserKpi.ActiveTasks</h3>
+                                <small class="text-muted">Активные</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Model.UserKpi.TotalTasks > 0)
+                    {
+                        <div class="mt-4">
+                            <h6>Эффективность</h6>
+                            @{
+                                var efficiency = Model.UserKpi.CompletedTasks > 0 
+                                    ? (decimal)Model.UserKpi.CompletedOnTime / Model.UserKpi.CompletedTasks * 100 
+                                    : 0;
+                            }
+                            <div class="progress" style="height: 30px;">
+                                <div class="progress-bar @(efficiency >= 80 ? "bg-success" : efficiency >= 50 ? "bg-warning" : "bg-danger")"
+                                     role="progressbar"
+                                     style="width: @efficiency%">
+                                    @efficiency.ToString("F0")% вовремя
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                Среднее время выполнения: <strong>@Model.UserKpi.AverageCompletionDays.ToString("F1") дней</strong>
+                            </small>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Team KPI -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-people me-2"></i>Показатели команды</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-primary">@Model.TeamKpi.TotalTasks</h3>
+                                <small class="text-muted">Всего задач</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-success">@Model.TeamKpi.CompletedTasks</h3>
+                                <small class="text-muted">Завершено</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-info">@Model.TeamKpi.CompletedOnTime</h3>
+                                <small class="text-muted">Вовремя</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h3 class="mb-0 text-danger">@Model.TeamKpi.OverdueTasks</h3>
+                                <small class="text-muted">Просрочены</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Performers -->
+                    @if (Model.TeamKpi.TopPerformers?.Any() == true)
+                    {
+                        <div class="mt-4">
+                            <h6><i class="bi bi-trophy me-1"></i>Лидеры</h6>
+                            <div class="list-group list-group-flush">
+                                @{ var rank = 1; }
+                                @foreach (var performer in Model.TeamKpi.TopPerformers)
+                                {
+                                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <span class="badge bg-@(rank == 1 ? "warning" : rank == 2 ? "secondary" : "light text-dark") me-2">@rank</span>
+                                            @performer.UserName
+                                        </div>
+                                        <span class="badge bg-success rounded-pill">@performer.CompletedTasks задач</span>
+                                    </div>
+                                    rank++;
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 bg-primary text-white shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">@Model.TeamKpi.ActiveTasks</h4>
+                    <small>Активных задач</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 bg-success text-white shadow-sm">
+                <div class="card-body text-center">
+                    @{
+                        var completionRate = Model.TeamKpi.TotalTasks > 0 
+                            ? (decimal)Model.TeamKpi.CompletedTasks / Model.TeamKpi.TotalTasks * 100 
+                            : 0;
+                    }
+                    <h4 class="mb-0">@completionRate.ToString("F0")%</h4>
+                    <small>Завершено</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 bg-warning text-dark shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">@Model.UserKpi.PendingExtensions</h4>
+                    <small>Запросов продления</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 bg-danger text-white shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">@Model.TeamKpi.OverdueTasks</h4>
+                    <small>Просроченных</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

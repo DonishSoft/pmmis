@@ -1,0 +1,86 @@
+@model PMMIS.Domain.Entities.Project
+@{
+    ViewData["Title"] = "Создать проект";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Проекты</a></li>
+            <li class="breadcrumb-item active">Создать проект</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Новый проект</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Код проекта <span class="text-danger">*</span></label>
+                                <input asp-for="Code" class="form-control" placeholder="WSIP-2" required />
+                                <span asp-validation-for="Code" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Общий бюджет (USD) <span class="text-danger">*</span></label>
+                                <input asp-for="TotalBudget" type="number" step="0.01" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Статус</label>
+                                <select asp-for="Status" class="form-select">
+                                    <option value="@PMMIS.Domain.Entities.ProjectStatus.Planning">Планирование</option>
+                                    <option value="@PMMIS.Domain.Entities.ProjectStatus.Active">Активный</option>
+                                    <option value="@PMMIS.Domain.Entities.ProjectStatus.OnHold">Приостановлен</option>
+                                    <option value="@PMMIS.Domain.Entities.ProjectStatus.Completed">Завершён</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Дата начала <span class="text-danger">*</span></label>
+                                <input asp-for="StartDate" type="date" class="form-control" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Дата завершения</label>
+                                <input asp-for="EndDate" type="date" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Название проекта</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">🇷🇺 Русский <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" required />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">🇹🇯 Тоҷикӣ <span class="text-danger">*</span></label>
+                                <input asp-for="NameTj" class="form-control" required />
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">🇺🇸 English <span class="text-danger">*</span></label>
+                                <input asp-for="NameEn" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Создать
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

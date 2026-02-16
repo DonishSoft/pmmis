@@ -1,0 +1,95 @@
+@model List<PMMIS.Domain.Entities.Contractor>
+@{
+    ViewData["Title"] = "Подрядчики";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-building me-2"></i>Подрядчики</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Добавить подрядчика
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+        @foreach (var contractor in Model)
+        {
+            <div class="col-lg-4 col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">@contractor.Name</h5>
+                            <span class="badge bg-info">@contractor.Contracts.Count контрактов</span>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(contractor.Country))
+                        {
+                            <p class="text-muted mb-2">
+                                <i class="bi bi-geo me-2"></i>@contractor.Country
+                            </p>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(contractor.ContactPerson))
+                        {
+                            <p class="mb-2">
+                                <i class="bi bi-person me-2"></i>@contractor.ContactPerson
+                            </p>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(contractor.Email))
+                        {
+                            <p class="mb-2">
+                                <i class="bi bi-envelope me-2"></i>
+                                <a href="mailto:@contractor.Email">@contractor.Email</a>
+                            </p>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(contractor.Phone))
+                        {
+                            <p class="mb-0">
+                                <i class="bi bi-telephone me-2"></i>@contractor.Phone
+                            </p>
+                        }
+                    </div>
+                    <div class="card-footer bg-white border-0">
+                        <div class="d-flex gap-2">
+                            <a asp-action="Details" asp-route-id="@contractor.Id" class="btn btn-sm btn-outline-info flex-grow-1">
+                                <i class="bi bi-eye"></i> Подробнее
+                            </a>
+                            <a asp-action="Edit" asp-route-id="@contractor.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (!Model.Any())
+        {
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-building fs-1 text-muted"></i>
+                        <p class="mt-3 mb-0 text-muted">Подрядчики не найдены. Добавьте первого подрядчика.</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

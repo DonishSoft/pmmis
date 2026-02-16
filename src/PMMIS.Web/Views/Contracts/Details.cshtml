@@ -1,0 +1,522 @@
+@model PMMIS.Domain.Entities.Contract
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = Model.ContractNumber;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Контракты</a></li>
+            <li class="breadcrumb-item active">@Model.ContractNumber</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">@Model.ContractNumber</h2>
+            <p class="text-muted mb-0">@Model.Contractor.Name</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i> Редактировать
+                </a>
+            }
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Status indicators -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Итого</div>
+                    <div class="fs-3 fw-bold text-primary">$@Model.FinalAmount.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Оплачено</div>
+                    <div class="fs-3 fw-bold text-success">@Model.PaidPercent.ToString("N1")%</div>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-success" style="width: @Model.PaidPercent%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Выполнено</div>
+                    <div class="fs-3 fw-bold text-info">@Model.WorkCompletedPercent.ToString("N1")%</div>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-info" style="width: @Model.WorkCompletedPercent%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="text-muted small">Срок</div>
+                    @if (Model.RemainingDays < 0)
+                    {
+                        <div class="fs-3 fw-bold text-danger">@Math.Abs(Model.RemainingDays) дн.</div>
+                        <span class="badge bg-danger">Просрочено</span>
+                    }
+                    else if (Model.RemainingDays < 30)
+                    {
+                        <div class="fs-3 fw-bold text-warning">@Model.RemainingDays дн.</div>
+                        <span class="badge bg-warning text-dark">Скоро</span>
+                    }
+                    else
+                    {
+                        <div class="fs-3 fw-bold text-success">@Model.RemainingDays дн.</div>
+                        <span class="badge bg-success">В норме</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Contract Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Информация о контракте</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th style="width: 200px" class="text-muted">Тип:</th>
+                            <td>
+                                @switch (Model.Type)
+                                {
+                                    case ContractType.Works:
+                                        <span class="badge bg-warning text-dark">🏗️ Строительные работы</span>
+                                        break;
+                                    case ContractType.Consulting:
+                                        <span class="badge bg-info">💼 Консультационные услуги</span>
+                                        break;
+                                    case ContractType.Goods:
+                                        <span class="badge bg-primary">📦 Товары</span>
+                                        break;
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Проект:</th>
+                            <td><span class="badge bg-secondary">@Model.Project.Code</span> @Model.Project.NameRu</td>
+                        </tr>
+                        @if (Model.SubComponent != null)
+                        {
+                            <tr>
+                                <th class="text-muted">Подкомпонент:</th>
+                                <td>@Model.SubComponent.Code: @Model.SubComponent.NameRu</td>
+                            </tr>
+                        }
+                        <tr>
+                            <th class="text-muted">Дата подписания:</th>
+                            <td>@Model.SigningDate.ToString("dd MMMM yyyy")</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted">Срок завершения:</th>
+                            <td>
+                                @Model.ContractEndDate.ToString("dd MMMM yyyy")
+                                @if (Model.ExtendedToDate.HasValue)
+                                {
+                                    <span class="text-success ms-2">
+                                        <i class="bi bi-arrow-right"></i> продлён до @Model.ExtendedToDate.Value.ToString("dd.MM.yyyy")
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    </table>
+
+                    <hr />
+
+                    <h6>Объём работ</h6>
+                    <p class="mb-0">@Model.ScopeOfWork</p>
+                    @if (!string.IsNullOrEmpty(Model.ScopeOfWorkEn))
+                    {
+                        <p class="text-muted small mt-2"><em>EN: @Model.ScopeOfWorkEn</em></p>
+                    }
+
+                    @if (Model.Curator != null || Model.ProjectManager != null)
+                    {
+                        <hr />
+                        <h6>Ответственные лица</h6>
+                        <div class="row g-3">
+                            @if (Model.Curator != null)
+                            {
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body py-2">
+                                            <small class="text-muted">Куратор</small><br />
+                                            <strong>@Model.Curator.FullName</strong>
+                                            <div class="small text-muted">@Model.Curator.Email</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            @if (Model.ProjectManager != null)
+                            {
+                                <div class="col-md-6">
+                                    <div class="card bg-light">
+                                        <div class="card-body py-2">
+                                            <small class="text-muted">Менеджер проекта</small><br />
+                                            <strong>@Model.ProjectManager.FullName</strong>
+                                            <div class="small text-muted">@Model.ProjectManager.Email</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.Milestones?.Any() == true)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-flag me-2"></i>Промежуточные этапы</h5>
+                        <span class="badge bg-secondary">@Model.Milestones.Count этапов</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Название</th>
+                                    <th>Срок</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var msOrder = 1; }
+                                @foreach (var ms in Model.Milestones.OrderBy(m => m.SortOrder))
+                                {
+                                    var isCompleted = ms.Status == MilestoneStatus.Completed;
+                                    var isOverdue = ms.DueDate < DateTime.Today && !isCompleted;
+                                    <tr class="@(isOverdue ? "table-danger" : isCompleted ? "table-success" : "")">
+                                        <td>@(msOrder++)</td>
+                                        <td>
+                                            <strong>@ms.Title</strong>
+                                            @if (!string.IsNullOrEmpty(ms.Description))
+                                            {
+                                                <br /><small class="text-muted">@ms.Description</small>
+                                            }
+                                        </td>
+                                        <td>@ms.DueDate.ToString("dd.MM.yyyy")</td>
+                                        <td>
+                                            @if (isCompleted)
+                                            {
+                                                <span class="badge bg-success">Выполнен</span>
+                                            }
+                                            else if (isOverdue)
+                                            {
+                                                <span class="badge bg-danger">Просрочен</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">В ожидании</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <!-- Payments -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Платежи</h5>
+                    <span class="badge bg-secondary">@Model.Payments.Count платежей</span>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Payments.Any())
+                    {
+                        var isTjsContract = Model.Currency == ContractCurrency.TJS && Model.ExchangeRate.HasValue;
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Описание</th>
+                                    @if (isTjsContract)
+                                    {
+                                        <th class="text-end">Сумма (TJS)</th>
+                                        <th class="text-end">Курс</th>
+                                        <th class="text-end">USD (контракт)</th>
+                                        <th class="text-end">USD (оплата)</th>
+                                        <th class="text-end">Разница</th>
+                                    }
+                                    else
+                                    {
+                                        <th class="text-end">Сумма</th>
+                                    }
+                                    <th class="text-center">Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var payment in Model.Payments.OrderByDescending(p => p.PaymentDate))
+                                {
+                                    <tr>
+                                        <td>@payment.PaymentDate.ToString("dd.MM.yyyy")</td>
+                                        <td>@payment.Description</td>
+                                        @if (isTjsContract)
+                                        {
+                                            var usdContract2 = (decimal?)null;
+                                            var usdPayment2 = (decimal?)null;
+                                            var diff2 = (decimal?)null;
+                                            if (payment.AmountTjs.HasValue && payment.AmountTjs > 0)
+                                            {
+                                                if (Model.ExchangeRate!.Value > 0)
+                                                    usdContract2 = Math.Round(payment.AmountTjs.Value / Model.ExchangeRate.Value, 2);
+                                                if (payment.ExchangeRate.HasValue && payment.ExchangeRate > 0)
+                                                    usdPayment2 = Math.Round(payment.AmountTjs.Value / payment.ExchangeRate.Value, 2);
+                                                if (usdContract2.HasValue && usdPayment2.HasValue)
+                                                    diff2 = usdPayment2.Value - usdContract2.Value;
+                                            }
+                                            <td class="text-end fw-semibold">
+                                                @if (payment.AmountTjs.HasValue && payment.AmountTjs > 0)
+                                                {
+                                                    @payment.AmountTjs.Value.ToString("N2") <small class="text-muted">TJS</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (payment.ExchangeRate.HasValue)
+                                                {
+                                                    @payment.ExchangeRate.Value.ToString("F4")
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (usdContract2.HasValue)
+                                                {
+                                                    <span>$@usdContract2.Value.ToString("N2")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (usdPayment2.HasValue)
+                                                {
+                                                    <span>$@usdPayment2.Value.ToString("N2")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (diff2.HasValue && diff2 != 0)
+                                                {
+                                                    <span class="fw-semibold @(diff2 > 0 ? "text-success" : "text-danger")">
+                                                        @(diff2 > 0 ? "▲" : "▼") $@Math.Abs(diff2.Value).ToString("N2")
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">—</span>
+                                                }
+                                            </td>
+                                        }
+                                        else
+                                        {
+                                            <td class="text-end fw-semibold">$@payment.Amount.ToString("N0")</td>
+                                        }
+                                        <td class="text-center">
+                                            @switch (payment.Status)
+                                            {
+                                                case PaymentStatus.Pending:
+                                                    <span class="badge bg-warning text-dark">Ожидает</span>
+                                                    break;
+                                                case PaymentStatus.Approved:
+                                                    <span class="badge bg-info">Одобрен</span>
+                                                    break;
+                                                case PaymentStatus.Paid:
+                                                    <span class="badge bg-success">Оплачен</span>
+                                                    break;
+                                                case PaymentStatus.Rejected:
+                                                    <span class="badge bg-danger">Отклонён</span>
+                                                    break;
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Нет платежей
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Contractor Info -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>Подрядчик</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">@Model.Contractor.Name</h6>
+                    @if (!string.IsNullOrEmpty(Model.Contractor.Country))
+                    {
+                        <p class="mb-1"><i class="bi bi-geo-alt me-2"></i>@Model.Contractor.Country</p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Contractor.ContactPerson))
+                    {
+                        <p class="mb-1"><i class="bi bi-person me-2"></i>@Model.Contractor.ContactPerson</p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Contractor.Email))
+                    {
+                        <p class="mb-1"><i class="bi bi-envelope me-2"></i><a href="mailto:@Model.Contractor.Email">@Model.Contractor.Email</a></p>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Contractor.Phone))
+                    {
+                        <p class="mb-0"><i class="bi bi-telephone me-2"></i>@Model.Contractor.Phone</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Financial Summary -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Финансы</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        @if (Model.Currency == ContractCurrency.TJS && Model.AmountTjs.HasValue)
+                        {
+                            <tr>
+                                <td class="text-muted">Валюта:</td>
+                                <td class="text-end"><span class="badge bg-info-subtle text-info-emphasis">🇹🇯 TJS</span></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Сумма (TJS):</td>
+                                <td class="text-end fw-bold">@Model.AmountTjs.Value.ToString("N2") TJS</td>
+                            </tr>
+                            @if (Model.ExchangeRate.HasValue)
+                            {
+                                <tr>
+                                    <td class="text-muted">Курс подписания:</td>
+                                    <td class="text-end">@Model.ExchangeRate.Value.ToString("F4")</td>
+                                </tr>
+                            }
+                            <tr>
+                                <td class="text-muted">Эквивалент (USD):</td>
+                                <td class="text-end">$@Model.ContractAmount.ToString("N2")</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            <tr>
+                                <td class="text-muted">Сумма контракта:</td>
+                                <td class="text-end">$@Model.ContractAmount.ToString("N0")</td>
+                            </tr>
+                        }
+                        @if (Model.AdditionalAmount > 0)
+                        {
+                            <tr>
+                                <td class="text-muted">Дополнительно:</td>
+                                <td class="text-end text-success">+$@Model.AdditionalAmount.ToString("N0")</td>
+                            </tr>
+                        }
+                        @if (Model.SavedAmount > 0)
+                        {
+                            <tr>
+                                <td class="text-muted">Экономия:</td>
+                                <td class="text-end text-info">-$@Model.SavedAmount.ToString("N0")</td>
+                            </tr>
+                        }
+                        <tr class="border-top">
+                            <td class="fw-bold">Итого (USD):</td>
+                            <td class="text-end fw-bold">$@Model.FinalAmount.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Оплачено:</td>
+                            <td class="text-end text-success">$@Model.PaidAmount.ToString("N0")</td>
+                        </tr>
+                        @if (Model.Currency == ContractCurrency.TJS && Model.ExchangeRate.HasValue)
+                        {
+                            var paidPayments = Model.Payments.Where(p => p.Status == PaymentStatus.Paid && p.AmountTjs.HasValue && p.AmountTjs > 0).ToList();
+                            if (paidPayments.Any())
+                            {
+                                var contractRate = Model.ExchangeRate.Value;
+                                var totalUsdAtContractRate = paidPayments.Where(p => contractRate > 0).Sum(p => Math.Round(p.AmountTjs!.Value / contractRate, 2));
+                                var totalUsdAtPaymentRate = paidPayments.Where(p => p.ExchangeRate.HasValue && p.ExchangeRate > 0).Sum(p => Math.Round(p.AmountTjs!.Value / p.ExchangeRate!.Value, 2));
+                                var gainLoss = totalUsdAtPaymentRate - totalUsdAtContractRate;
+                                if (gainLoss != 0)
+                                {
+                                    <tr>
+                                        <td class="text-muted">Курсовая разница:</td>
+                                        <td class="text-end fw-semibold @(gainLoss > 0 ? "text-success" : "text-danger")">
+                                            @(gainLoss > 0 ? "▲" : "▼") $@Math.Abs(gainLoss).ToString("N2")
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                        <tr>
+                            <td class="text-muted">К оплате:</td>
+                            <td class="text-end text-warning">$@Model.RemainingAmount.ToString("N0")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Документы</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.Documents.Any())
+                    {
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var doc in Model.Documents)
+                            {
+                                <li class="mb-2">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0 text-center">Нет документов</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

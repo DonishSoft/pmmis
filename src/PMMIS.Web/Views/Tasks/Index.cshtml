@@ -1,0 +1,994 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskIndexViewModel
+@{
+    ViewData["Title"] = "Задачи";
+    var activeView = ViewBag.ViewMode as string ?? "list";
+}
+
+<div class="tasks-module">
+    <!-- Header -->
+    <div class="tasks-header d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <h4 class="mb-0 fw-bold"><i class="bi bi-check2-square me-2 text-primary"></i>Мои задачи</h4>
+            <button type="button" class="btn btn-success btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+                <i class="bi bi-plus-lg me-1"></i>Создать
+            </button>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group" role="group">
+                <span class="badge bg-danger">@Model.OverdueCount просрочено</span>
+                <span class="badge bg-warning text-dark">@Model.UpcomingCount скоро дедлайн</span>
+            </div>
+            <a asp-action="ExportTasks" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-download"></i>
+            </a>
+            <a asp-action="Kpi" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-graph-up"></i> KPI
+            </a>
+        </div>
+    </div>
+
+    <!-- View Tabs -->
+    <ul class="nav nav-pills mb-3 bg-light rounded-3 p-1" id="viewTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="list-tab" data-bs-toggle="pill" data-bs-target="#list-view" 
+                    type="button" role="tab" aria-controls="list-view" aria-selected="true">
+                <i class="bi bi-list-ul me-1"></i>Список
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="board-tab" data-bs-toggle="pill" data-bs-target="#board-view" 
+                    type="button" role="tab" aria-controls="board-view" aria-selected="false">
+                <i class="bi bi-kanban me-1"></i>Доска
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="deadlines-tab" data-bs-toggle="pill" data-bs-target="#deadlines-view" 
+                    type="button" role="tab" aria-controls="deadlines-view" aria-selected="false">
+                <i class="bi bi-clock me-1"></i>Сроки
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="calendar-tab" data-bs-toggle="pill" data-bs-target="#calendar-view" 
+                    type="button" role="tab" aria-controls="calendar-view" aria-selected="false">
+                <i class="bi bi-calendar3 me-1"></i>Календарь
+            </button>
+        </li>
+        
+        <!-- Filters Toggle -->
+        <li class="nav-item ms-auto">
+            <button class="nav-link text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtersPanel">
+                <i class="bi bi-funnel me-1"></i>Фильтры
+            </button>
+        </li>
+    </ul>
+
+    <!-- Filters Panel (Collapsible) -->
+    <div class="collapse mb-3" id="filtersPanel">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <form asp-action="Index" method="get" class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted mb-1">Статус</label>
+                        <select name="status" class="form-select form-select-sm">
+                            <option value="">Все</option>
+                            <option value="0" selected="@(Model.StatusFilter == PMMIS.Domain.Entities.ProjectTaskStatus.New)">Новые</option>
+                            <option value="1" selected="@(Model.StatusFilter == PMMIS.Domain.Entities.ProjectTaskStatus.InProgress)">В работе</option>
+                            <option value="3" selected="@(Model.StatusFilter == PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview)">На проверке</option>
+                            <option value="4" selected="@(Model.StatusFilter == PMMIS.Domain.Entities.ProjectTaskStatus.Completed)">Завершены</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted mb-1">Приоритет</label>
+                        <select name="priority" class="form-select form-select-sm">
+                            <option value="">Все</option>
+                            <option value="3" selected="@(Model.PriorityFilter == PMMIS.Domain.Entities.TaskPriority.Critical)">Критический</option>
+                            <option value="2" selected="@(Model.PriorityFilter == PMMIS.Domain.Entities.TaskPriority.High)">Высокий</option>
+                            <option value="1" selected="@(Model.PriorityFilter == PMMIS.Domain.Entities.TaskPriority.Normal)">Нормальный</option>
+                            <option value="0" selected="@(Model.PriorityFilter == PMMIS.Domain.Entities.TaskPriority.Low)">Низкий</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted mb-1">Исполнитель</label>
+                        <select name="assignee" class="form-select form-select-sm">
+                            <option value="">Все</option>
+                            @foreach (var user in Model.Users)
+                            {
+                                <option value="@user.Id" selected="@(Model.AssigneeFilter == user.Id)">@user.FullName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted mb-1">Поиск</label>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Название задачи..." value="@Model.SearchTerm" />
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                            <i class="bi bi-search me-1"></i>Найти
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="viewTabsContent">
+        
+        <!-- LIST VIEW -->
+        <div class="tab-pane fade show active" id="list-view" role="tabpanel" aria-labelledby="list-tab">
+            @await Html.PartialAsync("_ListView", Model)
+        </div>
+        
+        <!-- BOARD VIEW -->
+        <div class="tab-pane fade" id="board-view" role="tabpanel" aria-labelledby="board-tab">
+            @await Html.PartialAsync("_BoardView", Model)
+        </div>
+        
+        <!-- DEADLINES VIEW -->
+        <div class="tab-pane fade" id="deadlines-view" role="tabpanel" aria-labelledby="deadlines-tab">
+            @await Html.PartialAsync("_DeadlinesView", Model)
+        </div>
+        
+        <!-- CALENDAR VIEW -->
+        <div class="tab-pane fade" id="calendar-view" role="tabpanel" aria-labelledby="calendar-tab">
+            @await Html.PartialAsync("_CalendarView", Model)
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Modal -->
+<div class="modal fade" id="quickAddModal" aria-labelledby="quickAddModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-light rounded-circle p-1" title="Важная задача" id="pinTaskBtn">
+                        <i class="bi bi-pin-angle"></i>
+                    </button>
+                    <span class="text-muted small">Новая задача</span>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="quickAddForm" asp-action="QuickCreate" method="post">
+                <input type="hidden" name="Priority" id="taskPriority" value="1" />
+                <input type="hidden" name="ProjectId" id="taskProjectId" value="" />
+                <div class="modal-body pt-2">
+                    <div class="mb-3">
+                        <input type="text" name="Title" class="form-control form-control-lg border-0 ps-0 fw-bold" 
+                               placeholder="Название задачи" required autofocus 
+                               style="font-size: 1.25rem; box-shadow: none;" />
+                    </div>
+                    <div class="mb-3">
+                        <textarea name="Description" class="form-control border-0 ps-0 text-muted" rows="1" 
+                                  placeholder="Описание" style="resize: none; box-shadow: none;"></textarea>
+                    </div>
+                    
+                    <!-- Assignee and Due Date -->
+                    <div class="mb-3 d-flex align-items-center gap-3">
+                        <div class="assignee-dropdown-wrap" style="flex: 1; min-width: 0;">
+                            <input type="hidden" name="AssigneeId" id="quickAssigneeValue" />
+                            <input type="text" id="quickAssigneeDropdown" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2" style="flex-shrink: 0;">
+                            <i class="bi bi-calendar-event text-danger"></i>
+                            <input type="date" name="DueDate" class="form-control form-control-sm border-0 bg-light" 
+                                   value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")" style="width: 150px;" />
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons Row -->
+                    <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                        <button type="button" class="btn btn-sm btn-light" id="attachFileBtn">
+                            <i class="bi bi-paperclip me-1"></i>Файлы
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#checklistSection">
+                            <i class="bi bi-list-check me-1"></i>Чек-лист
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" data-bs-toggle="dropdown">
+                            <i class="bi bi-folder me-1"></i>Проект
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="setProject(null)">— Без проекта —</a></li>
+                            @if (ViewBag.Projects != null)
+                            {
+                                @foreach (var project in (dynamic)ViewBag.Projects)
+                                {
+                                    <li><a class="dropdown-item" href="#" onclick="setProject('@project.Id', '@project.NameRu')">@project.NameRu</a></li>
+                                }
+                            }
+                        </ul>
+                    </div>
+                    
+                    <!-- Professional Checklist Section (Bitrix24-style) -->
+                    <div class="collapse mt-3" id="checklistSection">
+                        <div class="checklists-container">
+                            <!-- Checklists will be rendered here -->
+                            <div id="checklistsContainer"></div>
+                            
+                            <!-- Add New Checklist Button -->
+                            <button type="button" class="btn btn-sm btn-link text-primary p-0 mt-2" onclick="addNewChecklist()">
+                                <i class="bi bi-plus me-1"></i>Новый чек-лист
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Project Display -->
+                    <div class="mt-2 d-none" id="selectedProjectBadge">
+                        <span class="badge bg-primary-subtle text-primary">
+                            <i class="bi bi-folder me-1"></i><span id="selectedProjectName"></span>
+                            <button type="button" class="btn-close btn-close-sm" style="font-size: 8px;" onclick="setProject(null)"></button>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0 d-flex justify-content-between align-items-center">
+                    <a asp-action="Create" class="text-muted small text-decoration-none">
+                        Полная форма
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bi bi-check-lg me-1"></i>Создать
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- File Input (Hidden) -->
+<input type="file" id="taskFileInput" class="d-none" multiple />
+
+
+@section Styles {
+<style>
+    .tasks-module {
+        padding: 1.5rem;
+        max-width: 100%;
+    }
+    .nav-pills .nav-link {
+        color: #6c757d;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .nav-pills .nav-link:hover {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+    .nav-pills .nav-link.active {
+        background: #0d6efd;
+        color: white;
+    }
+    
+    /* Modal styling */
+    #quickAddModal .form-control:focus {
+        box-shadow: none;
+        border-color: #0d6efd;
+    }
+    #quickAddModal .modal-header {
+        padding: 1rem 1.5rem 0.5rem;
+    }
+    #quickAddModal .modal-body {
+        padding: 0.5rem 1.5rem 1rem;
+    }
+    #quickAddModal .modal-footer {
+        padding: 0.5rem 1.5rem 1rem;
+    }
+    
+    /* Checklist items - Professional Bitrix24-style */
+    .checklist-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    .checklist-header {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        background: #fff;
+        border-bottom: 1px solid #e9ecef;
+        cursor: pointer;
+    }
+    .checklist-header:hover {
+        background: #f8f9fa;
+    }
+    .checklist-title {
+        flex: 1;
+        font-weight: 600;
+        font-size: 14px;
+        margin: 0;
+        border: none;
+        background: transparent;
+        outline: none;
+    }
+    .checklist-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .checklist-progress-bar {
+        width: 60px;
+        height: 4px;
+        background: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .checklist-progress-fill {
+        height: 100%;
+        background: #198754;
+        transition: width 0.3s ease;
+    }
+    .checklist-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .checklist-header:hover .checklist-toolbar {
+        opacity: 1;
+    }
+    .checklist-toolbar button {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .checklist-toolbar button:hover {
+        background: #e9ecef;
+        color: #212529;
+    }
+    .checklist-body {
+        padding: 8px 12px;
+    }
+    .checklist-items {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .checklist-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 4px;
+        border-radius: 6px;
+        transition: background 0.15s;
+        position: relative;
+    }
+    .checklist-item:hover {
+        background: #e9ecef;
+    }
+    .checklist-item.indented {
+        margin-left: 24px;
+    }
+    .checklist-item.important {
+        background: #fff3cd;
+    }
+    .checklist-item.important:hover {
+        background: #ffe69c;
+    }
+    .checklist-item-drag {
+        cursor: grab;
+        color: #adb5bd;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .checklist-item:hover .checklist-item-drag {
+        opacity: 1;
+    }
+    .checklist-item-checkbox {
+        width: 18px;
+        height: 18px;
+        border-radius: 4px;
+        cursor: pointer;
+        accent-color: #0d6efd;
+    }
+    .checklist-item-text {
+        flex: 1;
+        font-size: 13px;
+        line-height: 1.4;
+        border: none;
+        background: transparent;
+        outline: none;
+        padding: 0;
+    }
+    .checklist-item-text.checked {
+        text-decoration: line-through;
+        color: #6c757d;
+    }
+    .checklist-item-assignee {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #6c757d;
+        color: white;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .checklist-item-toolbar {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    .checklist-item:hover .checklist-item-toolbar {
+        opacity: 1;
+    }
+    .checklist-item-toolbar button {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .checklist-item-toolbar button:hover {
+        background: #dee2e6;
+        color: #212529;
+    }
+    .checklist-item-toolbar button.active {
+        color: #0d6efd;
+    }
+    .add-item-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 4px;
+        margin-top: 4px;
+    }
+    .add-item-input input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        outline: none;
+        font-size: 13px;
+        padding: 4px 0;
+    }
+    .add-item-input input::placeholder {
+        color: #adb5bd;
+    }
+    
+    /* File attachment display */
+    .attached-files {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .file-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: #e9ecef;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    /* Syncfusion Assignee DropDown */
+    .assignee-dropdown-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .assignee-dropdown-wrap .e-ddl {
+        border: none !important;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+    .assignee-dropdown-wrap .e-input-group:not(.e-float-icon-left):not(.e-float-input)::before,
+    .assignee-dropdown-wrap .e-input-group:not(.e-float-icon-left):not(.e-float-input)::after {
+        display: none;
+    }
+    .assignee-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 4px;
+    }
+    .assignee-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 600;
+        font-size: 12px;
+        flex-shrink: 0;
+        text-transform: uppercase;
+    }
+    .assignee-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .assignee-name {
+        font-weight: 500;
+        font-size: 13px;
+        line-height: 1.3;
+        color: #212529;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .assignee-position {
+        font-size: 11px;
+        color: #6c757d;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .assignee-value-tpl {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .assignee-value-tpl .assignee-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+    .assignee-value-tpl .assignee-name {
+        font-size: 13px;
+    }
+    /* Override Syncfusion popup width */
+    #quickAssigneeDropdown_popup {
+        min-width: 320px !important;
+    }
+</style>
+}
+
+@section Scripts {
+<script id="assigneeItemTpl" type="text/x-template">
+    <div class="assignee-item">
+        <div class="assignee-avatar" style="background: ${color}">${initials}</div>
+        <div class="assignee-info">
+            <span class="assignee-name">${name}</span>
+            <span class="assignee-position">${position}</span>
+        </div>
+    </div>
+</script>
+<script id="assigneeValueTpl" type="text/x-template">
+    <div class="assignee-value-tpl">
+        <div class="assignee-avatar" style="background: ${color}">${initials}</div>
+        <span class="assignee-name">${name}</span>
+    </div>
+</script>
+<script>
+// Professional Checklist System (Bitrix24-style)
+const checklists = [];
+let checklistIdCounter = 0;
+
+function addNewChecklist(name = 'Чек-лист ' + (checklists.length + 1)) {
+    const checklist = {
+        id: ++checklistIdCounter,
+        name: name,
+        expanded: true,
+        items: []
+    };
+    checklists.push(checklist);
+    renderChecklists();
+}
+
+function deleteChecklist(id) {
+    const idx = checklists.findIndex(c => c.id === id);
+    if (idx !== -1) {
+        checklists.splice(idx, 1);
+        renderChecklists();
+    }
+}
+
+function toggleChecklistExpand(id) {
+    const cl = checklists.find(c => c.id === id);
+    if (cl) {
+        cl.expanded = !cl.expanded;
+        renderChecklists();
+    }
+}
+
+function updateChecklistName(id, name) {
+    const cl = checklists.find(c => c.id === id);
+    if (cl) cl.name = name;
+}
+
+function addChecklistItem(checklistId, text = '') {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    
+    cl.items.push({
+        id: Date.now(),
+        text: text,
+        checked: false,
+        important: false,
+        indented: false,
+        assignee: null
+    });
+    renderChecklists();
+}
+
+function updateItemText(checklistId, itemId, text) {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    const item = cl.items.find(i => i.id === itemId);
+    if (item) item.text = text;
+}
+
+function toggleItemCheck(checklistId, itemId) {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    const item = cl.items.find(i => i.id === itemId);
+    if (item) {
+        item.checked = !item.checked;
+        renderChecklists();
+    }
+}
+
+function toggleItemImportant(checklistId, itemId) {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    const item = cl.items.find(i => i.id === itemId);
+    if (item) {
+        item.important = !item.important;
+        renderChecklists();
+    }
+}
+
+function toggleItemIndent(checklistId, itemId) {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    const item = cl.items.find(i => i.id === itemId);
+    if (item) {
+        item.indented = !item.indented;
+        renderChecklists();
+    }
+}
+
+function deleteItem(checklistId, itemId) {
+    const cl = checklists.find(c => c.id === checklistId);
+    if (!cl) return;
+    cl.items = cl.items.filter(i => i.id !== itemId);
+    renderChecklists();
+}
+
+function getChecklistProgress(checklist) {
+    if (checklist.items.length === 0) return { checked: 0, total: 0, percent: 0 };
+    const checked = checklist.items.filter(i => i.checked).length;
+    const total = checklist.items.length;
+    return { checked, total, percent: Math.round((checked / total) * 100) };
+}
+
+function renderChecklists() {
+    const container = document.getElementById('checklistsContainer');
+    if (!container) return;
+    
+    container.innerHTML = checklists.map(cl => {
+        const progress = getChecklistProgress(cl);
+        return `
+            <div class="checklist-card" data-checklist-id="${cl.id}">
+                <div class="checklist-header" onclick="toggleChecklistExpand(${cl.id})">
+                    <i class="bi bi-grip-vertical text-muted me-2" style="cursor: grab;"></i>
+                    <i class="bi bi-chevron-${cl.expanded ? 'down' : 'right'} me-2 text-muted" style="font-size: 12px;"></i>
+                    <input type="text" class="checklist-title" value="${cl.name}" 
+                           onclick="event.stopPropagation()" 
+                           onchange="updateChecklistName(${cl.id}, this.value)" />
+                    <div class="checklist-progress">
+                        <span>${progress.checked}/${progress.total}</span>
+                        <div class="checklist-progress-bar">
+                            <div class="checklist-progress-fill" style="width: ${progress.percent}%"></div>
+                        </div>
+                    </div>
+                    <div class="checklist-toolbar ms-2" onclick="event.stopPropagation()">
+                        <button type="button" title="Вверх"><i class="bi bi-chevron-up"></i></button>
+                        <button type="button" title="Вниз"><i class="bi bi-chevron-down"></i></button>
+                        <button type="button" title="Удалить" onclick="deleteChecklist(${cl.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${cl.expanded ? `
+                <div class="checklist-body">
+                    <ul class="checklist-items">
+                        ${cl.items.map(item => renderChecklistItem(cl.id, item)).join('')}
+                    </ul>
+                    <div class="add-item-input">
+                        <i class="bi bi-plus text-muted"></i>
+                        <input type="text" placeholder="Добавить пункт" 
+                               onkeypress="handleAddItemKeypress(event, ${cl.id})" 
+                               id="addItemInput-${cl.id}" />
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderChecklistItem(checklistId, item) {
+    return `
+        <li class="checklist-item ${item.indented ? 'indented' : ''} ${item.important ? 'important' : ''}" 
+            data-item-id="${item.id}">
+            <span class="checklist-item-drag"><i class="bi bi-grip-vertical"></i></span>
+            <input type="checkbox" class="checklist-item-checkbox" 
+                   ${item.checked ? 'checked' : ''} 
+                   onclick="toggleItemCheck(${checklistId}, ${item.id})" />
+            <input type="text" class="checklist-item-text ${item.checked ? 'checked' : ''}" 
+                   value="${item.text}" 
+                   onchange="updateItemText(${checklistId}, ${item.id}, this.value)"
+                   placeholder="Название пункта" />
+            <div class="checklist-item-toolbar">
+                <button type="button" title="Важный" class="${item.important ? 'active' : ''}" 
+                        onclick="toggleItemImportant(${checklistId}, ${item.id})">
+                    <i class="bi bi-flag-fill"></i>
+                </button>
+                <button type="button" title="Отступ" class="${item.indented ? 'active' : ''}"
+                        onclick="toggleItemIndent(${checklistId}, ${item.id})">
+                    <i class="bi bi-text-indent-left"></i>
+                </button>
+                <button type="button" title="Исполнитель">
+                    <i class="bi bi-person"></i>
+                </button>
+                <button type="button" title="Удалить" onclick="deleteItem(${checklistId}, ${item.id})">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </li>
+    `;
+}
+
+function handleAddItemKeypress(event, checklistId) {
+    if (event.key === 'Enter') {
+        const input = document.getElementById(`addItemInput-${checklistId}`);
+        const text = input.value.trim();
+        if (text) {
+            addChecklistItem(checklistId, text);
+            setTimeout(() => {
+                const newInput = document.getElementById(`addItemInput-${checklistId}`);
+                if (newInput) newInput.focus();
+            }, 50);
+        }
+    }
+}
+
+// Initialize with one checklist when section opens
+document.querySelector('[data-bs-target="#checklistSection"]')?.addEventListener('click', function() {
+    if (checklists.length === 0) {
+        addNewChecklist();
+    }
+});
+
+// Project selection
+function setProject(projectId, projectName) {
+    document.getElementById('taskProjectId').value = projectId || '';
+    const badge = document.getElementById('selectedProjectBadge');
+    const nameSpan = document.getElementById('selectedProjectName');
+    
+    if (projectId && projectName) {
+        nameSpan.textContent = projectName;
+        badge.classList.remove('d-none');
+    } else {
+        badge.classList.add('d-none');
+    }
+}
+
+// File attachment handling
+let attachedFiles = [];
+document.getElementById('attachFileBtn')?.addEventListener('click', function() {
+    document.getElementById('taskFileInput').click();
+});
+
+document.getElementById('taskFileInput')?.addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    attachedFiles = attachedFiles.concat(files);
+    renderAttachedFiles();
+});
+
+function renderAttachedFiles() {
+    let container = document.getElementById('attachedFilesContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'attachedFilesContainer';
+        container.className = 'attached-files';
+        document.querySelector('#quickAddModal .modal-body').appendChild(container);
+    }
+    
+    container.innerHTML = attachedFiles.map((file, i) => `
+        <span class="file-badge">
+            <i class="bi bi-paperclip"></i>${file.name}
+            <button type="button" class="btn-close" style="font-size: 8px;" onclick="removeFile(${i})"></button>
+        </span>
+    `).join('');
+}
+
+function removeFile(index) {
+    attachedFiles.splice(index, 1);
+    renderAttachedFiles();
+}
+
+// Pin button toggle
+document.getElementById('pinTaskBtn')?.addEventListener('click', function() {
+    const priority = document.getElementById('taskPriority');
+    if (priority.value === '3') {
+        priority.value = '1';
+        this.classList.remove('btn-warning');
+        this.classList.add('btn-light');
+    } else {
+        priority.value = '3';
+        this.classList.remove('btn-light');
+        this.classList.add('btn-warning');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Quick add form submission via AJAX
+    const quickAddForm = document.getElementById('quickAddForm');
+    quickAddForm?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Создание...';
+        
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Close modal and reload page
+                bootstrap.Modal.getInstance(document.getElementById('quickAddModal')).hide();
+                location.reload();
+            } else {
+                alert(result.error || 'Ошибка создания задачи');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка сети');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Создать';
+        }
+    });
+    
+    // Reset modal on close
+    document.getElementById('quickAddModal')?.addEventListener('hidden.bs.modal', function() {
+        checklists.length = 0;
+        checklistIdCounter = 0;
+        attachedFiles.length = 0;
+        renderChecklists();
+        const fc = document.getElementById('attachedFilesContainer');
+        if (fc) fc.innerHTML = '';
+        document.getElementById('taskPriority').value = '1';
+        document.getElementById('pinTaskBtn')?.classList.remove('btn-warning');
+        document.getElementById('pinTaskBtn')?.classList.add('btn-light');
+        setProject(null);
+    });
+    
+    // Remember active tab
+    const savedTab = localStorage.getItem('tasksActiveTab');
+    if (savedTab) {
+        const tabEl = document.querySelector(`#viewTabs button[data-bs-target="${savedTab}"]`);
+        if (tabEl) {
+            new bootstrap.Tab(tabEl).show();
+        }
+    }
+    
+    // Save active tab on change
+    document.querySelectorAll('#viewTabs button[data-bs-toggle="pill"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            localStorage.setItem('tasksActiveTab', e.target.dataset.bsTarget);
+        });
+    });
+});
+
+// Fix: Bootstrap 5 modal focus trap prevents typing in Syncfusion filter inputs.
+// We must intercept the focusin event BEFORE Bootstrap's handler.
+(function() {
+    var quickModal = document.getElementById('quickAddModal');
+    if (!quickModal) return;
+    
+    // Method 1: Override _enforceFocus on modal instance after it shows
+    quickModal.addEventListener('shown.bs.modal', function() {
+        var modalInstance = bootstrap.Modal.getInstance(quickModal);
+        if (modalInstance && modalInstance._focustrap) {
+            modalInstance._focustrap.deactivate();
+        }
+    });
+    
+    // Method 2: Also stop focusin propagation for Syncfusion elements (belt & suspenders)
+    document.addEventListener('focusin', function(e) {
+        if (e.target && (
+            e.target.classList.contains('e-input-filter') ||
+            e.target.closest('.e-popup') ||
+            e.target.closest('.e-ddl')
+        )) {
+            e.stopImmediatePropagation();
+        }
+    }, true);
+})();
+
+// Syncfusion Assignee DropDownList initialization
+(function() {
+    const avatarColors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+    function getInitials(name) {
+        if (!name) return '?';
+        const parts = name.trim().split(/\s+/);
+        return parts.length >= 2 ? (parts[0][0] + parts[1][0]) : parts[0].substring(0, 2);
+    }
+    function getColor(name) {
+        let hash = 0;
+        for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        return avatarColors[Math.abs(hash) % avatarColors.length];
+    }
+
+    const usersData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.Users.Select(u => new { id = u.Id, name = u.FullName, position = u.Position ?? "" }),
+        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+    ));
+
+    const assigneeData = usersData.map(u => ({
+        ...u,
+        initials: getInitials(u.name),
+        color: getColor(u.name)
+    }));
+
+    const ddlEl = document.getElementById('quickAssigneeDropdown');
+    if (ddlEl) {
+        const ddl = new ej.dropdowns.DropDownList({
+            dataSource: assigneeData,
+            fields: { value: 'id', text: 'name' },
+            placeholder: 'Исполнитель',
+            popupHeight: '280px',
+            allowFiltering: true,
+            filterBarPlaceholder: 'Поиск сотрудника...',
+            itemTemplate: document.getElementById('assigneeItemTpl').innerHTML,
+            valueTemplate: document.getElementById('assigneeValueTpl').innerHTML,
+            value: assigneeData.length > 0 ? assigneeData[0].id : null,
+            // Render popup inside modal so Bootstrap focus trap doesn't steal focus
+            target: document.querySelector('#quickAddModal .modal-content'),
+            change: function(args) {
+                document.getElementById('quickAssigneeValue').value = args.value || '';
+            },
+            filtering: function(e) {
+                let query = new ej.data.Query();
+                query = (e.text !== '') ? query.where('name', 'contains', e.text, true) : query;
+                e.updateData(assigneeData, query);
+            }
+        });
+        ddl.appendTo(ddlEl);
+        // Set initial hidden value
+        document.getElementById('quickAssigneeValue').value = assigneeData.length > 0 ? assigneeData[0].id : '';
+    }
+})();
+</script>
+}

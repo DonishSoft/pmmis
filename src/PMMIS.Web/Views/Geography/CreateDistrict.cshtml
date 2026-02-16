@@ -1,0 +1,65 @@
+@model PMMIS.Domain.Entities.District
+@{
+    ViewData["Title"] = "Добавить район";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item active">Добавить район</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Новый район</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateDistrict" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Код <span class="text-danger">*</span></label>
+                                <input asp-for="Code" class="form-control" placeholder="DUSTI" required />
+                                <span asp-validation-for="Code" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-translate me-2"></i>Локализация названия</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">🇷🇺 Русский <span class="text-danger">*</span></label>
+                                <input asp-for="NameRu" class="form-control" placeholder="Дустийский район" required />
+                                <span asp-validation-for="NameRu" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇹🇯 Тоҷикӣ <span class="text-danger">*</span></label>
+                                <input asp-for="NameTj" class="form-control" placeholder="Ноҳияи Дӯстӣ" required />
+                                <span asp-validation-for="NameTj" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">🇺🇸 English <span class="text-danger">*</span></label>
+                                <input asp-for="NameEn" class="form-control" placeholder="Dusti District" required />
+                                <span asp-validation-for="NameEn" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

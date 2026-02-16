@@ -1,0 +1,96 @@
+@{
+    ViewData["Title"] = "Отчёт по платежам";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="bi bi-bar-chart-line me-2"></i>Отчёт по платежам</h4>
+            <p class="text-muted mb-0">Анализ запланированных и фактических платежей по контрактам</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Печать
+            </button>
+        </div>
+    </div>
+
+    <!-- Skeleton placeholder (shown while AJAX loads) -->
+    <div id="report-skeleton">
+        <!-- Skeleton stat cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3"><div class="skeleton skeleton-card"></div></div>
+            <div class="col-md-3"><div class="skeleton skeleton-card"></div></div>
+            <div class="col-md-3"><div class="skeleton skeleton-card"></div></div>
+            <div class="col-md-3"><div class="skeleton skeleton-card"></div></div>
+        </div>
+        <!-- Skeleton charts -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-7"><div class="skeleton skeleton-chart"></div></div>
+            <div class="col-lg-5"><div class="skeleton skeleton-chart"></div></div>
+        </div>
+        <!-- Skeleton table -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="skeleton skeleton-text lg mb-3"></div>
+                @for (int i = 0; i < 6; i++)
+                {
+                    <div class="skeleton skeleton-table-row"></div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Actual data will be loaded here -->
+    <div id="report-data" style="display:none;"></div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('@Url.Action("PaymentsData")')
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('report-data').innerHTML = html;
+                    document.getElementById('report-skeleton').style.display = 'none';
+                    document.getElementById('report-data').style.display = 'block';
+
+                    // Execute scripts from loaded content — external first, then inline
+                    const scripts = document.getElementById('report-data').querySelectorAll('script');
+                    const externalScripts = [];
+                    const inlineScripts = [];
+                    scripts.forEach(s => {
+                        if (s.src) externalScripts.push(s.src);
+                        else inlineScripts.push(s.textContent);
+                    });
+
+                    // Load external scripts first, then run inline
+                    let loaded = 0;
+                    const total = externalScripts.length;
+                    const runInline = () => {
+                        inlineScripts.forEach(code => {
+                            const sc = document.createElement('script');
+                            sc.textContent = code;
+                            document.body.appendChild(sc);
+                        });
+                    };
+                    if (total === 0) {
+                        runInline();
+                    } else {
+                        externalScripts.forEach(src => {
+                            const sc = document.createElement('script');
+                            sc.src = src;
+                            sc.onload = () => { if (++loaded === total) runInline(); };
+                            document.body.appendChild(sc);
+                        });
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('report-skeleton').innerHTML = 
+                        '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>Ошибка загрузки данных. Попробуйте обновить страницу.</div>';
+                    console.error('Failed to load report data:', err);
+                });
+        });
+    </script>
+}

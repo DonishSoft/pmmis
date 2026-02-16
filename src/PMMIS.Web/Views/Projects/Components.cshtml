@@ -1,0 +1,139 @@
+@model List<PMMIS.Domain.Entities.Component>
+@{
+    ViewData["Title"] = "Компоненты проекта";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var project = ViewBag.Project as PMMIS.Domain.Entities.Project;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-diagram-3 me-2"></i>Компоненты проекта
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Проекты</a></li>
+                    <li class="breadcrumb-item active">@project?.Code - Компоненты</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Назад
+            </a>
+            <a asp-action="CreateComponent" asp-route-projectId="@project?.Id" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Новый компонент
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Project Info Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-1">
+                        <span class="badge bg-success me-2">@project?.Code</span>
+                        @project?.NameRu
+                    </h5>
+                    <p class="text-muted mb-0">
+                        @project?.StartDate.ToString("dd.MM.yyyy") - @project?.EndDate?.ToString("dd.MM.yyyy")
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="h4 mb-0 text-primary">$@project?.TotalBudget.ToString("N0")</div>
+                    <small class="text-muted">Общий бюджет</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Components Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">№</th>
+                            <th>Название компонента</th>
+                            <th class="text-end">Бюджет</th>
+                            <th class="text-center">Подкомпонентов</th>
+                            <th class="text-center" style="width: 180px;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var component in Model)
+                        {
+                            <tr>
+                                <td><span class="badge bg-secondary">@component.Number</span></td>
+                                <td>
+                                    <a asp-action="SubComponents" asp-route-componentId="@component.Id" class="text-decoration-none fw-medium">
+                                        @component.NameRu
+                                    </a>
+                                </td>
+                                <td class="text-end">$@component.AllocatedBudget.ToString("N0")</td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">@component.SubComponents.Count</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a asp-action="SubComponents" asp-route-componentId="@component.Id" class="btn btn-outline-info" title="Подкомпоненты">
+                                            <i class="bi bi-list-ul"></i>
+                                        </a>
+                                        <a asp-action="EditComponent" asp-route-id="@component.Id" class="btn btn-outline-secondary" title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-action="DeleteComponent" asp-route-id="@component.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить компонент?')">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="2" class="fw-bold">Итого</td>
+                            <td class="text-end fw-bold">$@Model.Sum(c => c.AllocatedBudget).ToString("N0")</td>
+                            <td class="text-center fw-bold">@Model.Sum(c => c.SubComponents.Count)</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-diagram-3 fs-1 text-muted"></i>
+                    <p class="mt-3 mb-0 text-muted">Компоненты не добавлены</p>
+                    <a asp-action="CreateComponent" asp-route-projectId="@project?.Id" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-lg me-1"></i>Добавить первый компонент
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

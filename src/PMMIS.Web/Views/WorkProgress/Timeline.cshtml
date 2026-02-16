@@ -1,0 +1,219 @@
+@model PMMIS.Domain.Entities.Contract
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = $"Timeline: {Model.ContractNumber}";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Прогресс работ</a></li>
+            <li class="breadcrumb-item active">Timeline</li>
+        </ol>
+    </nav>
+
+    <!-- Contract Header -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h4 class="mb-1">@Model.ContractNumber</h4>
+                    <p class="text-muted mb-0">@Model.Contractor.Name</p>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="fs-1 fw-bold @(Model.WorkCompletedPercent >= 80 ? "text-success" : Model.WorkCompletedPercent >= 50 ? "text-info" : "text-warning")">
+                            @Model.WorkCompletedPercent%
+                        </div>
+                        <small class="text-muted">Выполнено</small>
+                    </div>
+                </div>
+                <div class="col-md-3 text-end">
+                    <a asp-action="Create" asp-route-contractId="@Model.Id" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Добавить отчёт
+                    </a>
+                </div>
+            </div>
+            <div class="progress mt-3" style="height: 20px;">
+                @{
+                    var barColor = Model.WorkCompletedPercent >= 80 ? "bg-success" : 
+                                  Model.WorkCompletedPercent >= 50 ? "bg-info" : 
+                                  Model.WorkCompletedPercent >= 25 ? "bg-warning" : "bg-danger";
+                }
+                <div class="progress-bar @barColor" style="width: @Model.WorkCompletedPercent%">
+                    @Model.WorkCompletedPercent%
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>История прогресса</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.WorkProgresses.Any())
+                    {
+                        <div class="timeline">
+                            @foreach (var progress in Model.WorkProgresses.OrderByDescending(w => w.ReportDate))
+                            {
+                                <div class="timeline-item mb-4 pb-4 border-bottom">
+                                    <div class="d-flex">
+                                        <div class="timeline-marker me-3">
+                                            @{
+                                                var markerColor = progress.CompletedPercent >= 80 ? "bg-success" : 
+                                                                 progress.CompletedPercent >= 50 ? "bg-info" : 
+                                                                 progress.CompletedPercent >= 25 ? "bg-warning" : "bg-danger";
+                                            }
+                                            <div class="rounded-circle @markerColor d-flex align-items-center justify-content-center" 
+                                                 style="width: 50px; height: 50px; color: white; font-weight: bold;">
+                                                @progress.CompletedPercent%
+                                            </div>
+                                        </div>
+                                        <div class="timeline-content flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <strong>@progress.ReportDate.ToString("dd MMMM yyyy")</strong>
+                                                </div>
+                                                <a asp-action="Edit" asp-route-id="@progress.Id" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            </div>
+                                            
+                                            @if (!string.IsNullOrEmpty(progress.Description))
+                                            {
+                                                <p class="mb-2">@progress.Description</p>
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(progress.Issues))
+                                            {
+                                                <div class="alert alert-warning py-2 mb-2">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    @progress.Issues
+                                                </div>
+                                            }
+                                            
+                                            @if (progress.Documents.Any())
+                                            {
+                                                <div class="mt-2">
+                                                    @foreach (var doc in progress.Documents)
+                                                    {
+                                                        <a href="@doc.FilePath" target="_blank" class="badge bg-light text-dark me-1">
+                                                            <i class="bi bi-paperclip me-1"></i>@(doc.Description ?? doc.OriginalFileName)
+                                                        </a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            <p>Нет отчётов о прогрессе</p>
+                            <a asp-action="Create" asp-route-contractId="@Model.Id" class="btn btn-primary">
+                                <i class="bi bi-plus-lg me-1"></i> Добавить первый отчёт
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Chart -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-graph-up me-2"></i>Динамика</h6>
+                </div>
+                <div class="card-body">
+                    <div id="progressChart" style="height: 250px;"></div>
+                </div>
+            </div>
+
+            <!-- Contract Info -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Информация</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">Начало:</td>
+                            <td>@Model.SigningDate.ToString("dd.MM.yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Срок:</td>
+                            <td>@Model.ContractEndDate.ToString("dd.MM.yyyy")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Осталось:</td>
+                            <td>
+                                @if (Model.RemainingDays < 0)
+                                {
+                                    <span class="badge bg-danger">Просрочен на @Math.Abs(Model.RemainingDays) дн.</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@Model.RemainingDays дн.</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Сумма:</td>
+                            <td class="fw-bold">$@Model.FinalAmount.ToString("N0")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Progress Chart
+    var chartData = [
+        @foreach (var p in Model.WorkProgresses.OrderBy(w => w.ReportDate))
+        {
+            <text>{ x: new Date('@p.ReportDate.ToString("yyyy-MM-dd")'), y: @p.CompletedPercent },</text>
+        }
+    ];
+
+    var chart = new ej.charts.Chart({
+        primaryXAxis: { 
+            valueType: 'DateTime',
+            labelFormat: 'dd.MM'
+        },
+        primaryYAxis: { 
+            minimum: 0, 
+            maximum: 100,
+            labelFormat: '{value}%'
+        },
+        series: [{
+            dataSource: chartData,
+            xName: 'x',
+            yName: 'y',
+            type: 'Line',
+            fill: '#667eea',
+            width: 3,
+            marker: {
+                visible: true,
+                width: 10,
+                height: 10,
+                fill: '#667eea'
+            }
+        }],
+        tooltip: { enable: true }
+    });
+    chart.appendTo('#progressChart');
+</script>
+}

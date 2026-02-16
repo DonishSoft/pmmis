@@ -1,0 +1,323 @@
+@model PMMIS.Domain.Entities.ProcurementPlan
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Новая позиция закупки";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">План закупок</a></li>
+            <li class="breadcrumb-item active">Новая позиция</li>
+        </ol>
+    </nav>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Create" method="post">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Референс номер <span class="text-danger">*</span></label>
+                                <input type="text" asp-for="ReferenceNo" class="form-control" placeholder="IDA-WSIP-AF3/2024/001" required />
+                                <span asp-validation-for="ReferenceNo" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Описание <span class="text-danger">*</span></label>
+                                <input type="text" asp-for="Description" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Проект <span class="text-danger">*</span></label>
+                                <select asp-for="ProjectId" asp-items="ViewBag.Projects" class="form-select" id="projectSelect" required>
+                                    <option value="">— Выберите —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Компонент</label>
+                                <select asp-for="ComponentId" class="form-select" id="componentSelect">
+                                    <option value="">— Необязательно —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Подкомпонент</label>
+                                <select asp-for="SubComponentId" class="form-select" id="subComponentSelect">
+                                    <option value="">— Необязательно —</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-3">
+                                <label class="form-label">Метод закупки <span class="text-danger">*</span></label>
+                                <select asp-for="Method" class="form-select">
+                                    <option value="@((int)ProcurementMethod.NCB)">NCB</option>
+                                    <option value="@((int)ProcurementMethod.ICB)">ICB</option>
+                                    <option value="@((int)ProcurementMethod.Shopping)">Shopping</option>
+                                    <option value="@((int)ProcurementMethod.DirectContracting)">Direct Contracting</option>
+                                    <option value="@((int)ProcurementMethod.CQS)">CQS</option>
+                                    <option value="@((int)ProcurementMethod.QCBS)">QCBS</option>
+                                    <option value="@((int)ProcurementMethod.LCS)">LCS</option>
+                                    <option value="@((int)ProcurementMethod.FBS)">FBS</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Тип закупки <span class="text-danger">*</span></label>
+                                <select asp-for="Type" class="form-select">
+                                    <option value="@((int)ProcurementType.Goods)">Товары</option>
+                                    <option value="@((int)ProcurementType.Works)">Работы</option>
+                                    <option value="@((int)ProcurementType.ConsultingServices)">Консультационные услуги</option>
+                                    <option value="@((int)ProcurementType.NonConsultingServices)">Некон. услуги</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Оценочная сумма (USD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" asp-for="EstimatedAmount" class="form-control" step="0.01" min="0" required id="estimatedAmount" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Статус</label>
+                                <select asp-for="Status" class="form-select">
+                                    <option value="@((int)ProcurementStatus.Planned)">🔵 Запланировано</option>
+                                    <option value="@((int)ProcurementStatus.InProgress)">⏳ В процессе</option>
+                                    <option value="@((int)ProcurementStatus.Evaluation)">📋 Оценка</option>
+                                    <option value="@((int)ProcurementStatus.Awarded)">🏆 Присуждено</option>
+                                    <option value="@((int)ProcurementStatus.Completed)">✅ Завершено</option>
+                                    <option value="@((int)ProcurementStatus.Cancelled)">❌ Отменено</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Сроки</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Плановая дата тендера</label>
+                                <input type="date" asp-for="PlannedBidOpeningDate" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Плановая дата подписания</label>
+                                <input type="date" asp-for="PlannedContractSigningDate" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Плановое завершение</label>
+                                <input type="date" asp-for="PlannedCompletionDate" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Комментарии</h5>
+                    </div>
+                    <div class="card-body">
+                        <textarea asp-for="Comments" class="form-control" rows="3" placeholder="Дополнительные примечания..."></textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Создать
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Budget Info Sidebar -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm" id="budgetInfoCard" style="display: none;">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-wallet2 me-2"></i>Бюджет <span id="budgetEntityName"></span></h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between text-muted small mb-1">
+                            <span>Выделено:</span>
+                            <span class="fw-bold text-primary" id="allocatedBudget">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mb-1">
+                            <span>Использовано:</span>
+                            <span class="fw-bold text-secondary" id="usedBudget">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="fw-semibold">Остаток:</span>
+                            <span class="fw-bold fs-5" id="remainingBudget">$0</span>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-success" id="budgetProgressBar" style="width: 100%"></div>
+                    </div>
+                    <div class="mt-3" id="budgetWarning" style="display: none;">
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Оценочная сумма превышает остаток!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 bg-light mt-3">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle me-2"></i>Подсказка</h6>
+                    <p class="small text-muted mb-0">
+                        Выберите компонент или подкомпонент для просмотра доступного бюджета.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let currentBudgetData = { allocated: 0, used: 0, remaining: 0 };
+
+    document.getElementById('projectSelect').addEventListener('change', async function() {
+        const projectId = this.value;
+        const componentSelect = document.getElementById('componentSelect');
+        const subComponentSelect = document.getElementById('subComponentSelect');
+        
+        componentSelect.innerHTML = '<option value="">— Необязательно —</option>';
+        subComponentSelect.innerHTML = '<option value="">— Необязательно —</option>';
+        hideBudgetInfo();
+        
+        if (projectId) {
+            const response = await fetch(`/Procurement/GetComponentsByProject?projectId=${projectId}`);
+            const components = await response.json();
+            components.forEach(c => {
+                componentSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+        }
+    });
+
+    document.getElementById('componentSelect').addEventListener('change', async function() {
+        const componentId = this.value;
+        const subComponentSelect = document.getElementById('subComponentSelect');
+        
+        subComponentSelect.innerHTML = '<option value="">— Необязательно —</option>';
+        
+        if (componentId) {
+            // Load subcomponents
+            const response = await fetch(`/Procurement/GetSubComponentsByComponent?componentId=${componentId}`);
+            const subComponents = await response.json();
+            subComponents.forEach(sc => {
+                subComponentSelect.innerHTML += `<option value="${sc.id}">${sc.name}</option>`;
+            });
+            
+            // Load component budget
+            await loadComponentBudget(componentId);
+        } else {
+            hideBudgetInfo();
+        }
+    });
+
+    document.getElementById('subComponentSelect').addEventListener('change', async function() {
+        const subComponentId = this.value;
+        const componentId = document.getElementById('componentSelect').value;
+        
+        if (subComponentId) {
+            await loadSubComponentBudget(subComponentId);
+        } else if (componentId) {
+            await loadComponentBudget(componentId);
+        } else {
+            hideBudgetInfo();
+        }
+    });
+
+    document.getElementById('estimatedAmount').addEventListener('input', function() {
+        checkBudgetWarning();
+    });
+
+    async function loadComponentBudget(componentId) {
+        const response = await fetch(`/Procurement/GetComponentBudget?componentId=${componentId}`);
+        currentBudgetData = await response.json();
+        showBudgetInfo('компонента');
+    }
+
+    async function loadSubComponentBudget(subComponentId) {
+        const response = await fetch(`/Procurement/GetSubComponentBudget?subComponentId=${subComponentId}`);
+        currentBudgetData = await response.json();
+        showBudgetInfo('подкомпонента');
+    }
+
+    function showBudgetInfo(entityType) {
+        document.getElementById('budgetInfoCard').style.display = 'block';
+        document.getElementById('budgetEntityName').textContent = entityType;
+        document.getElementById('allocatedBudget').textContent = '$' + formatNumber(currentBudgetData.allocated);
+        document.getElementById('usedBudget').textContent = '$' + formatNumber(currentBudgetData.used);
+        document.getElementById('remainingBudget').textContent = '$' + formatNumber(currentBudgetData.remaining);
+        
+        const usedPercent = currentBudgetData.allocated > 0 ? (currentBudgetData.used / currentBudgetData.allocated) * 100 : 0;
+        document.getElementById('budgetProgressBar').style.width = (100 - usedPercent) + '%';
+        
+        // Color based on remaining
+        const bar = document.getElementById('budgetProgressBar');
+        bar.classList.remove('bg-success', 'bg-warning', 'bg-danger');
+        if (currentBudgetData.remaining <= 0) {
+            bar.classList.add('bg-danger');
+        } else if (usedPercent > 70) {
+            bar.classList.add('bg-warning');
+        } else {
+            bar.classList.add('bg-success');
+        }
+        
+        // Color remaining text
+        const remainingEl = document.getElementById('remainingBudget');
+        remainingEl.classList.remove('text-success', 'text-warning', 'text-danger');
+        if (currentBudgetData.remaining <= 0) {
+            remainingEl.classList.add('text-danger');
+        } else if (usedPercent > 70) {
+            remainingEl.classList.add('text-warning');
+        } else {
+            remainingEl.classList.add('text-success');
+        }
+        
+        checkBudgetWarning();
+    }
+
+    function hideBudgetInfo() {
+        document.getElementById('budgetInfoCard').style.display = 'none';
+        currentBudgetData = { allocated: 0, used: 0, remaining: 0 };
+    }
+
+    function checkBudgetWarning() {
+        const amount = parseFloat(document.getElementById('estimatedAmount').value) || 0;
+        const warning = document.getElementById('budgetWarning');
+        
+        if (currentBudgetData.remaining > 0 && amount > currentBudgetData.remaining) {
+            warning.style.display = 'block';
+        } else {
+            warning.style.display = 'none';
+        }
+    }
+
+    function formatNumber(num) {
+        return num.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+</script>
+}
+

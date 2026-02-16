@@ -1,0 +1,106 @@
+@model PMMIS.Domain.Entities.HealthFacility
+@{
+    var village = ViewBag.Village as PMMIS.Domain.Entities.Village;
+    var types = ViewBag.HealthFacilityTypes as List<PMMIS.Domain.Entities.HealthFacilityType>;
+    ViewData["Title"] = "Добавить медучреждение";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="VillageDetails" asp-route-id="@village?.Id">@village?.NameRu</a></li>
+            <li class="breadcrumb-item active">Добавить медучреждение</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-hospital me-2"></i>Новое медучреждение в @village?.NameRu</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateHealthFacility" method="post">
+                        <input type="hidden" asp-for="VillageId" />
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Тип медучреждения</label>
+                                <select asp-for="TypeId" class="form-select">
+                                    <option value="">-- Выберите тип --</option>
+                                    @if (types != null)
+                                    {
+                                        @foreach (var t in types.Where(x => x.IsActive).OrderBy(x => x.SortOrder))
+                                        {
+                                            <option value="@t.Id">@t.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">№ сортировки</label>
+                                <input asp-for="SortOrder" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Название</label>
+                                <input asp-for="Name" class="form-control" placeholder="Необязательно" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-bar-chart me-2"></i>Статистика</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Общее кол-во персонала</label>
+                                <input asp-for="TotalStaff" type="number" class="form-control" min="0" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Из них женщин</label>
+                                <input asp-for="FemaleStaff" type="number" class="form-control" min="0" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Пациентов в день</label>
+                                <input asp-for="PatientsPerDay" type="number" class="form-control" min="0" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-droplet me-2"></i>Инфраструктура ВКХ</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input asp-for="HasWaterSupply" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label">💧 Есть водоснабжение</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input asp-for="HasSanitation" class="form-check-input" type="checkbox" />
+                                    <label class="form-check-label">🚿 Есть санитарные условия</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Примечания</label>
+                            <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Дополнительная информация"></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="VillageDetails" asp-route-id="@village?.Id" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

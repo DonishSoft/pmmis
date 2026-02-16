@@ -1,0 +1,173 @@
+@model PMMIS.Domain.Entities.WorkProgress
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "АВР #" + Model.Id;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var createdDate = Model.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+    var updatedDate = Model.UpdatedAt.HasValue ? Model.UpdatedAt.Value.ToString("dd.MM.yyyy HH:mm") : "";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Реестр АВР</a></li>
+            <li class="breadcrumb-item active">АВР #@Model.Id</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-check me-2"></i>
+                        Акт выполненных работ
+                    </h5>
+                    <div>
+                        <span class="badge bg-primary fs-6">@Model.CompletedPercent%</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Контракт</label>
+                            <p class="mb-0">
+                                <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.ContractId" class="text-decoration-none">
+                                    <strong>@Model.Contract.ContractNumber</strong>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-muted small">Дата отчёта</label>
+                            <p class="mb-0"><strong>@Model.ReportDate.ToString("dd.MM.yyyy")</strong></p>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-muted small">Прогресс</label>
+                            @{
+                                var progressClass = Model.CompletedPercent >= 80 ? "bg-success" : 
+                                                   Model.CompletedPercent >= 50 ? "bg-info" : 
+                                                   Model.CompletedPercent >= 25 ? "bg-warning" : "bg-danger";
+                            }
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar @progressClass" style="width: @Model.CompletedPercent%">
+                                    @Model.CompletedPercent%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="text-muted small">Подрядчик</label>
+                            <p class="mb-0">@Model.Contract.Contractor.Name</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="text-muted small">Проект</label>
+                            <p class="mb-0">@Model.Contract.Project.NameRu (@Model.Contract.Project.Code)</p>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="text-muted small">Описание выполненных работ</label>
+                                <p class="mb-0">@Model.Description</p>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Issues))
+                    {
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="text-muted small">Проблемы и риски</label>
+                                <div class="alert alert-warning mb-0">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>@Model.Issues
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i> Редактировать
+                </a>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Назад к реестру
+                </a>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Контракт</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>@Model.Contract.ContractNumber</strong></p>
+                    <p class="text-muted small mb-2">@Model.Contract.ScopeOfWork</p>
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>Сумма:</span>
+                        <strong>$@Model.Contract.ContractAmount.ToString("N0")</strong>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>Срок до:</span>
+                        <strong>@Model.Contract.ContractEndDate.ToString("dd.MM.yyyy")</strong>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.Documents.Any())
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="bi bi-paperclip me-2"></i>Прикреплённые документы</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var doc in Model.Documents)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="bi bi-file-earmark me-2"></i>
+                                        @(doc.Description ?? doc.OriginalFileName)
+                                    </span>
+                                    <a href="@doc.FilePath" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center text-muted">
+                        <i class="bi bi-folder2-open fs-1 d-block mb-2"></i>
+                        Нет прикреплённых документов
+                    </div>
+                </div>
+            }
+
+            <div class="card border-0 shadow-sm mt-4 bg-light">
+                <div class="card-body small text-muted">
+                    <div><i class="bi bi-clock me-1"></i> Создано: @createdDate</div>
+                    @if (Model.UpdatedAt.HasValue)
+                    {
+                        <div><i class="bi bi-pencil me-1"></i> Изменено: @updatedDate</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

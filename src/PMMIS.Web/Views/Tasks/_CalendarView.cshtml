@@ -1,0 +1,307 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskIndexViewModel
+@{
+    var tasks = Model.Tasks;
+}
+
+<div id="schedule-calendar" style="min-height: 600px;"></div>
+
+<script>
+(function() {
+    var scheduleInstance = null;
+    
+    // Russian translations
+    var monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    var monthNamesShortMap = {
+        'Jan': 'Янв', 'Feb': 'Фев', 'Mar': 'Мар', 'Apr': 'Апр',
+        'May': 'Май', 'Jun': 'Июн', 'Jul': 'Июл', 'Aug': 'Авг',
+        'Sep': 'Сен', 'Oct': 'Окт', 'Nov': 'Ноя', 'Dec': 'Дек'
+    };
+    var dayNamesMap = {
+        'Sunday': 'Воскресенье', 'Monday': 'Понедельник', 'Tuesday': 'Вторник',
+        'Wednesday': 'Среда', 'Thursday': 'Четверг', 'Friday': 'Пятница', 'Saturday': 'Суббота'
+    };
+    var dayNamesShortMap = {
+        'Sun': 'Вс', 'Mon': 'Пн', 'Tue': 'Вт', 'Wed': 'Ср', 'Thu': 'Чт', 'Fri': 'Пт', 'Sat': 'Сб'
+    };
+    var viewMap = { 'Day': 'День', 'Week': 'Неделя', 'Month': 'Месяц', 'Agenda': 'Повестка' };
+    var engMonths = ['January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December'];
+
+    
+    function initSchedule() {
+        if (typeof ej === 'undefined' || typeof ej.schedule === 'undefined') {
+            setTimeout(initSchedule, 100);
+            return;
+        }
+        
+        var container = document.getElementById('schedule-calendar');
+        if (!container) return;
+        
+        // Destroy existing instance if any
+        if (container.ej2_instances && container.ej2_instances.length > 0) {
+            container.ej2_instances[0].destroy();
+            container.innerHTML = '';
+        }
+        
+        // Convert tasks to Schedule events
+        var scheduleData = [
+            @foreach (var task in tasks)
+            {
+                var statusColor = task.Status switch
+                {
+                    PMMIS.Domain.Entities.ProjectTaskStatus.New => "#6c757d",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.InProgress => "#007bff",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.OnHold => "#ffc107",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview => "#17a2b8",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.Completed => "#28a745",
+                    PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled => "#dc3545",
+                    _ => "#6c757d"
+                };
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                {
+                    Id: @task.Id,
+                    Subject: '@Html.Raw(escapedTitle)',
+                    StartTime: new Date(@task.DueDate.Year, @(task.DueDate.Month - 1), @task.DueDate.Day, 9, 0, 0),
+                    EndTime: new Date(@task.DueDate.Year, @(task.DueDate.Month - 1), @task.DueDate.Day, 18, 0, 0),
+                    IsAllDay: true,
+                    CategoryColor: '@statusColor',
+                    TaskId: @task.Id
+                },
+                </text>
+            }
+        ];
+
+        scheduleInstance = new ej.schedule.Schedule({
+            height: '600px',
+            width: '100%',
+            selectedDate: new Date(),
+            currentView: 'Month',
+            views: [
+                { option: 'Day' },
+                { option: 'Week' },
+                { option: 'Month' },
+                { option: 'Agenda' }
+            ],
+            eventSettings: {
+                dataSource: scheduleData,
+                fields: {
+                    id: 'Id',
+                    subject: { name: 'Subject' },
+                    startTime: { name: 'StartTime' },
+                    endTime: { name: 'EndTime' },
+                    isAllDay: { name: 'IsAllDay' }
+                }
+            },
+            eventRendered: function(args) {
+                args.element.style.backgroundColor = args.data.CategoryColor;
+                args.element.style.borderColor = args.data.CategoryColor;
+            },
+            eventClick: function(args) {
+                if (args.event && args.event.TaskId) {
+                    window.location.href = '/Tasks/Details/' + args.event.TaskId;
+                }
+            },
+            cellDoubleClick: function(args) {
+                args.cancel = true;
+                var selectedDate = args.startTime;
+                var year = selectedDate.getFullYear();
+                var month = ('0' + (selectedDate.getMonth() + 1)).slice(-2);
+                var day = ('0' + selectedDate.getDate()).slice(-2);
+                var dateStr = year + '-' + month + '-' + day;
+                
+                var modal = document.getElementById('quickAddModal');
+                if (modal) {
+                    var dueDateInput = modal.querySelector('#quickDueDate');
+                    if (dueDateInput) {
+                        dueDateInput.value = dateStr;
+                    }
+                    var bsModal = new bootstrap.Modal(modal);
+                    bsModal.show();
+                } else {
+                    window.location.href = '/Tasks/Create?dueDate=' + dateStr;
+                }
+            },
+            popupOpen: function(args) {
+                if (args.type === 'QuickInfo' || args.type === 'Editor') {
+                    args.cancel = true;
+                }
+            },
+            showQuickInfo: false,
+            firstDayOfWeek: 1,
+            dataBound: function(args) {
+                setTimeout(applyRussianLabels, 100);
+            },
+            navigating: function(args) {
+                setTimeout(applyRussianLabels, 200);
+            },
+            actionComplete: function(args) {
+                setTimeout(applyRussianLabels, 100);
+            }
+        });
+        
+        scheduleInstance.appendTo('#schedule-calendar');
+        
+        // Apply Russian labels after initial render
+        setTimeout(applyRussianLabels, 500);
+    }
+    
+    function applyRussianLabels() {
+        // Translate date range header (month/year)
+        var dateHeader = document.querySelector('#schedule-calendar .e-date-range .e-tbar-btn-text');
+        if (dateHeader) {
+            var text = dateHeader.textContent;
+            for (var i = 0; i < engMonths.length; i++) {
+                text = text.replace(engMonths[i], monthNames[i]);
+            }
+            dateHeader.textContent = text;
+        }
+        
+        // Translate day column headers - use .e-header-cells span (confirmed selector)
+        var daySpans = document.querySelectorAll('#schedule-calendar .e-header-cells span');
+        daySpans.forEach(function(span) {
+            var txt = span.innerText.trim();
+            if (dayNamesMap[txt]) {
+                span.innerText = dayNamesMap[txt];
+            }
+        });
+        
+        // Also translate .e-header-day for Week/Day views
+        var dayHeaders = document.querySelectorAll('#schedule-calendar .e-header-day');
+        dayHeaders.forEach(function(header) {
+            var txt = header.textContent.trim();
+            if (dayNamesMap[txt]) {
+                header.textContent = dayNamesMap[txt];
+            }
+        });
+        
+        // Translate "Today" button in toolbar
+        var todayBtns = document.querySelectorAll('#schedule-calendar .e-today .e-tbar-btn-text');
+        todayBtns.forEach(function(btn) {
+            if (btn.textContent.trim() === 'Today') {
+                btn.textContent = 'Сегодня';
+            }
+        });
+        
+        // Translate view buttons
+        var viewBtns = document.querySelectorAll('#schedule-calendar .e-views .e-tbar-btn-text');
+        viewBtns.forEach(function(btn) {
+            if (viewMap[btn.textContent.trim()]) {
+                btn.textContent = viewMap[btn.textContent.trim()];
+            }
+        });
+        
+        // Translate datepicker popup (short month names and TODAY)
+        translateDatepickerPopup();
+    }
+    
+    function translateDatepickerPopup() {
+        // Translate short month names in calendar popup (Jan, Feb, Mar -> Янв, Фев, Мар)
+        var monthCells = document.querySelectorAll('.e-calendar .e-content span, .e-popup .e-content span');
+        monthCells.forEach(function(cell) {
+            var txt = cell.textContent.trim();
+            if (monthNamesShortMap[txt]) {
+                cell.textContent = monthNamesShortMap[txt];
+            }
+        });
+        
+        // Translate TODAY button in datepicker popup
+        var todayLinks = document.querySelectorAll('.e-calendar .e-footer-container button, .e-popup .e-today');
+        todayLinks.forEach(function(btn) {
+            if (btn.textContent.trim().toUpperCase() === 'TODAY') {
+                btn.textContent = 'СЕГОДНЯ';
+            }
+        });
+    }
+    
+    // Use MutationObserver to catch datepicker popup opening
+    var popupObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 && (node.classList.contains('e-popup') || node.classList.contains('e-calendar'))) {
+                    setTimeout(translateDatepickerPopup, 50);
+                }
+            });
+        });
+    });
+    
+    // Start observing for popup elements
+    if (document.body) {
+        popupObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+
+    
+    // Handle tab visibility
+    function handleTabShow() {
+        var calendarTab = document.getElementById('calendar-tab');
+        if (calendarTab) {
+            calendarTab.addEventListener('shown.bs.tab', function() {
+                setTimeout(initSchedule, 100);
+            });
+        }
+    }
+    
+    // Initial load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            initSchedule();
+            handleTabShow();
+        });
+    } else {
+        initSchedule();
+        handleTabShow();
+    }
+})();
+</script>
+
+<style>
+    #schedule-calendar {
+        border-radius: 8px;
+        overflow: visible;
+        background: #fff;
+    }
+    .e-schedule {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+    }
+    .e-schedule .e-schedule-toolbar {
+        background: #fff;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .e-schedule .e-toolbar-items .e-toolbar-item .e-tbar-btn {
+        border-radius: 6px;
+    }
+    .e-schedule .e-header-cells {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+    .e-schedule .e-appointment {
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .e-schedule .e-appointment:hover {
+        opacity: 0.9;
+        cursor: pointer;
+    }
+    .e-schedule .e-month-view .e-appointment {
+        height: auto;
+        min-height: 20px;
+        padding: 2px 6px;
+    }
+    .e-schedule .e-current-day {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    .e-schedule .e-work-cells:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+        cursor: pointer;
+    }
+    .e-schedule .e-schedule-table {
+        width: 100% !important;
+    }
+    .e-schedule .e-content-wrap {
+        overflow-y: auto !important;
+    }
+</style>

@@ -1,0 +1,266 @@
+@{
+    ViewData["Title"] = "Доска задач";
+    var tasks = ViewBag.Tasks as List<PMMIS.Domain.Entities.ProjectTask> ?? new List<PMMIS.Domain.Entities.ProjectTask>();
+    var users = ViewBag.Users as List<PMMIS.Domain.Entities.ApplicationUser> ?? new List<PMMIS.Domain.Entities.ApplicationUser>();
+}
+
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-kanban me-2"></i>Доска задач</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Задачи</a></li>
+                    <li class="breadcrumb-item active">Доска</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-list-ul me-1"></i>Список
+            </a>
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Новая задача
+            </a>
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban-board d-flex gap-3 pb-3" style="overflow-x: auto; min-height: 70vh;">
+        @{
+            var statuses = new[] {
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.New, Name: "Новые", BgColor: "#6c757d", TextColor: "white", Icon: "plus-circle"),
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.InProgress, Name: "В работе", BgColor: "#0d6efd", TextColor: "white", Icon: "play-circle"),
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.OnHold, Name: "На паузе", BgColor: "#ffc107", TextColor: "#212529", Icon: "pause-circle"),
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview, Name: "На проверке", BgColor: "#0dcaf0", TextColor: "#212529", Icon: "eye"),
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.Completed, Name: "Завершено", BgColor: "#198754", TextColor: "white", Icon: "check-circle"),
+                (Status: PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled, Name: "Отменено", BgColor: "#dc3545", TextColor: "white", Icon: "x-circle")
+            };
+        }
+
+        @foreach (var col in statuses)
+        {
+            var columnTasks = tasks.Where(t => t.Status == col.Status).OrderByDescending(t => t.Priority).ThenBy(t => t.DueDate).ToList();
+            
+            <div class="kanban-column flex-shrink-0" style="width: 300px;">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: @col.BgColor; color: @col.TextColor;">
+                        <span>
+                            <i class="bi bi-@col.Icon me-1"></i>@col.Name
+                        </span>
+                        <span class="badge bg-light text-dark">@columnTasks.Count</span>
+                    </div>
+                    <div class="card-body p-2 kanban-drop-zone" 
+                         data-status="@((int)col.Status)" 
+                         style="min-height: 400px; max-height: 65vh; overflow-y: auto; background: #f8f9fa;">
+                        
+                        @foreach (var task in columnTasks)
+                        {
+                            var priorityBadge = task.Priority switch
+                            {
+                                PMMIS.Domain.Entities.TaskPriority.Critical => "danger",
+                                PMMIS.Domain.Entities.TaskPriority.High => "warning",
+                                PMMIS.Domain.Entities.TaskPriority.Normal => "info",
+                                _ => "secondary"
+                            };
+                            var isOverdue = task.IsOverdue;
+                            
+                            <div class="kanban-card card mb-2 shadow-sm @(isOverdue ? "border-danger" : "")" 
+                                 draggable="true" 
+                                 data-task-id="@task.Id"
+                                 style="cursor: grab;">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <span class="badge bg-@priorityBadge">
+                                            @(task.Priority switch {
+                                                PMMIS.Domain.Entities.TaskPriority.Critical => "Критич.",
+                                                PMMIS.Domain.Entities.TaskPriority.High => "Высокий",
+                                                PMMIS.Domain.Entities.TaskPriority.Normal => "Норм.",
+                                                _ => "Низкий"
+                                            })
+                                        </span>
+                                        @if (isOverdue)
+                                        {
+                                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i></span>
+                                        }
+                                    </div>
+                                    <a asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none">
+                                        <h6 class="card-title mb-1 text-truncate" title="@task.Title">@task.Title</h6>
+                                    </a>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar me-1"></i>@task.DueDate.ToString("dd.MM")
+                                        </small>
+                                        @if (task.Assignee != null)
+                                        {
+                                            <small class="text-muted text-truncate" style="max-width: 100px;" title="@task.Assignee.FullName">
+                                                <i class="bi bi-person me-1"></i>@task.Assignee.FirstName
+                                            </small>
+                                        }
+                                    </div>
+                                    @if (task.SubTasks.Any())
+                                    {
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                <i class="bi bi-list-check me-1"></i>
+                                                @task.SubTasksCompletedCount/@task.SubTasks.Count подзадач
+                                            </small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        
+                        <div class="empty-placeholder text-center text-muted py-4 @(columnTasks.Any() ? "d-none" : "")">
+                            <i class="bi bi-inbox fs-3"></i>
+                            <p class="mb-0 small">Пусто</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" 
+     style="background: rgba(0,0,0,0.3); z-index: 9999;">
+    <div class="d-flex justify-content-center align-items-center h-100">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.kanban-card');
+    const dropZones = document.querySelectorAll('.kanban-drop-zone');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    let draggedCard = null;
+    
+    // Drag events for cards
+    cards.forEach(card => {
+        card.addEventListener('dragstart', function(e) {
+            draggedCard = this;
+            this.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        
+        card.addEventListener('dragend', function(e) {
+            this.style.opacity = '1';
+            dropZones.forEach(zone => zone.classList.remove('bg-light-blue'));
+        });
+    });
+    
+    // Drop events for columns
+    dropZones.forEach(zone => {
+        zone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('bg-light-blue');
+        });
+        
+        zone.addEventListener('dragleave', function(e) {
+            this.classList.remove('bg-light-blue');
+        });
+        
+        zone.addEventListener('drop', async function(e) {
+            e.preventDefault();
+            this.classList.remove('bg-light-blue');
+            
+            if (!draggedCard) return;
+            
+            const taskId = draggedCard.dataset.taskId;
+            const newStatus = this.dataset.status;
+            
+            // Show loading
+            loadingOverlay.classList.remove('d-none');
+            
+            try {
+                const response = await fetch('/Tasks/ChangeStatus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: `id=${taskId}&status=${newStatus}`
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Hide empty placeholder in target zone
+                    const targetPlaceholder = this.querySelector('.empty-placeholder');
+                    if (targetPlaceholder) targetPlaceholder.classList.add('d-none');
+                    
+                    // Show empty placeholder in source zone if now empty
+                    const sourceZone = draggedCard.closest('.kanban-drop-zone');
+                    
+                    // Move card to new column
+                    this.appendChild(draggedCard);
+                    
+                    // Check if source zone is now empty
+                    if (sourceZone && sourceZone.querySelectorAll('.kanban-card').length === 0) {
+                        const sourcePlaceholder = sourceZone.querySelector('.empty-placeholder');
+                        if (sourcePlaceholder) sourcePlaceholder.classList.remove('d-none');
+                    }
+                    
+                    // Update column counts
+                    updateColumnCounts();
+                    
+                    // Show success toast
+                    showToast('Статус обновлён', 'success');
+                } else {
+                    showToast(result.error || 'Ошибка обновления', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showToast('Ошибка сети', 'danger');
+            } finally {
+                loadingOverlay.classList.add('d-none');
+                draggedCard = null;
+            }
+        });
+    });
+    
+    function updateColumnCounts() {
+        dropZones.forEach(zone => {
+            const count = zone.querySelectorAll('.kanban-card').length;
+            const badge = zone.closest('.card').querySelector('.card-header .badge');
+            if (badge) badge.textContent = count;
+        });
+    }
+    
+    function showToast(message, type) {
+        // Simple alert for now, can be replaced with Bootstrap toast
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3`;
+        toast.style.zIndex = '9999';
+        toast.innerHTML = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+});
+</script>
+
+<style>
+.kanban-drop-zone.bg-light-blue {
+    background-color: #e3f2fd !important;
+}
+.kanban-card:active {
+    cursor: grabbing;
+}
+.kanban-board::-webkit-scrollbar {
+    height: 8px;
+}
+.kanban-board::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+</style>
+}

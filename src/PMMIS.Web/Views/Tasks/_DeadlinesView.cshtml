@@ -1,0 +1,181 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskIndexViewModel
+@{
+    var today = DateTime.Today;
+    var tasks = Model.Tasks;
+    
+    // Categorize tasks by deadline
+    var overdue = tasks.Where(t => t.IsOverdue).OrderBy(t => t.DueDate).ToList();
+    var todayTasks = tasks.Where(t => t.DueDate.Date == today && !t.IsOverdue).ToList();
+    var thisWeek = tasks.Where(t => t.DueDate.Date > today && t.DueDate.Date <= today.AddDays(7)).OrderBy(t => t.DueDate).ToList();
+    var nextWeek = tasks.Where(t => t.DueDate.Date > today.AddDays(7) && t.DueDate.Date <= today.AddDays(14)).OrderBy(t => t.DueDate).ToList();
+    var later = tasks.Where(t => t.DueDate.Date > today.AddDays(14)).OrderBy(t => t.DueDate).ToList();
+}
+
+<div id="deadlines-board" style="margin-top: -10px;"></div>
+
+<script>
+(function() {
+    function initDeadlines() {
+        if (typeof ej === 'undefined' || typeof ej.kanban === 'undefined') {
+            setTimeout(initDeadlines, 100);
+            return;
+        }
+        
+        // Destroy existing instance if any
+        var existingKanban = document.getElementById('deadlines-board');
+        if (existingKanban && existingKanban.ej2_instances && existingKanban.ej2_instances.length > 0) {
+            existingKanban.ej2_instances[0].destroy();
+        }
+        
+        var deadlineData = [
+            @foreach (var task in overdue)
+            {
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                { Id: @task.Id, Title: '@Html.Raw(escapedTitle)', DeadlineGroup: 'Overdue', DueDate: '@task.DueDate.ToString("dd.MM.yyyy")', Assignee: '@(task.Assignee?.FullName ?? "")' },
+                </text>
+            }
+            @foreach (var task in todayTasks)
+            {
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                { Id: @task.Id, Title: '@Html.Raw(escapedTitle)', DeadlineGroup: 'Today', DueDate: '@task.DueDate.ToString("dd.MM.yyyy")', Assignee: '@(task.Assignee?.FullName ?? "")' },
+                </text>
+            }
+            @foreach (var task in thisWeek)
+            {
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                { Id: @task.Id, Title: '@Html.Raw(escapedTitle)', DeadlineGroup: 'ThisWeek', DueDate: '@task.DueDate.ToString("dd.MM.yyyy")', Assignee: '@(task.Assignee?.FullName ?? "")' },
+                </text>
+            }
+            @foreach (var task in nextWeek)
+            {
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                { Id: @task.Id, Title: '@Html.Raw(escapedTitle)', DeadlineGroup: 'NextWeek', DueDate: '@task.DueDate.ToString("dd.MM.yyyy")', Assignee: '@(task.Assignee?.FullName ?? "")' },
+                </text>
+            }
+            @foreach (var task in later)
+            {
+                var escapedTitle = (task.Title ?? "").Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+                <text>
+                { Id: @task.Id, Title: '@Html.Raw(escapedTitle)', DeadlineGroup: 'Later', DueDate: '@task.DueDate.ToString("dd.MM.yyyy")', Assignee: '@(task.Assignee?.FullName ?? "")' },
+                </text>
+            }
+        ];
+
+        var kanbanObj = new ej.kanban.Kanban({
+            dataSource: deadlineData,
+            keyField: 'DeadlineGroup',
+            locale: 'ru',
+            columns: [
+                { headerText: 'Просрочены - @overdue.Count задач', keyField: 'Overdue', allowToggle: true },
+                { headerText: 'На сегодня - @todayTasks.Count задач', keyField: 'Today', allowToggle: true },
+                { headerText: 'На этой неделе - @thisWeek.Count задач', keyField: 'ThisWeek', allowToggle: true },
+                { headerText: 'На след. неделе - @nextWeek.Count задач', keyField: 'NextWeek', allowToggle: true },
+                { headerText: 'Позже - @later.Count задач', keyField: 'Later', allowToggle: true }
+            ],
+            cardSettings: {
+                headerField: 'Title',
+                contentField: 'DueDate'
+            },
+            allowDragAndDrop: false,
+            showItemCount: false,
+            cardClick: function(args) {
+                window.location.href = '/Tasks/Details/' + args.data.Id;
+            },
+            dialogOpen: function(args) { args.cancel = true; }
+        });
+        
+        kanbanObj.appendTo('#deadlines-board');
+
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDeadlines);
+    } else {
+        initDeadlines();
+    }
+})();
+</script>
+
+<style>
+    /* Deadlines-specific Kanban styling with better colors and white text */
+    #deadlines-board .e-kanban-header .e-header-cells {
+        font-weight: 600;
+        font-size: 13px;
+        padding: 12px;
+        color: white !important;
+    }
+    #deadlines-board .e-kanban-header .e-header-cells:nth-child(1) {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+    }
+    #deadlines-board .e-kanban-header .e-header-cells:nth-child(2) {
+        background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+    }
+    #deadlines-board .e-kanban-header .e-header-cells:nth-child(3) {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    }
+    #deadlines-board .e-kanban-header .e-header-cells:nth-child(4) {
+        background: linear-gradient(135deg, #6c757d 0%, #545b62 100%) !important;
+    }
+    #deadlines-board .e-kanban-header .e-header-cells:nth-child(5) {
+        background: linear-gradient(135deg, #6c757d 0%, #545b62 100%) !important;
+    }
+    
+    /* Hide default item count since we put it in header */
+    #deadlines-board .e-item-count {
+        display: none !important;
+    }
+    
+    #deadlines-board .e-header-text {
+        color: white !important;
+    }
+    
+    #deadlines-board .e-kanban-content .e-content-cells {
+        background: #f8f9fa;
+        padding: 8px;
+        min-height: 400px;
+    }
+    
+    #deadlines-board .e-card {
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    #deadlines-board .e-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    #deadlines-board .e-card .e-card-header {
+        padding: 12px 14px 8px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #212529;
+    }
+    #deadlines-board .e-card .e-card-content {
+        padding: 0 14px 12px;
+        color: #6c757d;
+        font-size: 12px;
+    }
+    
+    /* Overdue cards get red left border */
+    #deadlines-board .e-content-cells:first-child .e-card {
+        border-left: 4px solid #dc3545;
+    }
+    
+    /* Hide swimlane */
+    #deadlines-board .e-swimlane-header {
+        display: none !important;
+    }
+    
+    /* Empty column message */
+    #deadlines-board .e-empty-card {
+        color: #6c757d;
+        font-size: 13px;
+    }
+</style>

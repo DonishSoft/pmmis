@@ -1,0 +1,114 @@
+@model PMMIS.Domain.Entities.UserNotificationSettings
+@{
+    ViewData["Title"] = "Настройки уведомлений";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-gear me-2"></i>Настройки уведомлений
+        </h2>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Назад
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <form asp-action="SaveSettings" method="post">
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="UserId" />
+        
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-broadcast me-2"></i>Каналы доставки</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="InAppEnabled" id="inAppEnabled">
+                            <label class="form-check-label" for="inAppEnabled">
+                                <i class="bi bi-app me-1"></i>Уведомления в приложении
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="EmailEnabled" id="emailEnabled">
+                            <label class="form-check-label" for="emailEnabled">
+                                <i class="bi bi-envelope me-1"></i>Email-уведомления
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="TelegramEnabled" id="telegramEnabled">
+                            <label class="form-check-label" for="telegramEnabled">
+                                <i class="bi bi-telegram me-1"></i>Telegram-уведомления
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="TelegramChatId" class="form-label">Telegram Chat ID</label>
+                            <input asp-for="TelegramChatId" class="form-control" placeholder="Ваш Telegram Chat ID" />
+                            <small class="text-muted">Получите у &#64;userinfobot в Telegram</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-bell me-2"></i>Типы уведомлений</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="TaskNotifications" id="taskNotifications">
+                            <label class="form-check-label" for="taskNotifications">
+                                <i class="bi bi-list-check me-1 text-primary"></i>Уведомления о задачах
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="DeadlineNotifications" id="deadlineNotifications">
+                            <label class="form-check-label" for="deadlineNotifications">
+                                <i class="bi bi-clock me-1 text-warning"></i>Уведомления о дедлайнах
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="PaymentNotifications" id="paymentNotifications">
+                            <label class="form-check-label" for="paymentNotifications">
+                                <i class="bi bi-cash me-1 text-success"></i>Уведомления о платежах
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" asp-for="SystemNotifications" id="systemNotifications">
+                            <label class="form-check-label" for="systemNotifications">
+                                <i class="bi bi-info-circle me-1 text-info"></i>Системные уведомления
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label asp-for="DeadlineWarningDays" class="form-label">Напоминать о дедлайне за (дней)</label>
+                            <input asp-for="DeadlineWarningDays" type="number" min="1" max="30" class="form-control" style="max-width: 150px;" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>Сохранить настройки
+            </button>
+        </div>
+    </form>
+</div>

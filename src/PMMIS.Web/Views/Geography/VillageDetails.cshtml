@@ -1,0 +1,240 @@
+@model PMMIS.Domain.Entities.Village
+@{
+    var jamoat = Model.Jamoat;
+    var district = jamoat?.District;
+    ViewData["Title"] = $"Село {Model.NameRu}";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="Jamoats" asp-route-districtId="@district?.Id">@district?.NameRu</a></li>
+            <li class="breadcrumb-item"><a asp-action="Villages" asp-route-jamoatId="@jamoat?.Id">@jamoat?.NameRu</a></li>
+            <li class="breadcrumb-item active">@Model.NameRu</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>@Model.NameRu <small class="text-muted">(@Model.NameTj)</small></h2>
+            <span class="badge bg-secondary">Зона: @Model.Zone</span>
+            @if (Model.IsCoveredByProject)
+            {
+                <span class="badge bg-success ms-2">В охвате проекта</span>
+            }
+        </div>
+        <a asp-action="EditVillage" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i> Редактировать
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Demographics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-primary mb-0">@Model.PopulationCurrent.ToString("N0")</h4>
+                    <small class="text-muted">Население (2025)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-info mb-0">@Model.FemalePopulation.ToString("N0")</h4>
+                    <small class="text-muted">Женщин</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-success mb-0">@Model.HouseholdsCurrent.ToString("N0")</h4>
+                    <small class="text-muted">Домохозяйств</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-warning mb-0">@Model.Schools.Count</h4>
+                    <small class="text-muted">Школ</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-danger mb-0">@Model.HealthFacilities.Count</h4>
+                    <small class="text-muted">Медучреждений</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Schools Section -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-mortarboard me-2"></i>Школы и образование</h5>
+                    <a asp-controller="Facilities" asp-action="CreateSchool" asp-route-villageId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus"></i> Добавить
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>№</th>
+                                <th>Название</th>
+                                <th class="text-end">Учащихся</th>
+                                <th class="text-center">💧</th>
+                                <th class="text-center">🚿</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var school in Model.Schools.OrderBy(s => s.Number))
+                            {
+                                <tr>
+                                    <td>@school.Number</td>
+                                    <td>@(school.Name ?? $"Школа №{school.Number}")</td>
+                                    <td class="text-end">@school.TotalStudents</td>
+                                    <td class="text-center">
+                                        @if (school.HasWaterSupply)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (school.HasSanitation)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Facilities" asp-action="EditSchool" asp-route-id="@school.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.Schools.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">
+                                        Школы не добавлены
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Facilities Section -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-hospital me-2"></i>Медицина</h5>
+                    <a asp-controller="Facilities" asp-action="CreateHealthFacility" asp-route-villageId="@Model.Id" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus"></i> Добавить
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th class="text-end">Персонал</th>
+                                <th class="text-center">💧</th>
+                                <th class="text-center">🚿</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var facility in Model.HealthFacilities.OrderBy(h => h.SortOrder))
+                            {
+                                <tr>
+                                    <td>@(facility.Name ?? "Медучреждение")</td>
+                                    <td>
+                                        @if (facility.Type != null)
+                                        {
+                                            <span class="badge bg-info">@facility.Type.Name</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">@facility.TotalStaff</td>
+                                    <td class="text-center">
+                                        @if (facility.HasWaterSupply)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (facility.HasSanitation)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Facilities" asp-action="EditHealthFacility" asp-route-id="@facility.Id" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!Model.HealthFacilities.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">
+                                        Медучреждения не добавлены
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,138 @@
+@model List<PMMIS.Domain.Entities.Indicator>
+@{
+    ViewData["Title"] = "Индикаторы";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-graph-up me-2"></i>Индикаторы / KPI</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Добавить индикатор
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 60px">№</th>
+                        <th style="width: 100px">Код</th>
+                        <th>Название (РУ)</th>
+                        <th>Тип</th>
+                        <th>Категория</th>
+                        <th class="text-end">Целевое</th>
+                        <th class="text-center">Значений</th>
+                        <th style="width: 180px" class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var indicator in Model)
+                    {
+                        <tr>
+                            <td>@indicator.SortOrder</td>
+                            <td><code>@indicator.Code</code></td>
+                            <td>
+                                <a asp-action="Values" asp-route-indicatorId="@indicator.Id" class="fw-bold text-decoration-none">
+                                    @indicator.NameRu
+                                </a>
+                                @if (indicator.SubIndicators.Any())
+                                {
+                                    <span class="badge bg-secondary ms-1">@indicator.SubIndicators.Count подинд.</span>
+                                }
+                            </td>
+                            <td>
+                                @(indicator.MeasurementType switch {
+                                    PMMIS.Domain.Entities.MeasurementType.Number => "Число",
+                                    PMMIS.Domain.Entities.MeasurementType.Percentage => "%",
+                                    PMMIS.Domain.Entities.MeasurementType.YesNo => "Да/Нет",
+                                    _ => indicator.MeasurementType.ToString()
+                                })
+                            </td>
+                            <td>
+                                @if (indicator.Category != null)
+                                {
+                                    <span class="badge bg-primary">@indicator.Category.Name</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (indicator.MeasurementType == PMMIS.Domain.Entities.MeasurementType.YesNo)
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                                else
+                                {
+                                    @(indicator.TargetValue?.ToString("N0") ?? "—")
+                                }
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">@indicator.Values.Count</span>
+                            </td>
+                            <td class="text-center">
+                                <a asp-action="Edit" asp-route-id="@indicator.Id" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Values" asp-route-indicatorId="@indicator.Id" class="btn btn-sm btn-outline-info me-1">
+                                    <i class="bi bi-list-ol"></i>
+                                </a>
+                                <a asp-action="Create" asp-route-parentId="@indicator.Id" class="btn btn-sm btn-outline-success" title="Добавить подиндикатор">
+                                    <i class="bi bi-plus"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        @* Sub-indicators *@
+                        @foreach (var sub in indicator.SubIndicators.OrderBy(s => s.SortOrder))
+                        {
+                            <tr class="table-secondary">
+                                <td class="ps-4">↳ @sub.SortOrder</td>
+                                <td><code class="text-muted">@sub.Code</code></td>
+                                <td class="ps-4">@sub.NameRu</td>
+                                <td>
+                                    @(sub.MeasurementType switch {
+                                        PMMIS.Domain.Entities.MeasurementType.Number => "Число",
+                                        PMMIS.Domain.Entities.MeasurementType.Percentage => "%",
+                                        PMMIS.Domain.Entities.MeasurementType.YesNo => "Да/Нет",
+                                        _ => sub.MeasurementType.ToString()
+                                    })
+                                </td>
+                                <td>—</td>
+                                <td class="text-end">@(sub.TargetValue?.ToString("N0") ?? "—")</td>
+                                <td class="text-center"><span class="badge bg-info">@sub.Values.Count</span></td>
+                                <td class="text-center">
+                                    <a asp-action="Edit" asp-route-id="@sub.Id" class="btn btn-sm btn-outline-primary me-1">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a asp-action="Values" asp-route-indicatorId="@sub.Id" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-list-ol"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Индикаторы не найдены. Создайте первый индикатор.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

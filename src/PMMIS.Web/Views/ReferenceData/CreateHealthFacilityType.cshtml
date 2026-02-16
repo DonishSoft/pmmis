@@ -1,0 +1,54 @@
+@model PMMIS.Domain.Entities.HealthFacilityType
+@{
+    ViewData["Title"] = "Добавить тип медучреждения";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Справочники</a></li>
+            <li class="breadcrumb-item"><a asp-action="HealthFacilityTypes">Типы медучреждений</a></li>
+            <li class="breadcrumb-item active">Добавить</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-plus-circle me-2"></i>Новый тип медучреждения</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="CreateHealthFacilityType" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Название <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control" placeholder="Например: Поликлиника" required />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">№ сортировки в списке</label>
+                            <input asp-for="SortOrder" type="number" class="form-control" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                                <label class="form-check-label">Активен</label>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="HealthFacilityTypes" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

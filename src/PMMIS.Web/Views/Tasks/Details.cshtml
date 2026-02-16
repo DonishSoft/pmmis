@@ -1,0 +1,474 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskDetailsViewModel
+@{
+    ViewData["Title"] = Model.Task.Title;
+}
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">@Model.Task.Title</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                    <li class="breadcrumb-item"><a asp-action="Index">Задачи</a></li>
+                    <li class="breadcrumb-item active">@Model.Task.Title</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            @if (Model.CanEdit)
+            {
+                <a asp-action="Edit" asp-route-id="@Model.Task.Id" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil me-1"></i>Редактировать
+                </a>
+            }
+            @if (Model.CanRequestExtension && Model.Task.Status != PMMIS.Domain.Entities.ProjectTaskStatus.Completed)
+            {
+                <a asp-action="RequestExtension" asp-route-taskId="@Model.Task.Id" class="btn btn-outline-warning">
+                    <i class="bi bi-calendar-plus me-1"></i>Продлить срок
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Task Info Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Информация о задаче</h5>
+                    @switch (Model.Task.Status)
+                    {
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.New:
+                            <span class="badge bg-info fs-6">Новая</span>
+                            break;
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.InProgress:
+                            <span class="badge bg-primary fs-6">В работе</span>
+                            break;
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.OnHold:
+                            <span class="badge bg-secondary fs-6">На паузе</span>
+                            break;
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview:
+                            <span class="badge bg-warning text-dark fs-6">На проверке</span>
+                            break;
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.Completed:
+                            <span class="badge bg-success fs-6">Завершена</span>
+                            break;
+                        case PMMIS.Domain.Entities.ProjectTaskStatus.Cancelled:
+                            <span class="badge bg-dark fs-6">Отменена</span>
+                            break;
+                    }
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.Task.Description))
+                    {
+                        <div class="mb-4">
+                            <h6>Описание</h6>
+                            <p class="text-muted">@Model.Task.Description</p>
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th class="text-muted">Приоритет:</th>
+                                    <td>
+                                        @switch (Model.Task.Priority)
+                                        {
+                                            case PMMIS.Domain.Entities.TaskPriority.Low:
+                                                <span class="badge bg-secondary">Низкий</span>
+                                                break;
+                                            case PMMIS.Domain.Entities.TaskPriority.Normal:
+                                                <span class="badge bg-primary">Нормальный</span>
+                                                break;
+                                            case PMMIS.Domain.Entities.TaskPriority.High:
+                                                <span class="badge bg-warning text-dark">Высокий</span>
+                                                break;
+                                            case PMMIS.Domain.Entities.TaskPriority.Critical:
+                                                <span class="badge bg-danger">Критический</span>
+                                                break;
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Исполнитель:</th>
+                                    <td>@Model.Task.Assignee?.FullName</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Назначил:</th>
+                                    <td>@Model.Task.AssignedBy?.FullName</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th class="text-muted">Дедлайн:</th>
+                                    <td class="@(Model.Task.IsOverdue ? "text-danger fw-bold" : "")">
+                                        @Model.Task.DueDate.ToString("dd.MM.yyyy HH:mm")
+                                        @if (Model.Task.IsOverdue)
+                                        {
+                                            <span class="badge bg-danger ms-2">Просрочена</span>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">Создана:</th>
+                                    <td>@Model.Task.CreatedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                </tr>
+                                @if (Model.Task.CompletedAt.HasValue)
+                                {
+                                    <tr>
+                                        <th class="text-muted">Завершена:</th>
+                                        <td>@Model.Task.CompletedAt.Value.ToString("dd.MM.yyyy HH:mm")</td>
+                                    </tr>
+                                }
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="mt-3">
+                        <label class="form-label">Прогресс выполнения</label>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar @(Model.Task.CompletionPercent == 100 ? "bg-success" : "bg-primary")"
+                                 role="progressbar"
+                                 style="width: @Model.Task.CompletionPercent%"
+                                 aria-valuenow="@Model.Task.CompletionPercent"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                @Model.Task.CompletionPercent%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Change Buttons -->
+                    @if (Model.CanChangeStatus && Model.Task.Status != PMMIS.Domain.Entities.ProjectTaskStatus.Completed)
+                    {
+                        <div class="mt-4 border-top pt-3">
+                            <h6>Изменить статус</h6>
+                            <div class="d-flex gap-2 flex-wrap">
+                                @if (Model.Task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.New)
+                                {
+                                    <button class="btn btn-primary btn-sm change-status" data-status="1">
+                                        <i class="bi bi-play-fill me-1"></i>Начать работу
+                                    </button>
+                                }
+                                @if (Model.Task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.InProgress)
+                                {
+                                    <button class="btn btn-warning btn-sm change-status" data-status="3">
+                                        <i class="bi bi-eye me-1"></i>На проверку
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm change-status" data-status="2">
+                                        <i class="bi bi-pause-fill me-1"></i>Пауза
+                                    </button>
+                                }
+                                @if (Model.Task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.OnHold)
+                                {
+                                    <button class="btn btn-primary btn-sm change-status" data-status="1">
+                                        <i class="bi bi-play-fill me-1"></i>Продолжить
+                                    </button>
+                                }
+                                @if (Model.Task.Status == PMMIS.Domain.Entities.ProjectTaskStatus.UnderReview)
+                                {
+                                    <button class="btn btn-success btn-sm change-status" data-status="4">
+                                        <i class="bi bi-check-lg me-1"></i>Завершить
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm change-status" data-status="1">
+                                        <i class="bi bi-arrow-left me-1"></i>Вернуть на доработку
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Comments -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0"><i class="bi bi-chat-dots me-2"></i>Комментарии (@Model.Comments.Count)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.CanAddComment)
+                    {
+                        <form asp-action="AddComment" method="post" class="mb-4">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="taskId" value="@Model.Task.Id" />
+                            <div class="input-group">
+                                <textarea name="content" class="form-control" rows="2" placeholder="Добавить комментарий..." required></textarea>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                        </form>
+                    }
+
+                    @if (Model.Comments.Any())
+                    {
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <div class="d-flex gap-3 mb-3 @(comment.IsSystemGenerated ? "opacity-75" : "")">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        @(comment.Author?.FullName?.Substring(0, 1) ?? "?")
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@comment.Author?.FullName</strong>
+                                        <small class="text-muted">@comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                                    </div>
+                                    <p class="mb-0 @(comment.IsSystemGenerated ? "fst-italic text-muted" : "")">@comment.Content</p>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">Комментариев пока нет</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Attachments -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent">
+                    <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Вложения (@Model.Attachments.Count)</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.CanAddAttachment)
+                    {
+                        <form asp-action="UploadAttachment" method="post" enctype="multipart/form-data" class="mb-4">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="taskId" value="@Model.Task.Id" />
+                            <div class="input-group">
+                                <input type="file" name="file" class="form-control" required />
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-1"></i>Загрузить
+                                </button>
+                            </div>
+                        </form>
+                    }
+
+                    @if (Model.Attachments.Any())
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var attachment in Model.Attachments)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <div>
+                                        <i class="bi @(attachment.IsImage ? "bi-image" : attachment.IsPdf ? "bi-file-pdf" : "bi-file-earmark") me-2"></i>
+                                        <a href="@attachment.FilePath" target="_blank">@attachment.OriginalFileName</a>
+                                        <small class="text-muted ms-2">(@attachment.FileSizeFormatted)</small>
+                                    </div>
+                                    @if (Model.CanAddAttachment)
+                                    {
+                                        <form asp-action="DeleteAttachment" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="attachmentId" value="@attachment.Id" />
+                                            <input type="hidden" name="taskId" value="@Model.Task.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить файл?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted text-center mb-0">Вложений нет</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Checklists -->
+            @if (Model.Checklists.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent">
+                        <h5 class="mb-0"><i class="bi bi-check2-square me-2"></i>Чек-листы</h5>
+                    </div>
+                    <div class="card-body">
+                        @foreach (var checklist in Model.Checklists)
+                        {
+                            var completedCount = checklist.Items.Count(i => i.IsCompleted);
+                            var totalCount = checklist.Items.Count;
+                            var percent = totalCount > 0 ? (int)Math.Round((double)completedCount / totalCount * 100) : 0;
+                            
+                            <div class="checklist-section mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">@checklist.Name</h6>
+                                    <span class="text-muted small">@completedCount / @totalCount</span>
+                                </div>
+                                <div class="progress mb-3" style="height: 6px;">
+                                    <div class="progress-bar @(percent == 100 ? "bg-success" : "bg-primary")"
+                                         style="width: @percent%"></div>
+                                </div>
+                                <ul class="list-unstyled">
+                                    @foreach (var item in checklist.Items.OrderBy(i => i.SortOrder))
+                                    {
+                                        <li class="d-flex align-items-start gap-2 py-2 border-bottom @(item.IsImportant ? "bg-warning bg-opacity-10" : "") @(item.IsIndented ? "ms-4" : "")">
+                                            @if (item.IsCompleted)
+                                            {
+                                                <i class="bi bi-check-square text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-square text-muted"></i>
+                                            }
+                                            <span class="@(item.IsCompleted ? "text-muted text-decoration-line-through" : "")">
+                                                @item.Text
+                                            </span>
+                                            @if (item.IsImportant)
+                                            {
+                                                <span class="badge bg-danger ms-auto">Важно</span>
+                                            }
+                                            @if (item.CoExecutor != null)
+                                            {
+                                                <span class="badge bg-info text-dark @(item.IsImportant ? "" : "ms-auto")">
+                                                    <i class="bi bi-person me-1"></i>@item.CoExecutor.FullName
+                                                </span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Linked Entities -->
+            @if (Model.LinkedContract != null || Model.LinkedProcurement != null)
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Связанные объекты</h6>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.LinkedContract != null)
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted">Контракт:</small><br />
+                                <a asp-controller="Contracts" asp-action="Details" asp-route-id="@Model.LinkedContract.Id">
+                                    @Model.LinkedContract.ContractNumber
+                                </a>
+                            </div>
+                        }
+                        @if (Model.LinkedProcurement != null)
+                        {
+                            <div>
+                                <small class="text-muted">Закупка:</small><br />
+                                <a asp-controller="Procurement" asp-action="Details" asp-route-id="@Model.LinkedProcurement.Id">
+                                    @Model.LinkedProcurement.Description
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Extension Requests -->
+            @if (Model.ExtensionRequests.Any())
+            {
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-transparent">
+                        <h6 class="mb-0"><i class="bi bi-calendar-plus me-2"></i>Запросы продления</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var request in Model.ExtensionRequests)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <small>@request.RequestedBy?.FullName</small>
+                                        @switch (request.Status)
+                                        {
+                                            case PMMIS.Domain.Entities.ExtensionStatus.Pending:
+                                                <span class="badge bg-warning text-dark">На рассмотрении</span>
+                                                break;
+                                            case PMMIS.Domain.Entities.ExtensionStatus.Approved:
+                                                <span class="badge bg-success">Одобрено</span>
+                                                break;
+                                            case PMMIS.Domain.Entities.ExtensionStatus.Rejected:
+                                                <span class="badge bg-danger">Отклонено</span>
+                                                break;
+                                        }
+                                    </div>
+                                    <small class="text-muted">
+                                        @request.OriginalDueDate.ToString("dd.MM") → @request.NewDueDate.ToString("dd.MM.yyyy")
+                                    </small>
+                                    @if (Model.CanApproveExtension && request.Status == PMMIS.Domain.Entities.ExtensionStatus.Pending)
+                                    {
+                                        <div class="mt-2 d-flex gap-2">
+                                            <form asp-action="ApproveExtension" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@request.Id" />
+                                                <button class="btn btn-sm btn-success">Одобрить</button>
+                                            </form>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@request.Id">Отклонить</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- History -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>История (@Model.History.Count)</h6>
+                </div>
+                <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    <div class="list-group list-group-flush">
+                        @foreach (var item in Model.History.Take(20))
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <small class="fw-semibold">@item.ChangedBy?.FullName</small>
+                                    <small class="text-muted">@item.CreatedAt.ToString("dd.MM HH:mm")</small>
+                                </div>
+                                <small class="text-muted">@item.Description</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.change-status').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const status = this.dataset.status;
+                const response = await fetch('@Url.Action("ChangeStatus")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: `id=@Model.Task.Id&status=${status}`
+                });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.error || 'Ошибка');
+                }
+            });
+        });
+    </script>
+}

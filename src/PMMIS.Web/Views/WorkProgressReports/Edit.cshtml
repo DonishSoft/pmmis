@@ -1,0 +1,235 @@
+@model PMMIS.Web.ViewModels.WorkProgress.WorkProgressFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Редактирование АВР";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Реестр АВР</a></li>
+            <li class="breadcrumb-item active">Редактирование</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="WorkProgress.Id" />
+                <input type="hidden" asp-for="WorkProgress.CreatedAt" />
+                <input type="hidden" asp-for="WorkProgress.SubmittedByUserId" />
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>АВР #@Model.WorkProgress.Id</h5>
+                        <span class="badge bg-primary fs-6">@Model.WorkProgress.CompletedPercent%</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Контракт</label>
+                                <select asp-for="WorkProgress.ContractId" asp-items="Model.Contracts" class="form-select">
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дата отчёта</label>
+                                <input type="date" asp-for="WorkProgress.ReportDate" class="form-control" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Выполнено (%)</label>
+                                <div class="input-group">
+                                    <input type="number" asp-for="WorkProgress.CompletedPercent" class="form-control" 
+                                           min="0" max="100" step="0.1" id="progressInput" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 10px;">
+                                    <div class="progress-bar bg-success" id="progressBar" style="width: @Model.WorkProgress.CompletedPercent%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Описание</label>
+                                <textarea asp-for="WorkProgress.Description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Проблемы</label>
+                                <textarea asp-for="WorkProgress.Issues" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Indicator Progress Section -->
+                @if (Model.ContractIndicators?.Any() == true)
+                {
+                    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-info">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Прогресс по индикаторам</h5>
+                        </div>
+                        <div class="card-body">
+                            @for (int i = 0; i < Model.ContractIndicators.Count; i++)
+                            {
+                                var ci = Model.ContractIndicators[i];
+                                <input type="hidden" name="ContractIndicators[@i].ContractIndicatorId" value="@ci.ContractIndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorId" value="@ci.IndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorCode" value="@ci.IndicatorCode" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorName" value="@ci.IndicatorName" />
+                                <input type="hidden" name="ContractIndicators[@i].Unit" value="@ci.Unit" />
+                                <input type="hidden" name="ContractIndicators[@i].TargetValue" value="@ci.TargetValue" />
+                                <input type="hidden" name="ContractIndicators[@i].PreviousAchieved" value="@ci.PreviousAchieved" />
+
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <span class="badge bg-secondary me-2">@ci.IndicatorCode</span>
+                                                <strong>@ci.IndicatorName</strong>
+                                            </div>
+                                            <span class="badge bg-light text-dark">
+                                                Цель: @ci.TargetValue @ci.Unit
+                                            </span>
+                                        </div>
+
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-md-4">
+                                                <label class="form-label small text-muted mb-1">Значение в этом АВР</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" name="ContractIndicators[@i].Value" 
+                                                           value="@ci.Value" class="form-control indicator-value"
+                                                           min="0" step="0.01" 
+                                                           data-target="@ci.TargetValue" 
+                                                           data-previous="@ci.PreviousAchieved"
+                                                           data-index="@i" />
+                                                    <span class="input-group-text">@ci.Unit</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small text-muted mb-1">Примечания</label>
+                                                <input type="text" name="ContractIndicators[@i].Notes" 
+                                                       value="@ci.Notes" class="form-control form-control-sm"
+                                                       placeholder="Комментарий..." />
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small text-muted mb-1">Прогресс</label>
+                                                <div class="progress" style="height: 20px;">
+                                                    @{
+                                                        var currentTotal = ci.PreviousAchieved + ci.Value;
+                                                        var percent = ci.TargetValue > 0 ? Math.Min(100, (currentTotal / ci.TargetValue) * 100) : 0;
+                                                        var barClass = percent >= 80 ? "bg-success" : percent >= 50 ? "bg-info" : percent >= 25 ? "bg-warning" : "bg-danger";
+                                                    }
+                                                    <div class="progress-bar @barClass" id="indicatorBar_@i" 
+                                                         style="width: @percent.ToString("F0")%">
+                                                        @currentTotal / @ci.TargetValue
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Сохранить
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Назад</a>
+                    
+                    @if (User.IsInRole("PMU_ADMIN"))
+                    {
+                        <form asp-action="Delete" asp-route-id="@Model.WorkProgress.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить АВР?')">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i> Удалить
+                            </button>
+                        </form>
+                    }
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Контракт</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>@Model.WorkProgress.Contract?.ContractNumber</strong></p>
+                    <p class="text-muted mb-0 small">@Model.WorkProgress.Contract?.ScopeOfWork</p>
+                </div>
+            </div>
+
+            @if (Model.ExistingDocuments?.Any() == true)
+            {
+                <div class="card border-0 shadow-sm mt-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var doc in Model.ExistingDocuments)
+                            {
+                                <li class="list-group-item">
+                                    <a href="@doc.FilePath" target="_blank">
+                                        <i class="bi bi-file-earmark me-2"></i>@(doc.Description ?? doc.OriginalFileName)
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const progressInput = document.getElementById('progressInput');
+    const progressBar = document.getElementById('progressBar');
+    
+    progressInput.addEventListener('input', function() {
+        const value = Math.min(100, Math.max(0, this.value));
+        progressBar.style.width = value + '%';
+        
+        progressBar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+        if (value >= 80) progressBar.classList.add('bg-success');
+        else if (value >= 50) progressBar.classList.add('bg-info');
+        else if (value >= 25) progressBar.classList.add('bg-warning');
+        else progressBar.classList.add('bg-danger');
+    });
+
+    // Indicator progress bar live updates
+    document.querySelectorAll('.indicator-value').forEach(input => {
+        input.addEventListener('input', function() {
+            const idx = this.dataset.index;
+            const target = parseFloat(this.dataset.target) || 0;
+            const previous = parseFloat(this.dataset.previous) || 0;
+            const value = parseFloat(this.value) || 0;
+            const newTotal = previous + value;
+            const percent = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+
+            const bar = document.getElementById('indicatorBar_' + idx);
+            if (bar) {
+                bar.style.width = percent.toFixed(0) + '%';
+                bar.textContent = newTotal + ' / ' + target;
+                bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+                if (percent >= 80) bar.classList.add('bg-success');
+                else if (percent >= 50) bar.classList.add('bg-info');
+                else if (percent >= 25) bar.classList.add('bg-warning');
+                else bar.classList.add('bg-danger');
+            }
+        });
+    });
+</script>
+}

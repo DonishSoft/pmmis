@@ -1,0 +1,306 @@
+@model PMMIS.Web.ViewModels.WorkProgress.WorkProgressFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Новый отчёт о прогрессе";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Прогресс работ</a></li>
+            <li class="breadcrumb-item active">Новый отчёт</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="All" class="alert alert-danger validation-summary-errors mb-3"></div>
+                <style>.validation-summary-valid { display: none; }</style>
+                
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Отчёт о прогрессе</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Контракт <span class="text-danger">*</span></label>
+                                <select asp-for="WorkProgress.ContractId" asp-items="Model.Contracts" class="form-select" required id="contractSelect">
+                                    <option value="">— Выберите контракт —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Дата отчёта <span class="text-danger">*</span></label>
+                                <input type="date" asp-for="WorkProgress.ReportDate" class="form-control" required />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Выполнено (%) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" asp-for="WorkProgress.CompletedPercent" class="form-control" 
+                                           min="0" max="100" step="0.1" required id="progressInput" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="progress mt-2" style="height: 10px;">
+                                    <div class="progress-bar bg-success" id="progressBar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Описание выполненных работ</label>
+                                <textarea asp-for="WorkProgress.Description" class="form-control" rows="3" 
+                                          placeholder="Опишите выполненные работы за период..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-12">
+                                <label class="form-label">Проблемы и риски</label>
+                                <textarea asp-for="WorkProgress.Issues" class="form-control" rows="2" 
+                                          placeholder="Укажите проблемы, задержки, риски (если есть)..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                @if (Model.ContractIndicators?.Any() == true)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Прогресс по индикаторам</h5>
+                            <span class="badge bg-info">@Model.ContractIndicators.Count индикатор(ов)</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                Укажите значения прогресса по каждому индикатору, достигнутые в рамках данного АВР.
+                            </p>
+                            
+                            @for (var i = 0; i < Model.ContractIndicators.Count; i++)
+                            {
+                                var indicator = Model.ContractIndicators[i];
+                                <input type="hidden" name="ContractIndicators[@i].ContractIndicatorId" value="@indicator.ContractIndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorId" value="@indicator.IndicatorId" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorCode" value="@indicator.IndicatorCode" />
+                                <input type="hidden" name="ContractIndicators[@i].IndicatorName" value="@indicator.IndicatorName" />
+                                <input type="hidden" name="ContractIndicators[@i].Unit" value="@indicator.Unit" />
+                                <input type="hidden" name="ContractIndicators[@i].TargetValue" value="@indicator.TargetValue" />
+                                <input type="hidden" name="ContractIndicators[@i].PreviousAchieved" value="@indicator.PreviousAchieved" />
+                                
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-5">
+                                                <h6 class="mb-1">
+                                                    <span class="badge bg-secondary me-1">@indicator.IndicatorCode</span>
+                                                    @indicator.IndicatorName
+                                                </h6>
+                                                <small class="text-muted">
+                                                    Цель: <strong>@indicator.TargetValue.ToString("N0")</strong> @indicator.Unit
+                                                    | Достигнуто: <strong class="text-primary">@indicator.PreviousAchieved.ToString("N0")</strong>
+                                                </small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small">Прогресс в этом АВР</label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" 
+                                                           name="ContractIndicators[@i].Value" 
+                                                           class="form-control indicator-value" 
+                                                           value="0"
+                                                           min="0" 
+                                                           step="0.01"
+                                                           data-target="@indicator.TargetValue"
+                                                           data-previous="@indicator.PreviousAchieved"
+                                                           data-index="@i" />
+                                                    <span class="input-group-text">@indicator.Unit</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Новый прогресс</label>
+                                                <div class="progress" style="height: 20px;">
+                                                    @{
+                                                        var pct = indicator.TargetValue > 0 
+                                                            ? Math.Min(100, (indicator.PreviousAchieved / indicator.TargetValue) * 100) 
+                                                            : 0;
+                                                        var barClass = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-info" : pct >= 25 ? "bg-warning" : "bg-danger";
+                                                    }
+                                                    <div class="progress-bar @barClass progress-bar-@i" 
+                                                         role="progressbar" 
+                                                         style="width: @pct.ToString("F0")%">
+                                                        @pct.ToString("F1")%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <input type="text" 
+                                                   name="ContractIndicators[@i].Notes" 
+                                                   class="form-control form-control-sm" 
+                                                   placeholder="Примечание..." />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- File Upload Section -->
+                <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы и фотоматериалы</h5>
+                        <button type="button" class="btn btn-sm btn-success" id="addFileBtn">
+                            <i class="bi bi-plus-lg"></i> Добавить файл
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="filesContainer">
+                            <!-- Dynamic file rows will be added here -->
+                        </div>
+                        <div id="noFiles" class="text-center text-muted py-4">
+                            <i class="bi bi-cloud-upload fs-1 d-block mb-2"></i>
+                            Нажмите «Добавить файл» для загрузки документов и фотографий
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Поддерживаемые форматы: PDF, Word, Excel, изображения (JPG, PNG)
+                        </small>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Создать
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-body">
+                    <h6><i class="bi bi-info-circle me-2"></i>Подсказка</h6>
+                    <p class="small text-muted mb-2">
+                        Последний отчёт автоматически обновит процент выполнения контракта.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        <i class="bi bi-arrow-right me-1"></i>После создания, отправьте АВР на проверку менеджеру проекта.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    const progressInput = document.getElementById('progressInput');
+    const progressBar = document.getElementById('progressBar');
+    
+    progressInput.addEventListener('input', function() {
+        const value = Math.min(100, Math.max(0, this.value));
+        progressBar.style.width = value + '%';
+        
+        progressBar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+        if (value >= 80) progressBar.classList.add('bg-success');
+        else if (value >= 50) progressBar.classList.add('bg-info');
+        else if (value >= 25) progressBar.classList.add('bg-warning');
+        else progressBar.classList.add('bg-danger');
+    });
+    
+    // Initialize main progress bar
+    progressInput.dispatchEvent(new Event('input'));
+    
+    // Handle indicator progress updates
+    document.querySelectorAll('.indicator-value').forEach(function(input) {
+        input.addEventListener('input', function() {
+            const index = this.dataset.index;
+            const target = parseFloat(this.dataset.target) || 0;
+            const previous = parseFloat(this.dataset.previous) || 0;
+            const value = parseFloat(this.value) || 0;
+            
+            const newTotal = previous + value;
+            const pct = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+            
+            const bar = document.querySelector('.progress-bar-' + index);
+            if (bar) {
+                bar.style.width = pct + '%';
+                bar.textContent = pct.toFixed(1) + '%';
+                
+                bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+                if (pct >= 80) bar.classList.add('bg-success');
+                else if (pct >= 50) bar.classList.add('bg-info');
+                else if (pct >= 25) bar.classList.add('bg-warning');
+                else bar.classList.add('bg-danger');
+            }
+        });
+    });
+    
+    // Reload page when contract changes to load its indicators
+    document.getElementById('contractSelect')?.addEventListener('change', function() {
+        if (this.value) {
+            window.location.href = '/WorkProgress/Create?contractId=' + this.value;
+        }
+    });
+
+    // ========================
+    // Dynamic File Upload
+    // ========================
+    let fileIndex = 0;
+    
+    function addFileRow() {
+        const container = document.getElementById('filesContainer');
+        document.getElementById('noFiles').style.display = 'none';
+        
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 file-row align-items-center p-2 border rounded bg-light';
+        row.innerHTML = `
+            <div class="col-md-3">
+                <select class="form-select form-select-sm file-type-select">
+                    <option value="report">📄 Отчёт / Акт</option>
+                    <option value="photo">📷 Фотоматериал</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <input type="file" class="form-control form-control-sm file-input"
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
+            </div>
+            <div class="col-md-2 text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-file-btn">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+        fileIndex++;
+        
+        row.querySelector('.remove-file-btn').addEventListener('click', () => {
+            row.remove();
+            if (container.children.length === 0) {
+                document.getElementById('noFiles').style.display = 'block';
+            }
+        });
+    }
+    
+    document.getElementById('addFileBtn').addEventListener('click', addFileRow);
+    
+    // Before submit: redistribute file inputs into ReportFiles / PhotoFiles
+    document.querySelector('form').addEventListener('submit', function() {
+        const rows = document.querySelectorAll('.file-row');
+        rows.forEach(row => {
+            const type = row.querySelector('.file-type-select')?.value;
+            const input = row.querySelector('.file-input');
+            if (input && input.files.length > 0) {
+                input.name = type === 'photo' ? 'PhotoFiles' : 'ReportFiles';
+            }
+        });
+    });
+</script>
+}

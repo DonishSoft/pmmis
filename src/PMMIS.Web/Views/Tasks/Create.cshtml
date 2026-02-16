@@ -1,0 +1,274 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Редактирование задачи" : "Новая задача";
+}
+
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="mb-4">
+                <h2 class="mb-1">
+                    <i class="bi bi-@(Model.IsEdit ? "pencil" : "plus-circle") me-2"></i>
+                    @(Model.IsEdit ? "Редактирование задачи" : "Новая задача")
+                </h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                        <li class="breadcrumb-item"><a asp-action="Index">Задачи</a></li>
+                        <li class="breadcrumb-item active">@(Model.IsEdit ? "Редактирование" : "Создание")</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form asp-action="@(Model.IsEdit ? "Edit" : "Create")" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="Id" />
+
+                        <!-- Title Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Название задачи</h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label asp-for="Title" class="form-label">Название <span class="text-danger">*</span></label>
+                                    <input asp-for="Title" class="form-control" placeholder="Введите название задачи" />
+                                    <span asp-validation-for="Title" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Описание</h6>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label asp-for="Description" class="form-label">Описание</label>
+                                    <textarea asp-for="Description" class="form-control" rows="4" placeholder="Подробное описание задачи..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Assignment Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Назначение</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="AssigneeId" class="form-label">Исполнитель <span class="text-danger">*</span></label>
+                                    <input type="hidden" asp-for="AssigneeId" id="createAssigneeValue" />
+                                    <input type="text" id="createAssigneeDropdown" />
+                                    <span asp-validation-for="AssigneeId" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="Priority" class="form-label">Приоритет</label>
+                                    <select asp-for="Priority" class="form-select">
+                                        <option value="0">Низкий</option>
+                                        <option value="1">Нормальный</option>
+                                        <option value="2">Высокий</option>
+                                        <option value="3">Критический</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Сроки выполнения</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label asp-for="StartDate" class="form-label">Дата начала</label>
+                                    <input asp-for="StartDate" type="date" class="form-control" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="DueDate" class="form-label">Дедлайн <span class="text-danger">*</span></label>
+                                    <input asp-for="DueDate" type="date" class="form-control" />
+                                    <span asp-validation-for="DueDate" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-4">
+                                    <label asp-for="EstimatedHours" class="form-label">Оценка (часы)</label>
+                                    <input asp-for="EstimatedHours" type="number" min="0" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Links Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Связи</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label asp-for="ContractId" class="form-label">Контракт</label>
+                                    <select asp-for="ContractId" class="form-select">
+                                        <option value="">Не связан</option>
+                                        @foreach (var contract in Model.Contracts)
+                                        {
+                                            <option value="@contract.Id">@contract.ContractNumber - @contract.ContractorId</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="ProcurementPlanId" class="form-label">Закупка</label>
+                                    <select asp-for="ProcurementPlanId" class="form-select">
+                                        <option value="">Не связан</option>
+                                        @foreach (var procurement in Model.ProcurementPlans)
+                                        {
+                                            <option value="@procurement.Id">@procurement.Description</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="ProjectId" class="form-label">Проект</label>
+                                    <select asp-for="ProjectId" class="form-select">
+                                        <option value="">Не связан</option>
+                                        @foreach (var project in Model.Projects)
+                                        {
+                                            <option value="@project.Id">@project.Code</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label asp-for="ParentTaskId" class="form-label">Родительская задача</label>
+                                    <select asp-for="ParentTaskId" class="form-select">
+                                        <option value="">Нет (основная задача)</option>
+                                        @foreach (var task in Model.ParentTasks)
+                                        {
+                                            <option value="@task.Id">@task.Title</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Checklists Section -->
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted mb-3">Чек-листы</h6>
+                            <input type="hidden" name="ChecklistsJson" id="checklistsJsonInput" />
+                            
+                            <div id="checklistsContainer">
+                                <!-- Checklists will be rendered here by JS -->
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addNewChecklist()">
+                                <i class="bi bi-plus"></i> Добавить чек-лист
+                            </button>
+                        </div>
+
+                        <!-- Status (Edit only) -->
+                        @if (Model.IsEdit)
+                        {
+                            <div class="mb-4">
+                                <h6 class="text-uppercase text-muted mb-3">Статус</h6>
+                                <select asp-for="Status" class="form-select">
+                                    <option value="0">Новая</option>
+                                    <option value="1">В работе</option>
+                                    <option value="2">На паузе</option>
+                                    <option value="3">На проверке</option>
+                                    <option value="4">Завершена</option>
+                                    <option value="5">Отменена</option>
+                                </select>
+                            </div>
+                        }
+
+                        <!-- Actions -->
+                        <div class="d-flex justify-content-between pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-primary" onclick="prepareChecklistsJson()">
+                                <i class="bi bi-check-lg me-1"></i>@(Model.IsEdit ? "Сохранить" : "Создать задачу")
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_ChecklistScripts", Model)
+
+@section Styles {
+<style>
+    .assignee-dropdown-wrap { position: relative; }
+    .assignee-item { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+    .assignee-avatar {
+        width: 32px; height: 32px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 600; font-size: 12px;
+        flex-shrink: 0; text-transform: uppercase;
+    }
+    .assignee-info { display: flex; flex-direction: column; min-width: 0; }
+    .assignee-name { font-weight: 500; font-size: 13px; color: #212529; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .assignee-position { font-size: 11px; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .assignee-value-tpl { display: flex; align-items: center; gap: 8px; }
+    .assignee-value-tpl .assignee-avatar { width: 24px; height: 24px; font-size: 10px; }
+    .assignee-value-tpl .assignee-name { font-size: 13px; }
+    #createAssigneeDropdown_popup { min-width: 360px !important; }
+</style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script id="createAssigneeItemTpl" type="text/x-template">
+        <div class="assignee-item">
+            <div class="assignee-avatar" style="background: ${color}">${initials}</div>
+            <div class="assignee-info">
+                <span class="assignee-name">${name}</span>
+                <span class="assignee-position">${position}</span>
+            </div>
+        </div>
+    </script>
+    <script id="createAssigneeValueTpl" type="text/x-template">
+        <div class="assignee-value-tpl">
+            <div class="assignee-avatar" style="background: ${color}">${initials}</div>
+            <span class="assignee-name">${name}</span>
+        </div>
+    </script>
+    <script>
+    (function() {
+        const avatarColors = ['#4e79a7','#f28e2b','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ac'];
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            return parts.length >= 2 ? (parts[0][0] + parts[1][0]) : parts[0].substring(0, 2);
+        }
+        function getColor(name) {
+            let hash = 0;
+            for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return avatarColors[Math.abs(hash) % avatarColors.length];
+        }
+
+        const usersData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.AvailableAssignees.Select(u => new { id = u.Id, name = u.FullName, position = u.Position ?? "" }),
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }
+        ));
+
+        const assigneeData = usersData.map(u => ({
+            ...u,
+            initials: getInitials(u.name),
+            color: getColor(u.name)
+        }));
+
+        const ddlEl = document.getElementById('createAssigneeDropdown');
+        if (ddlEl) {
+            const currentVal = document.getElementById('createAssigneeValue').value;
+            const ddl = new ej.dropdowns.DropDownList({
+                dataSource: assigneeData,
+                fields: { value: 'id', text: 'name' },
+                placeholder: 'Выберите исполнителя',
+                popupHeight: '280px',
+                allowFiltering: true,
+                filterBarPlaceholder: 'Поиск сотрудника...',
+                itemTemplate: document.getElementById('createAssigneeItemTpl').innerHTML,
+                valueTemplate: document.getElementById('createAssigneeValueTpl').innerHTML,
+                value: currentVal || null,
+                change: function(args) {
+                    document.getElementById('createAssigneeValue').value = args.value || '';
+                }
+            });
+            ddl.appendTo(ddlEl);
+        }
+    })();
+    </script>
+}

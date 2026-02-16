@@ -1,0 +1,109 @@
+@model List<PMMIS.Domain.Entities.Project>
+@{
+    ViewData["Title"] = "Проекты";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-folder me-2"></i>Проекты</h2>
+        @if (User.IsInRole("PMU_ADMIN"))
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Новый проект
+            </a>
+        }
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @foreach (var project in Model)
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">
+                        <span class="badge bg-success me-2">@project.Code</span>
+                        @project.NameRu
+                    </h5>
+                    <small class="text-muted">
+                        @project.StartDate.ToString("dd.MM.yyyy") - @project.EndDate?.ToString("dd.MM.yyyy")
+                        •
+                        Бюджет: $@project.TotalBudget.ToString("N0")
+                    </small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a asp-action="Components" asp-route-projectId="@project.Id" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-diagram-3"></i> Компоненты
+                    </a>
+                    <a asp-action="Edit" asp-route-id="@project.Id" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>№</th>
+                            <th>Компонент</th>
+                            <th class="text-end">Бюджет</th>
+                            <th class="text-center">Подкомпонентов</th>
+                            <th class="text-center">Контрактов</th>
+                            <th class="text-center">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var component in project.Components.OrderBy(c => c.Number))
+                        {
+                            <tr>
+                                <td>@component.Number</td>
+                                <td>
+                                    <a asp-action="SubComponents" asp-route-componentId="@component.Id" class="text-decoration-none">
+                                        @component.NameRu
+                                    </a>
+                                </td>
+                                <td class="text-end">$@component.AllocatedBudget.ToString("N0")</td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@component.SubComponents.Count</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">@component.SubComponents.Sum(sc => sc.Contracts?.Count ?? 0)</span>
+                                </td>
+                                <td class="text-center">
+                                    <a asp-action="SubComponents" asp-route-componentId="@component.Id" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-arrow-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        @if (!project.Components.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">
+                                    Компоненты не добавлены
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-folder fs-1 text-muted"></i>
+                <p class="mt-3 mb-0 text-muted">Проекты не найдены.</p>
+            </div>
+        </div>
+    }
+</div>

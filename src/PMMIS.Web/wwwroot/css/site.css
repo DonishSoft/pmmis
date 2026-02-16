@@ -1,0 +1,495 @@
+/* PMMIS Custom Styles */
+
+:root {
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 60px;
+    --primary-color: #1e3a5f;
+    --secondary-color: #3b82f6;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: width 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+.sidebar.collapsed .sidebar-text {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-header {
+    padding: 1rem 0.5rem !important;
+    text-align: center;
+}
+
+/* Page Content - offset by sidebar width */
+#page-content-wrapper {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    width: calc(100% - var(--sidebar-width));
+    overflow-x: auto;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+.sidebar.collapsed~#page-content-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+    width: calc(100% - var(--sidebar-collapsed-width));
+}
+
+/* Prevent body horizontal scroll, only content area scrolls */
+html,
+body {
+    overflow-x: hidden;
+}
+
+.sidebar .nav-link {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin: 2px 0;
+    transition: all 0.2s ease;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link.menu-active {
+    background-color: var(--secondary-color) !important;
+    color: white !important;
+}
+
+/* Sidebar Submenu */
+.sidebar-submenu-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-submenu-toggle .submenu-chevron {
+    transition: transform 0.25s ease;
+    font-size: 0.7rem;
+}
+
+.sidebar-submenu-toggle[aria-expanded="true"] .submenu-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-submenu {
+    padding-left: 1rem;
+}
+
+.sidebar-submenu .nav-link {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.sidebar-submenu .nav-link:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-submenu .nav-link.submenu-active {
+    opacity: 1;
+    background-color: rgba(59, 130, 246, 0.3);
+    color: white !important;
+}
+
+/* Cards */
+.card {
+    border-radius: 12px;
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card-header {
+    background-color: transparent;
+    border-bottom: 1px solid #eee;
+    padding: 1rem 1.25rem;
+}
+
+/* Progress bars */
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Tables */
+.table th {
+    font-weight: 600;
+    color: #495057;
+    border-top: none;
+}
+
+/* Syncfusion Grid customization */
+.e-grid .e-headercell {
+    background-color: #f8f9fa !important;
+    font-weight: 600 !important;
+}
+
+.e-grid .e-row:hover .e-rowcell {
+    background-color: #f0f7ff !important;
+}
+
+.e-grid .e-toolbar {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* Badges */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.6em;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    transform: translateY(-1px);
+}
+
+/* Form controls */
+.form-control,
+.form-select {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.625rem 1rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+}
+
+/* Alerts */
+.alert {
+    border-radius: 10px;
+    border: none;
+}
+
+/* Dropdown */
+.dropdown-menu {
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #eee;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    margin: 2px 4px;
+}
+
+.dropdown-item:hover {
+    background-color: #f0f7ff;
+}
+
+/* List groups */
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #eee;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    #page-content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* KPI Card Icons */
+.bg-primary.bg-opacity-10,
+.bg-success.bg-opacity-10,
+.bg-info.bg-opacity-10,
+.bg-warning.bg-opacity-10 {
+    border-radius: 12px;
+}
+
+/* Syncfusion Gauge customization */
+.e-circulargauge {
+    background: transparent !important;
+}
+
+/* ==============================================
+   UNIFIED STAT CARDS - Design System
+   ============================================== */
+
+/* Base stat card styles */
+.stat-card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card .card-body {
+    padding: 1.25rem;
+}
+
+.stat-card .stat-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.25rem;
+}
+
+.stat-card .stat-title {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0;
+    line-height: 1.2;
+}
+
+.stat-card .stat-subtitle {
+    font-size: 0.75rem;
+}
+
+/* Gradient Stat Cards (Primary KPIs) */
+.stat-card-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #ffffff !important;
+}
+
+.stat-card-primary * {
+    color: #ffffff !important;
+}
+
+.stat-card-primary .stat-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-card-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+    color: #ffffff !important;
+}
+
+.stat-card-success * {
+    color: #ffffff !important;
+}
+
+.stat-card-success .stat-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-card-info {
+    background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%) !important;
+    color: #ffffff !important;
+}
+
+.stat-card-info * {
+    color: #ffffff !important;
+}
+
+.stat-card-info .stat-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-card-danger {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    color: #ffffff !important;
+}
+
+.stat-card-danger * {
+    color: #ffffff !important;
+}
+
+.stat-card-danger .stat-icon {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Light Stat Cards (Secondary KPIs) */
+.stat-card-light {
+    background: #ffffff !important;
+    border: 1px solid #e9ecef;
+}
+
+.stat-card-light .stat-title {
+    color: #6c757d !important;
+}
+
+.stat-card-light .stat-value {
+    color: #212529 !important;
+}
+
+.stat-card-light .stat-subtitle {
+    color: #6c757d !important;
+}
+
+.stat-card-light .stat-icon.icon-primary {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6 !important;
+}
+
+.stat-card-light .stat-icon.icon-warning {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107 !important;
+}
+
+.stat-card-light .stat-icon.icon-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545 !important;
+}
+
+.stat-card-light .stat-icon.icon-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745 !important;
+}
+
+/* Ensure text visibility on all backgrounds */
+.text-white * {
+    color: #ffffff !important;
+}
+
+/* ==============================================
+   SKELETON LOADING / LAZY LOAD
+   ============================================== */
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 2000px 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 8px;
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.skeleton-text.lg {
+    height: 24px;
+    width: 60%;
+}
+
+.skeleton-text.sm {
+    height: 12px;
+    width: 40%;
+}
+
+.skeleton-card {
+    height: 120px;
+    border-radius: 12px;
+}
+
+.skeleton-chart {
+    height: 350px;
+    border-radius: 12px;
+}
+
+.skeleton-table-row {
+    height: 44px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+}
+
+/* Lazy-load container: starts hidden, fades in when loaded */
+.lazy-section {
+    min-height: 200px;
+    position: relative;
+}
+
+.lazy-section .lazy-content {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lazy-section .lazy-content.loaded {
+    opacity: 1;
+}
+
+.lazy-section .lazy-skeleton {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lazy-section .lazy-skeleton.hidden {
+    opacity: 0;
+    pointer-events: none;
+}

@@ -1,0 +1,203 @@
+@model List<PMMIS.Domain.Entities.Contract>
+@{
+    ViewData["Title"] = "Контракты";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Контракты</h2>
+        @if (User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF"))
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Добавить контракт
+            </a>
+        }
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Тип контракта</label>
+                    <select class="form-select" id="contractTypeFilter">
+                        <option value="">Все типы</option>
+                        <option value="Works">Строительные работы</option>
+                        <option value="Consulting">Консультационные услуги</option>
+                        <option value="Goods">Товары</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Статус</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">Все</option>
+                        <option value="active">Активные</option>
+                        <option value="completed">Завершённые</option>
+                        <option value="overdue">Просроченные</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Подрядчик</label>
+                    <input type="text" class="form-control" id="contractorSearch" placeholder="Поиск...">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                        <i class="bi bi-x-lg me-1"></i> Сбросить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contracts Grid -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div id="contractsGrid"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<!-- Syncfusion script templates (avoids escaped-quote issues in inline templates) -->
+<script id="paidTemplate" type="text/x-template">
+    <div class="progress" style="height: 20px; position: relative;"><div class="progress-bar bg-success" style="width: ${paidPercent}%"></div><span class="pct-label" style="position: absolute; left: 0; right: 0; text-align: center; line-height: 20px; font-weight: 600; font-size: 12px; text-shadow: 0 0 2px rgba(0,0,0,0.15);">${Math.round(paidPercent)}%</span></div>
+</script>
+<script id="progressTemplate" type="text/x-template">
+    <div class="progress" style="height: 20px; position: relative;"><div class="progress-bar bg-primary" style="width: ${workCompletedPercent}%"></div><span class="pct-label" style="position: absolute; left: 0; right: 0; text-align: center; line-height: 20px; font-weight: 600; font-size: 12px; text-shadow: 0 0 2px rgba(0,0,0,0.15);">${Math.round(workCompletedPercent)}%</span></div>
+</script>
+<script id="remainingTemplate" type="text/x-template">
+    ${if(remainingDays < 0)}
+    <span class="badge bg-danger">${Math.abs(remainingDays)} дн. просрочено</span>
+    ${else}
+    <span class="badge bg-info">${remainingDays} дн.</span>
+    ${/if}
+</script>
+<script id="typeTemplate" type="text/x-template">
+    ${if(contractType == "Works")}Работы${else if(contractType == "Consulting")}Консалтинг${else}Товары${/if}
+</script>
+
+<script>
+    try {
+        var contractData = @Html.Raw(Json.Serialize(Model.Select(c => new {
+            c.Id,
+            c.ContractNumber,
+            ScopeOfWork = (c.ScopeOfWork ?? "").Length > 60 ? c.ScopeOfWork!.Substring(0, 60) + "..." : (c.ScopeOfWork ?? ""),
+            ContractorName = c.Contractor != null ? c.Contractor.Name : "—",
+            ContractType = c.Type.ToString(),
+            SigningDate = c.SigningDate.ToString("dd.MM.yyyy"),
+            ContractEndDate = c.ContractEndDate.ToString("dd.MM.yyyy"),
+            ContractAmount = c.ContractAmount,
+            FinalAmount = c.FinalAmount,
+            PaidAmount = c.Payments.Where(p => p.Status == PMMIS.Domain.Entities.PaymentStatus.Paid).Sum(p => p.Amount),
+            PaidPercent = c.PaidPercent,
+            WorkCompletedPercent = c.WorkCompletedPercent,
+            RemainingDays = c.RemainingDays,
+            IsOverdue = c.RemainingDays < 0 && c.WorkCompletedPercent < 100
+        })));
+
+        console.log('[PMMIS] contractData loaded:', contractData.length, 'items');
+        console.log('[PMMIS] ej available:', typeof ej !== 'undefined');
+        console.log('[PMMIS] ej.grids available:', typeof ej !== 'undefined' && typeof ej.grids !== 'undefined');
+
+        var grid = new ej.grids.Grid({
+            dataSource: contractData,
+            allowPaging: true,
+            allowSorting: true,
+            allowFiltering: true,
+            allowExcelExport: true,
+            allowPdfExport: true,
+            pageSettings: { pageSize: 15 },
+            filterSettings: { type: 'Excel' },
+            toolbar: ['ExcelExport', 'PdfExport', 'Search'],
+            columns: [
+                { 
+                    field: 'contractNumber', 
+                    headerText: 'Номер', 
+                    width: 150,
+                    template: '<a href="/Contracts/Details/${id}" class="fw-bold text-primary">${contractNumber}</a>'
+                },
+                { field: 'scopeOfWork', headerText: 'Объём работ', width: 250 },
+                { field: 'contractorName', headerText: 'Подрядчик', width: 200 },
+                { 
+                    field: 'contractType', 
+                    headerText: 'Тип', 
+                    width: 120,
+                    template: '#typeTemplate'
+                },
+                { field: 'signingDate', headerText: 'Подписан', width: 110, textAlign: 'Center' },
+                { field: 'contractEndDate', headerText: 'Срок', width: 110, textAlign: 'Center' },
+                { 
+                    field: 'finalAmount', 
+                    headerText: 'Сумма ($)', 
+                    width: 130, 
+                    format: 'N0',
+                    textAlign: 'Right'
+                },
+                { 
+                    field: 'paidPercent', 
+                    headerText: 'Оплачено', 
+                    width: 100,
+                    textAlign: 'Center',
+                    template: '#paidTemplate'
+                },
+                { 
+                    field: 'workCompletedPercent', 
+                    headerText: 'Прогресс', 
+                    width: 100,
+                    textAlign: 'Center',
+                    template: '#progressTemplate'
+                },
+                { 
+                    field: 'remainingDays', 
+                    headerText: 'Осталось', 
+                    width: 100,
+                    textAlign: 'Center',
+                    template: '#remainingTemplate'
+                }
+            ],
+            dataBound: function() {
+                console.log('[PMMIS] Grid dataBound fired, rows:', this.currentViewData.length);
+            },
+            actionFailure: function(args) {
+                console.error('[PMMIS] Grid actionFailure:', args);
+            },
+            toolbarClick: function(args) {
+                if (args.item.id.includes('excelexport')) {
+                    grid.excelExport({ fileName: 'Contracts_PMMIS.xlsx' });
+                }
+                if (args.item.id.includes('pdfexport')) {
+                    grid.pdfExport({ fileName: 'Contracts_PMMIS.pdf' });
+                }
+            },
+            rowDataBound: function(args) {
+                if (args.data.isOverdue) {
+                    args.row.classList.add('table-danger');
+                }
+            },
+            queryCellInfo: function(args) {
+                if (args.column.field === 'paidPercent' || args.column.field === 'workCompletedPercent') {
+                    var label = args.cell.querySelector('.pct-label');
+                    if (label) {
+                        var pct = args.data[args.column.field] || 0;
+                        label.style.color = pct >= 50 ? '#fff' : '#212529';
+                    }
+                }
+            }
+        });
+        grid.appendTo('#contractsGrid');
+        console.log('[PMMIS] Grid appended successfully');
+    } catch (e) {
+        console.error('[PMMIS] Grid initialization error:', e);
+        document.getElementById('contractsGrid').innerHTML = 
+            '<div class="alert alert-danger">Ошибка инициализации таблицы: ' + e.message + '</div>';
+    }
+
+    function clearFilters() {
+        document.getElementById('contractTypeFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('contractorSearch').value = '';
+        grid.clearFiltering();
+    }
+</script>
+}

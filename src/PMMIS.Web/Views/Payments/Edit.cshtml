@@ -1,0 +1,246 @@
+@model PMMIS.Web.ViewModels.Payments.PaymentFormViewModel
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Редактирование платежа";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var payment = Model.Payment;
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Платежи</a></li>
+            <li class="breadcrumb-item active">Редактирование</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="Payment.Id" />
+                <input type="hidden" asp-for="Payment.CreatedAt" />
+
+                <!-- Validation Summary -->
+                <div asp-validation-summary="All" class="alert alert-danger validation-summary-errors mb-3"></div>
+                <style>
+                    .validation-summary-valid { display: none; }
+                </style>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Информация о платеже</h5>
+                        <div>
+                            @switch (payment.Status)
+                            {
+                                case PaymentStatus.Pending:
+                                    <span class="badge bg-warning text-dark fs-6">⏳ Ожидает</span>
+                                    break;
+                                case PaymentStatus.Approved:
+                                    <span class="badge bg-info fs-6">✓ Одобрен</span>
+                                    break;
+                                case PaymentStatus.Paid:
+                                    <span class="badge bg-success fs-6">✅ Оплачен</span>
+                                    break;
+                                case PaymentStatus.Rejected:
+                                    <span class="badge bg-danger fs-6">❌ Отклонён</span>
+                                    break;
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Контракт</label>
+                                <select asp-for="Payment.ContractId" asp-items="Model.Contracts" class="form-select" id="paymentContractId">
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Дата платежа</label>
+                                <input type="date" asp-for="Payment.PaymentDate" class="form-control" id="paymentDate" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Тип платежа</label>
+                                <select asp-for="Payment.Type" class="form-select">
+                                    <option value="@((int)PaymentType.Advance)">💵 Аванс</option>
+                                    <option value="@((int)PaymentType.Interim)">📊 Промежуточный</option>
+                                    <option value="@((int)PaymentType.Final)">✅ Окончательный</option>
+                                    <option value="@((int)PaymentType.Retention)">🔒 Удержание</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Статус</label>
+                                <select asp-for="Payment.Status" class="form-select">
+                                    <option value="@((int)PaymentStatus.Pending)">⏳ Ожидает</option>
+                                    <option value="@((int)PaymentStatus.Approved)">✓ Одобрен</option>
+                                    <option value="@((int)PaymentStatus.Paid)">✅ Оплачен</option>
+                                    <option value="@((int)PaymentStatus.Rejected)">❌ Отклонён</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <!-- TJS amount (primary for TJS contracts) -->
+                            <div class="col-md-4" id="tjsPaymentGroup" style="display: none;">
+                                <label class="form-label">Сумма (TJS) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">SM</span>
+                                    <input type="number" asp-for="Payment.AmountTjs" class="form-control" id="paymentAmountTjs" step="0.01" min="0" />
+                                </div>
+                            </div>
+                            <!-- Exchange rate (for TJS contracts) -->
+                            <div class="col-md-4" id="tjsPaymentRateGroup" style="display: none;">
+                                <label class="form-label">Курс USD/TJS</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">📊</span>
+                                    <input type="number" asp-for="Payment.ExchangeRate" class="form-control" id="paymentExchangeRate" step="0.0001" readonly />
+                                </div>
+                                <small class="text-muted" id="paymentRateInfo">На дату платежа</small>
+                            </div>
+                            <!-- USD amount -->
+                            <div class="col-md-4" id="usdAmountGroup">
+                                <label class="form-label" id="amountLabel">Сумма (USD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" asp-for="Payment.Amount" class="form-control" id="paymentAmountUsd" step="0.01" min="0" />
+                                </div>
+                                <span asp-validation-for="Payment.Amount" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Номер счёта</label>
+                                <input type="text" asp-for="Payment.InvoiceNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Описание</label>
+                                <textarea asp-for="Payment.Description" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Сохранить
+                    </button>
+                    
+                    @if (payment.Status != PaymentStatus.Paid && User.IsInRole("PMU_ADMIN"))
+                    {
+                        <form asp-action="MarkAsPaid" asp-route-id="@payment.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i> Отметить оплаченным
+                            </button>
+                        </form>
+                    }
+                    
+                    <a asp-action="Index" asp-route-contractId="@payment.ContractId" class="btn btn-outline-secondary">Назад</a>
+                    
+                    @if (User.IsInRole("PMU_ADMIN"))
+                    {
+                        <form asp-action="Delete" asp-route-id="@payment.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить платёж?')">
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i> Удалить
+                            </button>
+                        </form>
+                    }
+                </div>
+            </form>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Contract Info -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Контракт</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>@payment.Contract.ContractNumber</strong></p>
+                    <p class="text-muted mb-0 small">@payment.Contract.ScopeOfWork</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+    // Contract currency map
+    const contractCurrencies = {};
+    @foreach (var c in ViewBag.ContractCurrencies as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>())
+    {
+        @:contractCurrencies[@c.Id] = { currency: @c.Currency, rate: @(c.Rate != null ? ((decimal)c.Rate).ToString(System.Globalization.CultureInfo.InvariantCulture) : "null") };
+    }
+
+    const contractSelect = document.getElementById('paymentContractId');
+    const paymentDate = document.getElementById('paymentDate');
+    const paymentAmountUsd = document.getElementById('paymentAmountUsd');
+    const paymentAmountTjs = document.getElementById('paymentAmountTjs');
+    const paymentExchangeRate = document.getElementById('paymentExchangeRate');
+    const tjsPaymentGroup = document.getElementById('tjsPaymentGroup');
+    const tjsPaymentRateGroup = document.getElementById('tjsPaymentRateGroup');
+    const amountLabel = document.getElementById('amountLabel');
+    const paymentRateInfo = document.getElementById('paymentRateInfo');
+
+    function onContractChange() {
+        const contractId = contractSelect.value;
+        const info = contractCurrencies[contractId];
+        const isTjs = info && info.currency === 1;
+
+        tjsPaymentGroup.style.display = isTjs ? '' : 'none';
+        tjsPaymentRateGroup.style.display = isTjs ? '' : 'none';
+
+        if (isTjs) {
+            amountLabel.innerHTML = 'Сумма (USD) <small class="text-muted">авто</small>';
+            paymentAmountUsd.readOnly = true;
+            fetchPaymentRate();
+        } else {
+            amountLabel.innerHTML = 'Сумма (USD) <span class="text-danger">*</span>';
+            paymentAmountUsd.readOnly = false;
+        }
+    }
+
+    async function fetchPaymentRate() {
+        const dateVal = paymentDate?.value;
+        if (!dateVal) {
+            paymentRateInfo.textContent = 'Укажите дату платежа';
+            return;
+        }
+        paymentRateInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Загрузка...';
+        try {
+            const resp = await fetch(`/Currency/GetUsdRate?date=${dateVal}`);
+            const data = await resp.json();
+            if (data.rate) {
+                paymentExchangeRate.value = data.rate;
+                paymentRateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                calculateUsdFromTjs();
+            } else {
+                paymentRateInfo.textContent = 'Курс недоступен';
+            }
+        } catch (e) {
+            paymentRateInfo.textContent = 'Ошибка загрузки';
+        }
+    }
+
+    function calculateUsdFromTjs() {
+        const tjs = parseFloat(paymentAmountTjs.value) || 0;
+        const rate = parseFloat(paymentExchangeRate.value) || 0;
+        paymentAmountUsd.value = rate > 0 ? (tjs / rate).toFixed(2) : '';
+    }
+
+    contractSelect.addEventListener('change', onContractChange);
+    paymentDate.addEventListener('change', () => {
+        const info = contractCurrencies[contractSelect.value];
+        if (info && info.currency === 1) fetchPaymentRate();
+    });
+    if (paymentAmountTjs) paymentAmountTjs.addEventListener('input', calculateUsdFromTjs);
+
+    // Init on load
+    if (contractSelect.value) onContractChange();
+    </script>
+}
+

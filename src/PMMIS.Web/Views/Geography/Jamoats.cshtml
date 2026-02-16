@@ -1,0 +1,85 @@
+@model List<PMMIS.Domain.Entities.Jamoat>
+@{
+    var district = ViewBag.District as PMMIS.Domain.Entities.District;
+    ViewData["Title"] = $"Джамоаты - {district?.NameRu}";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item active">@district?.NameRu</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>@district?.NameRu</h2>
+            <span class="badge bg-secondary">@district?.Code</span>
+        </div>
+        <a asp-action="CreateJamoat" asp-route-districtId="@district?.Id" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Добавить джамоат
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Код</th>
+                        <th>Название (РУ)</th>
+                        <th>Номи (ТҶ)</th>
+                        <th class="text-center">Сёл</th>
+                        <th class="text-end">Население</th>
+                        <th class="text-center">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var jamoat in Model)
+                    {
+                        <tr>
+                            <td><code>@jamoat.Code</code></td>
+                            <td>
+                                <a asp-action="Villages" asp-route-jamoatId="@jamoat.Id" class="fw-bold text-decoration-none">
+                                    @jamoat.NameRu
+                                </a>
+                            </td>
+                            <td>@jamoat.NameTj</td>
+                            <td class="text-center">
+                                <span class="badge bg-info">@jamoat.Villages.Count</span>
+                            </td>
+                            <td class="text-end">@jamoat.Villages.Sum(v => v.PopulationCurrent).ToString("N0")</td>
+                            <td class="text-center">
+                                <a asp-action="EditJamoat" asp-route-id="@jamoat.Id" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Villages" asp-route-jamoatId="@jamoat.Id" class="btn btn-sm btn-outline-info">
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Джамоаты не найдены. Добавьте первый джамоат.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

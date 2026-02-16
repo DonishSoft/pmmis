@@ -1,0 +1,132 @@
+@model IEnumerable<PMMIS.Domain.Entities.Notification>
+@{
+    ViewData["Title"] = "Уведомления";
+    var unreadCount = (int)ViewBag.UnreadCount;
+    var unreadOnly = ViewBag.UnreadOnly as bool? ?? false;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-bell me-2"></i>Уведомления
+                @if (unreadCount > 0)
+                {
+                    <span class="badge bg-danger">@unreadCount</span>
+                }
+            </h2>
+        </div>
+        <div class="d-flex gap-2">
+            @if (unreadOnly)
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-eye me-1"></i>Показать все
+                </a>
+            }
+            else
+            {
+                <a asp-action="Index" asp-route-unreadOnly="true" class="btn btn-outline-secondary">
+                    <i class="bi bi-eye-slash me-1"></i>Только непрочитанные
+                </a>
+            }
+            @if (unreadCount > 0)
+            {
+                <form asp-action="MarkAllAsRead" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="bi bi-check-all me-1"></i>Прочитать все
+                    </button>
+                </form>
+            }
+            <a asp-action="Settings" class="btn btn-outline-secondary">
+                <i class="bi bi-gear me-1"></i>Настройки
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-bell-slash fs-1 text-muted"></i>
+                    <p class="text-muted mt-3">Нет уведомлений</p>
+                </div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var notification in Model)
+                    {
+                        var bgClass = notification.IsRead ? "" : "bg-light";
+                        var iconClass = notification.Type switch
+                        {
+                            PMMIS.Domain.Entities.NotificationType.TaskAssigned => "bi-person-plus text-primary",
+                            PMMIS.Domain.Entities.NotificationType.TaskStatusChanged => "bi-pencil text-info",
+                            PMMIS.Domain.Entities.NotificationType.TaskCommented => "bi-chat-dots text-secondary",
+                            PMMIS.Domain.Entities.NotificationType.DeadlineApproaching => "bi-clock text-warning",
+                            PMMIS.Domain.Entities.NotificationType.DeadlineOverdue => "bi-exclamation-triangle text-danger",
+                            PMMIS.Domain.Entities.NotificationType.PaymentPending => "bi-cash text-info",
+                            PMMIS.Domain.Entities.NotificationType.PaymentApproved => "bi-check-circle text-success",
+                            PMMIS.Domain.Entities.NotificationType.ContractExpiring => "bi-calendar-x text-warning",
+                            _ => "bi-bell text-muted"
+                        };
+
+                        <div class="list-group-item @bgClass py-3">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0 me-3">
+                                    <i class="bi @iconClass fs-4"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@notification.Title</strong>
+                                        <small class="text-muted">
+                                            @notification.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                        </small>
+                                    </div>
+                                    <p class="mb-1 text-muted">@notification.Message</p>
+                                    @if (!string.IsNullOrEmpty(notification.ActionUrl))
+                                    {
+                                        <a href="@notification.ActionUrl" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-right me-1"></i>Подробнее
+                                        </a>
+                                    }
+                                    else if (notification.ReferenceType == "Task" && notification.ReferenceId.HasValue)
+                                    {
+                                        <a asp-controller="Tasks" asp-action="Details" asp-route-id="@notification.ReferenceId" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-right me-1"></i>Перейти к задаче
+                                        </a>
+                                    }
+                                </div>
+                                <div class="flex-shrink-0 ms-3">
+                                    <div class="btn-group btn-group-sm">
+                                        @if (!notification.IsRead)
+                                        {
+                                            <form asp-action="MarkAsRead" asp-route-id="@notification.Id" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-success" title="Прочитано">
+                                                    <i class="bi bi-check"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        <form asp-action="Delete" asp-route-id="@notification.Id" method="post" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger" title="Удалить" onclick="return confirm('Удалить уведомление?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

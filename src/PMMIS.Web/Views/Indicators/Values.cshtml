@@ -1,0 +1,466 @@
+@model List<PMMIS.Domain.Entities.IndicatorValue>
+@using PMMIS.Domain.Entities
+@{
+    var indicator = (Indicator)ViewBag.Indicator;
+    var districts = (List<District>)ViewBag.Districts;
+    var villages = (List<Village>)ViewBag.Villages;
+    var geoVillages = ViewBag.GeoVillages as List<Village>;
+    ViewData["Title"] = $"Значения — {indicator.Code}";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isYesNo = indicator.MeasurementType == MeasurementType.YesNo;
+    var hasGeoData = indicator.GeoDataSource != GeoDataSource.None && geoVillages != null;
+
+    // Helper to get geo value from a village
+    decimal GetGeoValue(Village v)
+    {
+        return indicator.GeoDataSource switch
+        {
+            GeoDataSource.Population => v.PopulationCurrent,
+            GeoDataSource.FemalePopulation => v.FemalePopulation,
+            GeoDataSource.Households => v.HouseholdsCurrent,
+            GeoDataSource.SchoolCount => v.Schools.Count,
+            GeoDataSource.HealthFacilityCount => v.HealthFacilities.Count,
+            GeoDataSource.SchoolStudents => v.Schools.Sum(s => s.TotalStudents),
+            _ => 0
+        };
+    }
+
+    string GetGeoSourceLabel()
+    {
+        return indicator.GeoDataSource switch
+        {
+            GeoDataSource.Population => "Население (текущее)",
+            GeoDataSource.FemalePopulation => "Женское население",
+            GeoDataSource.Households => "Домохозяйства",
+            GeoDataSource.SchoolCount => "Кол-во школ",
+            GeoDataSource.HealthFacilityCount => "Кол-во медучреждений",
+            GeoDataSource.SchoolStudents => "Кол-во учеников",
+            _ => "—"
+        };
+    }
+
+    string GetGeoSourceIcon()
+    {
+        return indicator.GeoDataSource switch
+        {
+            GeoDataSource.Population => "🏘️",
+            GeoDataSource.FemalePopulation => "👩",
+            GeoDataSource.Households => "🏠",
+            GeoDataSource.SchoolCount => "🏫",
+            GeoDataSource.HealthFacilityCount => "🏥",
+            GeoDataSource.SchoolStudents => "🎓",
+            _ => "📊"
+        };
+    }
+}
+
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Индикаторы</a></li>
+            <li class="breadcrumb-item active">@indicator.Code</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-list-ol me-2"></i>Значения индикатора</h2>
+            <p class="text-muted mb-0">
+                <code>@indicator.Code</code> — @indicator.NameRu
+                @if (indicator.MeasurementType == MeasurementType.Percentage)
+                {
+                    <span class="badge bg-info ms-2">%</span>
+                }
+                else if (isYesNo)
+                {
+                    <span class="badge bg-warning text-dark ms-2">Да/Нет</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2">@indicator.Unit</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@indicator.Id" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i> Редактировать
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> К списку
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @* ===== GEOGRAPHIC DATA SECTION ===== *@
+    @if (hasGeoData)
+    {
+        var grouped = geoVillages!
+            .GroupBy(v => v.Jamoat.District)
+            .OrderBy(g => g.Key.NameRu);
+        var totalGeoValue = geoVillages!.Sum(v => GetGeoValue(v));
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-geo-alt-fill text-primary me-2"></i>
+                    @GetGeoSourceIcon() Географические данные: @GetGeoSourceLabel()
+                </h5>
+                <span class="badge bg-primary fs-6">Итого: @totalGeoValue.ToString("N0")</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px">№</th>
+                            <th>Район</th>
+                            <th>Джамоат</th>
+                            <th>Село</th>
+                            <th class="text-end">@GetGeoSourceLabel()</th>
+                            <th class="text-center">Зона</th>
+                            <th class="text-center">В проекте</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            var geoIdx = 1;
+                            string? lastDistrict = null;
+                            string? lastJamoat = null;
+                        }
+                        @foreach (var districtGroup in grouped)
+                        {
+                            var districtTotal = districtGroup.Sum(v => GetGeoValue(v));
+                            <tr class="table-primary">
+                                <td colspan="4" class="fw-bold">
+                                    <i class="bi bi-geo me-1"></i>@districtGroup.Key.NameRu
+                                    <span class="badge bg-white text-primary ms-2">@districtGroup.Count() сёл</span>
+                                </td>
+                                <td class="text-end fw-bold">@districtTotal.ToString("N0")</td>
+                                <td colspan="2"></td>
+                            </tr>
+
+                            @foreach (var jamoatGroup in districtGroup.GroupBy(v => v.Jamoat).OrderBy(g => g.Key.NameRu))
+                            {
+                                var jamoatTotal = jamoatGroup.Sum(v => GetGeoValue(v));
+                                <tr class="table-secondary">
+                                    <td></td>
+                                    <td colspan="3" class="ps-4 fst-italic">
+                                        ↳ @jamoatGroup.Key.NameRu
+                                        <span class="text-muted">(@jamoatGroup.Count() сёл)</span>
+                                    </td>
+                                    <td class="text-end fw-semibold">@jamoatTotal.ToString("N0")</td>
+                                    <td colspan="2"></td>
+                                </tr>
+
+                                @foreach (var village in jamoatGroup.OrderBy(v => v.NameRu))
+                                {
+                                    var geoVal = GetGeoValue(village);
+                                    <tr>
+                                        <td class="text-muted">@(geoIdx++)</td>
+                                        <td class="text-muted small">@districtGroup.Key.NameRu</td>
+                                        <td class="text-muted small">@jamoatGroup.Key.NameRu</td>
+                                        <td>@village.NameRu</td>
+                                        <td class="text-end fw-bold text-primary">@geoVal.ToString("N0")</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-@(village.Zone == "2D" ? "info" : "warning") bg-opacity-75">@village.Zone</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (village.IsCoveredByProject)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle text-muted"></i>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ===== SUMMARY CARDS ===== *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    @if (hasGeoData)
+                    {
+                        <h3 class="text-primary mb-0">@geoVillages!.Count</h3>
+                        <small class="text-muted">Сёл в базе</small>
+                    }
+                    else
+                    {
+                        <h3 class="text-primary mb-0">@Model.Count</h3>
+                        <small class="text-muted">Значений</small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    @if (hasGeoData)
+                    {
+                        var totalGeo = geoVillages!.Sum(v => GetGeoValue(v));
+                        <h3 class="text-success mb-0">@totalGeo.ToString("N0")</h3>
+                        <small class="text-muted">@GetGeoSourceLabel()</small>
+                    }
+                    else if (isYesNo)
+                    {
+                        var yesCount = Model.Count(v => v.BoolValue == true);
+                        <h3 class="text-success mb-0">@yesCount</h3>
+                        <small class="text-muted">Да</small>
+                    }
+                    else
+                    {
+                        <h3 class="text-success mb-0">@(indicator.TargetValue?.ToString("N0") ?? "—")</h3>
+                        <small class="text-muted">Целевое</small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    @if (isYesNo)
+                    {
+                        var noCount = Model.Count(v => v.BoolValue == false);
+                        <h3 class="text-danger mb-0">@noCount</h3>
+                        <small class="text-muted">Нет</small>
+                    }
+                    else
+                    {
+                        <h3 class="text-success mb-0">@(indicator.TargetValue?.ToString("N0") ?? "—")</h3>
+                        <small class="text-muted">Целевое</small>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <h3 class="text-info mb-0">@Model.Count</h3>
+                    <small class="text-muted">Введённых значений</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add value form -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Добавить значение вручную</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="AddValue" method="post">
+                <input type="hidden" name="IndicatorId" value="@indicator.Id" />
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-2">
+                        <label class="form-label">Дата измерения <span class="text-danger">*</span></label>
+                        <input type="date" name="MeasurementDate" class="form-control"
+                               value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                    </div>
+
+                    @if (isYesNo)
+                    {
+                        <div class="col-md-2">
+                            <label class="form-label">Значение <span class="text-danger">*</span></label>
+                            <select name="BoolValue" class="form-select" required>
+                                <option value="">-- Выберите --</option>
+                                <option value="true">✅ Да</option>
+                                <option value="false">❌ Нет</option>
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-2">
+                            <label class="form-label">Значение <span class="text-danger">*</span></label>
+                            <input type="number" name="Value" class="form-control" step="any" required
+                                   placeholder="0" />
+                        </div>
+                    }
+
+                    <div class="col-md-2">
+                        <label class="form-label">Район</label>
+                        <select name="DistrictId" id="districtSelect" class="form-select">
+                            <option value="">— Общее —</option>
+                            @foreach (var d in districts)
+                            {
+                                <option value="@d.Id">@d.NameRu</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Село</label>
+                        <select name="VillageId" id="villageSelect" class="form-select">
+                            <option value="">— Все —</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Примечание</label>
+                        <input type="text" name="Notes" class="form-control" placeholder="Описание..." />
+                    </div>
+
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-lg me-1"></i> Добавить
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manual values table -->
+    @if (Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-table me-2"></i>Введённые значения (@Model.Count)</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px">№</th>
+                            <th>Дата</th>
+                            <th class="text-end">Значение</th>
+                            <th>Район</th>
+                            <th>Село</th>
+                            <th>Примечание</th>
+                            <th style="width: 80px" class="text-center">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var idx = 1; }
+                        @foreach (var val in Model)
+                        {
+                            <tr>
+                                <td>@(idx++)</td>
+                                <td>
+                                    <i class="bi bi-calendar3 me-1 text-muted"></i>
+                                    @val.MeasurementDate.ToString("dd.MM.yyyy")
+                                </td>
+                                <td class="text-end fw-bold">
+                                    @if (isYesNo)
+                                    {
+                                        if (val.BoolValue == true)
+                                        {
+                                            <span class="badge bg-success">✅ Да</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">❌ Нет</span>
+                                        }
+                                    }
+                                    else if (indicator.MeasurementType == MeasurementType.Percentage)
+                                    {
+                                        @val.Value.ToString("N1")<text>%</text>
+                                    }
+                                    else
+                                    {
+                                        @val.Value.ToString("N0")
+                                    }
+                                </td>
+                                <td>
+                                    @if (val.District != null)
+                                    {
+                                        <span class="badge bg-primary">@val.District.NameRu</span>
+                                    }
+                                    else if (val.Village?.Jamoat?.District != null)
+                                    {
+                                        <span class="badge bg-outline-primary text-primary border">@val.Village.Jamoat.District.NameRu</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (val.Village != null)
+                                    {
+                                        <span>@val.Village.NameRu</span>
+                                        <small class="text-muted d-block">@val.Village.Jamoat?.NameRu</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(val.Notes))
+                                    {
+                                        <small>@val.Notes</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <form asp-action="DeleteValue" method="post" class="d-inline"
+                                          onsubmit="return confirm('Удалить это значение?')">
+                                        <input type="hidden" name="id" value="@val.Id" />
+                                        <input type="hidden" name="indicatorId" value="@indicator.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    // Filter villages by selected district
+    const districtSelect = document.getElementById('districtSelect');
+    const villageSelect = document.getElementById('villageSelect');
+    const allVillages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        villages.Select(v => new { v.Id, Name = v.NameRu, DistrictId = v.Jamoat.District.Id, Jamoat = v.Jamoat.NameRu })
+    ));
+
+    districtSelect.addEventListener('change', () => {
+        const districtId = parseInt(districtSelect.value);
+        villageSelect.innerHTML = '<option value="">— Все —</option>';
+        if (!districtId) return;
+
+        const filtered = allVillages.filter(v => v.districtId === districtId);
+        let currentJamoat = '';
+        filtered.forEach(v => {
+            if (v.jamoat !== currentJamoat) {
+                const optGroup = document.createElement('optgroup');
+                optGroup.label = v.jamoat;
+                villageSelect.appendChild(optGroup);
+                currentJamoat = v.jamoat;
+            }
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.name;
+            villageSelect.lastElementChild.appendChild(opt);
+        });
+    });
+</script>
+}

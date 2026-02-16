@@ -1,0 +1,184 @@
+@model IEnumerable<PMMIS.Domain.Entities.WorkProgress>
+@{
+    ViewData["Title"] = "Реестр АВР";
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1"><i class="bi bi-file-earmark-check me-2"></i>Реестр АВР</h4>
+            <small class="text-muted">Акты выполненных работ по всем контрактам</small>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Создать АВР
+        </a>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card stat-card-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Всего АВР</h6>
+                            <h3 class="stat-value">@ViewBag.TotalReports</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card stat-card-success">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon"><i class="bi bi-file-earmark-ruled"></i></div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Контрактов</h6>
+                            <h3 class="stat-value">@ViewBag.TotalContracts</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card stat-card-info">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Средний прогресс</h6>
+                            <h3 class="stat-value">@(((decimal)ViewBag.AverageProgress).ToString("N1"))%</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Проект</label>
+                    <select name="projectId" class="form-select" asp-items="@((SelectList)ViewBag.Projects)">
+                        <option value="">Все проекты</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Контракт</label>
+                    <select name="contractId" class="form-select" asp-items="@((SelectList)ViewBag.Contracts)">
+                        <option value="">Все контракты</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Дата от</label>
+                    <input type="date" name="dateFrom" class="form-control" value="@(ViewBag.DateFrom?.ToString("yyyy-MM-dd"))">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Дата до</label>
+                    <input type="date" name="dateTo" class="form-control" value="@(ViewBag.DateTo?.ToString("yyyy-MM-dd"))">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Фильтр
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Data Grid -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div id="Grid"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    var gridData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(w => new {
+        id = w.Id,
+        reportDate = w.ReportDate.ToString("dd.MM.yyyy"),
+        contractNumber = w.Contract.ContractNumber,
+        contractorName = w.Contract.Contractor.Name,
+        projectCode = w.Contract.Project.Code,
+        completedPercent = w.CompletedPercent,
+        description = w.Description ?? "",
+        documentsCount = w.Documents.Count
+    })));
+
+    var grid = new ej.grids.Grid({
+        dataSource: gridData,
+        allowPaging: true,
+        allowSorting: true,
+        allowFiltering: true,
+        filterSettings: { type: 'Excel' },
+        pageSettings: { pageSize: 15 },
+        columns: [
+            { field: 'reportDate', headerText: 'Дата', width: 100, textAlign: 'Center' },
+            { field: 'contractNumber', headerText: 'Контракт', width: 160 },
+            { field: 'contractorName', headerText: 'Подрядчик', width: 200 },
+            { field: 'projectCode', headerText: 'Проект', width: 100 },
+            { 
+                field: 'completedPercent', 
+                headerText: 'Прогресс', 
+                width: 120,
+                textAlign: 'Center'
+            },
+            { field: 'documentsCount', headerText: 'Док.', width: 70, textAlign: 'Center' },
+            { 
+                field: 'id', 
+                headerText: 'Действия', 
+                width: 150, 
+                textAlign: 'Center',
+                template: '<a href="/WorkProgressReports/Details/${id}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>' +
+                          '<a href="/WorkProgressReports/Edit/${id}" class="btn btn-sm btn-outline-warning me-1"><i class="bi bi-pencil"></i></a>' +
+                          '<button class="btn btn-sm btn-outline-danger" onclick="deleteItem(${id})"><i class="bi bi-trash"></i></button>'
+            }
+        ],
+        toolbar: ['Search', 'ExcelExport', 'PdfExport'],
+        queryCellInfo: function(args) {
+            if (args.column.field === 'completedPercent') {
+                var pct = args.data.completedPercent || 0;
+                var colorClass = pct >= 80 ? 'bg-success' : pct >= 50 ? 'bg-warning' : 'bg-danger';
+                var textColor = pct >= 50 ? '#fff' : '#212529';
+                args.cell.innerHTML = '<div class="progress" style="height: 20px; position: relative;">' +
+                    '<div class="progress-bar ' + colorClass + '" style="width: ' + pct + '%"></div>' +
+                    '<span style="position: absolute; left: 0; right: 0; text-align: center; line-height: 20px; font-weight: 600; font-size: 12px; color: ' + textColor + '; text-shadow: 0 0 2px rgba(0,0,0,0.15);">' + pct + '%</span>' +
+                    '</div>';
+            }
+        },
+        toolbarClick: function (args) {
+            if (args.item.id === 'Grid_excelexport') {
+                grid.excelExport({ fileName: 'АВР_Реестр.xlsx' });
+            }
+            if (args.item.id === 'Grid_pdfexport') {
+                grid.pdfExport({ fileName: 'АВР_Реестр.pdf' });
+            }
+        }
+    });
+    grid.appendTo('#Grid');
+
+    function deleteItem(id) {
+        if (confirm('Удалить этот АВР?')) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/WorkProgressReports/Delete/' + id;
+            
+            var token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '__RequestVerificationToken';
+            token.value = '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)[1];
+            form.appendChild(token);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
+}

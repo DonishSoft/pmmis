@@ -1,0 +1,211 @@
+@model List<PMMIS.Domain.Entities.ProcurementPlan>
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "План закупок";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var projects = ViewBag.Projects as List<Project> ?? new List<Project>();
+    var selectedProjectId = ViewBag.SelectedProjectId as int?;
+    var selectedStatus = ViewBag.SelectedStatus as ProcurementStatus?;
+    var selectedType = ViewBag.SelectedType as ProcurementType?;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-clipboard-check me-2"></i>План закупок</h2>
+        <a asp-action="Create" asp-route-projectId="@selectedProjectId" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Новая позиция
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Проект</label>
+                    <select name="projectId" class="form-select">
+                        <option value="">— Все проекты —</option>
+                        @foreach (var p in projects)
+                        {
+                            <option value="@p.Id" selected="@(selectedProjectId == p.Id)">@p.Code - @p.NameRu</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Статус</label>
+                    <select name="status" class="form-select">
+                        <option value="">— Все —</option>
+                        <option value="@((int)ProcurementStatus.Planned)" selected="@(selectedStatus == ProcurementStatus.Planned)">Запланировано</option>
+                        <option value="@((int)ProcurementStatus.InProgress)" selected="@(selectedStatus == ProcurementStatus.InProgress)">В процессе</option>
+                        <option value="@((int)ProcurementStatus.Evaluation)" selected="@(selectedStatus == ProcurementStatus.Evaluation)">Оценка</option>
+                        <option value="@((int)ProcurementStatus.Awarded)" selected="@(selectedStatus == ProcurementStatus.Awarded)">Присуждено</option>
+                        <option value="@((int)ProcurementStatus.Completed)" selected="@(selectedStatus == ProcurementStatus.Completed)">Завершено</option>
+                        <option value="@((int)ProcurementStatus.Cancelled)" selected="@(selectedStatus == ProcurementStatus.Cancelled)">Отменено</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Тип</label>
+                    <select name="type" class="form-select">
+                        <option value="">— Все —</option>
+                        <option value="@((int)ProcurementType.Goods)" selected="@(selectedType == ProcurementType.Goods)">Товары</option>
+                        <option value="@((int)ProcurementType.Works)" selected="@(selectedType == ProcurementType.Works)">Работы</option>
+                        <option value="@((int)ProcurementType.ConsultingServices)" selected="@(selectedType == ProcurementType.ConsultingServices)">Консалтинг</option>
+                        <option value="@((int)ProcurementType.NonConsultingServices)" selected="@(selectedType == ProcurementType.NonConsultingServices)">Некон. услуги</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-funnel me-1"></i> Фильтр
+                    </button>
+                </div>
+                <div class="col-md-3 text-end">
+                    <span class="text-muted">Найдено: <strong>@Model.Count</strong></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ref No</th>
+                        <th>Описание</th>
+                        <th>Проект</th>
+                        <th class="text-center">Метод</th>
+                        <th class="text-center">Тип</th>
+                        <th class="text-end">Сумма (USD)</th>
+                        <th class="text-center">Статус</th>
+                        <th class="text-center">Плановый тендер</th>
+                        <th style="width: 100px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td><code>@item.ReferenceNo</code></td>
+                            <td>
+                                @item.Description
+                                @if (item.Contract != null)
+                                {
+                                    <br><small class="text-success"><i class="bi bi-link"></i> @item.Contract.ContractNumber</small>
+                                }
+                            </td>
+                            <td><span class="badge bg-secondary">@item.Project.Code</span></td>
+                            <td class="text-center"><span class="badge bg-info">@item.Method</span></td>
+                            <td class="text-center">
+                                @switch (item.Type)
+                                {
+                                    case ProcurementType.Goods:
+                                        <span class="badge bg-primary">Товары</span>
+                                        break;
+                                    case ProcurementType.Works:
+                                        <span class="badge bg-warning text-dark">Работы</span>
+                                        break;
+                                    case ProcurementType.ConsultingServices:
+                                        <span class="badge bg-success">Консалтинг</span>
+                                        break;
+                                    default:
+                                        <span class="badge bg-secondary">Некон.</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="text-end fw-semibold">$@item.EstimatedAmount.ToString("N0")</td>
+                            <td class="text-center">
+                                @switch (item.Status)
+                                {
+                                    case ProcurementStatus.Planned:
+                                        <span class="badge bg-secondary">🔵 Запланировано</span>
+                                        break;
+                                    case ProcurementStatus.InProgress:
+                                        <span class="badge bg-primary">⏳ В процессе</span>
+                                        break;
+                                    case ProcurementStatus.Evaluation:
+                                        <span class="badge bg-warning text-dark">📋 Оценка</span>
+                                        break;
+                                    case ProcurementStatus.Awarded:
+                                        <span class="badge bg-info">🏆 Присуждено</span>
+                                        break;
+                                    case ProcurementStatus.Completed:
+                                        <span class="badge bg-success">✅ Завершено</span>
+                                        break;
+                                    case ProcurementStatus.Cancelled:
+                                        <span class="badge bg-danger">❌ Отменено</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="text-center text-muted">
+                                @(item.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—")
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить позицию?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Нет позиций плана закупок
+                                <br>
+                                <a asp-action="Create" class="btn btn-primary btn-sm mt-3">
+                                    <i class="bi bi-plus-lg me-1"></i> Добавить первую позицию
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    @if (Model.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Общая сумма</div>
+                    <div class="fs-4 fw-bold text-primary">$@Model.Sum(m => m.EstimatedAmount).ToString("N0")</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">В процессе</div>
+                    <div class="fs-4 fw-bold text-warning">@Model.Count(m => m.Status == ProcurementStatus.InProgress || m.Status == ProcurementStatus.Evaluation)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Завершено</div>
+                    <div class="fs-4 fw-bold text-success">@Model.Count(m => m.Status == ProcurementStatus.Completed || m.Status == ProcurementStatus.Awarded)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Запланировано</div>
+                    <div class="fs-4 fw-bold text-secondary">@Model.Count(m => m.Status == ProcurementStatus.Planned)</div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

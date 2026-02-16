@@ -1,0 +1,260 @@
+@model PMMIS.Web.ViewModels.Reports.IndicatorReportViewModel
+
+<!-- Summary Statistics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Всего индикаторов</div>
+                        <div class="fs-2 fw-bold text-primary">@Model.TotalIndicators</div>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-speedometer2 text-primary fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Выполнено</div>
+                        <div class="fs-2 fw-bold text-success">@Model.CompletedIndicators</div>
+                    </div>
+                    <div class="bg-success bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-check-circle text-success fs-4"></i>
+                    </div>
+                </div>
+                <div class="text-muted small mt-2">100% и более</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">В процессе</div>
+                        <div class="fs-2 fw-bold text-info">@Model.InProgressIndicators</div>
+                    </div>
+                    <div class="bg-info bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-arrow-repeat text-info fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Общий прогресс</div>
+                        <div class="fs-2 fw-bold text-dark">@Model.OverallProgress.ToString("F1")%</div>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 rounded-3 p-2">
+                        <i class="bi bi-pie-chart text-warning fs-4"></i>
+                    </div>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: @Model.OverallProgress.ToString("F0")%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Прогресс по индикаторам</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="indicatorsBarChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Indicators Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0">
+        <h6 class="mb-0"><i class="bi bi-table me-2"></i>Детализация по индикаторам</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 30px;"></th>
+                        <th>Код</th>
+                        <th>Индикатор</th>
+                        <th>Ед. изм.</th>
+                        <th class="text-end">Цель</th>
+                        <th class="text-end">Достигнуто</th>
+                        <th class="text-end">Остаток</th>
+                        <th class="text-center" style="width: 160px;">Прогресс</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ind in Model.Indicators)
+                    {
+                        var rowId = $"indicator-{ind.IndicatorId}";
+                        var barColor = ind.AchievedPercent >= 100 ? "bg-success" 
+                            : ind.AchievedPercent >= 50 ? "bg-info" 
+                            : ind.AchievedPercent > 0 ? "bg-warning" 
+                            : "bg-secondary";
+                        <tr class="@(ind.Contracts.Any() ? "cursor-pointer" : "")" 
+                            @(ind.Contracts.Any() ? $"data-bs-toggle=collapse data-bs-target=#{rowId}" : "")>
+                            <td>
+                                @if (ind.Contracts.Any())
+                                {
+                                    <i class="bi bi-chevron-right collapse-icon" data-target="#@rowId"></i>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-dark bg-opacity-75 rounded-pill">@ind.Code</span>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">@ind.Name</span>
+                                @if (!string.IsNullOrEmpty(ind.CategoryName))
+                                {
+                                    <br><small class="text-muted">@ind.CategoryName</small>
+                                }
+                            </td>
+                            <td class="text-muted">@ind.Unit</td>
+                            <td class="text-end fw-semibold">@ind.TotalTarget.ToString("N2")</td>
+                            <td class="text-end fw-semibold text-success">@ind.TotalAchieved.ToString("N2")</td>
+                            <td class="text-end fw-semibold @(ind.Remaining > 0 ? "text-warning" : "text-success")">
+                                @ind.Remaining.ToString("N2")
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex align-items-center gap-1">
+                                    <div class="progress flex-grow-1" style="height: 6px; min-width: 60px;">
+                                        <div class="progress-bar @barColor"
+                                             style="width: @Math.Min(ind.AchievedPercent, 100).ToString("F0")%"></div>
+                                    </div>
+                                    <small class="fw-semibold" style="min-width: 45px;">@ind.AchievedPercent.ToString("F1")%</small>
+                                </div>
+                            </td>
+                        </tr>
+                        @if (ind.Contracts.Any())
+                        {
+                            <tr class="collapse" id="@rowId">
+                                <td colspan="8" class="p-0 bg-light">
+                                    <table class="table table-sm mb-0 ms-4" style="max-width: calc(100% - 2rem);">
+                                        <thead>
+                                            <tr class="text-muted small">
+                                                <th>Контракт</th>
+                                                <th>Подрядчик</th>
+                                                <th class="text-end">Цель</th>
+                                                <th class="text-end">Достигнуто</th>
+                                                <th class="text-center">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var c in ind.Contracts)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <a asp-controller="Contracts" asp-action="Edit" asp-route-id="@c.ContractId"
+                                                           class="text-decoration-none" onclick="event.stopPropagation();">
+                                                            @c.ContractNumber
+                                                        </a>
+                                                    </td>
+                                                    <td>@c.ContractorName</td>
+                                                    <td class="text-end">@c.TargetValue.ToString("N2")</td>
+                                                    <td class="text-end text-success">@c.AchievedValue.ToString("N2")</td>
+                                                    <td class="text-center">
+                                                        <span class="badge @(c.Percent >= 100 ? "bg-success" : c.Percent >= 50 ? "bg-info" : "bg-warning")">
+                                                            @c.Percent.ToString("F0")%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .collapse-icon { transition: transform 0.2s; }
+    .collapse-icon.rotated { transform: rotate(90deg); }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    // Collapse chevron animation
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(row => {
+        const target = row.querySelector('.collapse-icon');
+        const collapseEl = document.querySelector(target?.dataset.target);
+        if (collapseEl) {
+            collapseEl.addEventListener('show.bs.collapse', () => target.classList.add('rotated'));
+            collapseEl.addEventListener('hide.bs.collapse', () => target.classList.remove('rotated'));
+        }
+    });
+
+    // Chart data
+    const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Indicators.Select(i => i.Code)));
+    const targetData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Indicators.Select(i => i.TotalTarget)));
+    const achievedData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Indicators.Select(i => i.TotalAchieved)));
+
+    new Chart(document.getElementById('indicatorsBarChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Цель',
+                    data: targetData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Достигнуто',
+                    data: achievedData,
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: 'rgb(34, 197, 94)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('ru-RU', {minimumFractionDigits: 2})}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: v => v.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+</script>

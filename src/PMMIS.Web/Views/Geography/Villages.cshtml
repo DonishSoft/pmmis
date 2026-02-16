@@ -1,0 +1,135 @@
+@model List<PMMIS.Domain.Entities.Village>
+@{
+    var jamoat = ViewBag.Jamoat as PMMIS.Domain.Entities.Jamoat;
+    var district = ViewBag.District as PMMIS.Domain.Entities.District;
+    ViewData["Title"] = $"Сёла - {jamoat?.NameRu}";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">География</a></li>
+            <li class="breadcrumb-item"><a asp-action="Jamoats" asp-route-districtId="@district?.Id">@district?.NameRu</a></li>
+            <li class="breadcrumb-item active">@jamoat?.NameRu</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>@jamoat?.NameRu</h2>
+            <span class="badge bg-secondary">@jamoat?.Code</span>
+            <span class="text-muted ms-2">→ @district?.NameRu</span>
+        </div>
+        <a asp-action="CreateVillage" asp-route-jamoatId="@jamoat?.Id" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Добавить село
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistics -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-primary mb-0">@Model.Count</h4>
+                    <small class="text-muted">Сёл</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-success mb-0">@Model.Sum(v => v.PopulationCurrent).ToString("N0")</h4>
+                    <small class="text-muted">Население</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-info mb-0">@Model.Sum(v => v.HouseholdsCurrent).ToString("N0")</h4>
+                    <small class="text-muted">Домохозяйств</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h4 class="text-warning mb-0">@Model.Count(v => v.IsCoveredByProject)</h4>
+                    <small class="text-muted">В проекте</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>№</th>
+                        <th>Зона</th>
+                        <th>Название (РУ)</th>
+                        <th>Номи (ТЈ)</th>
+                        <th class="text-end">Население</th>
+                        <th class="text-end">Домохозяйств</th>
+                        <th class="text-center">Проект</th>
+                        <th class="text-center" style="width: 200px;">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var village in Model.OrderBy(v => v.Number))
+                    {
+                        <tr>
+                            <td>@village.Number</td>
+                            <td><span class="badge bg-secondary">@village.Zone</span></td>
+                            <td>
+                                <a asp-action="VillageDetails" asp-route-id="@village.Id" class="fw-bold text-decoration-none">
+                                    @village.NameRu
+                                </a>
+                            </td>
+                            <td>@village.NameTj</td>
+                            <td class="text-end">@village.PopulationCurrent.ToString("N0")</td>
+                            <td class="text-end">@village.HouseholdsCurrent.ToString("N0")</td>
+                            <td class="text-center">
+                                @if (village.IsCoveredByProject)
+                                {
+                                    <span class="badge bg-success"><i class="bi bi-check"></i></span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary"><i class="bi bi-x"></i></span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <a asp-action="EditVillage" asp-route-id="@village.Id" class="btn btn-sm btn-outline-primary me-1" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="VillageDetails" asp-route-id="@village.Id" class="btn btn-sm btn-outline-info" title="Учреждения">
+                                    <i class="bi bi-building"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Сёла не найдены. Добавьте первое село.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

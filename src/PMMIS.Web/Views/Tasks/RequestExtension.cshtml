@@ -1,0 +1,68 @@
+@model PMMIS.Web.ViewModels.Tasks.TaskExtensionFormViewModel
+@{
+    ViewData["Title"] = "Запрос продления срока";
+}
+
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <!-- Header -->
+            <div class="mb-4">
+                <h2 class="mb-1"><i class="bi bi-calendar-plus me-2"></i>Запрос продления срока</h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="/">Главная</a></li>
+                        <li class="breadcrumb-item"><a asp-action="Index">Задачи</a></li>
+                        <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.TaskId">@Model.TaskTitle</a></li>
+                        <li class="breadcrumb-item active">Продление</li>
+                    </ol>
+                </nav>
+            </div>
+
+            <!-- Alert -->
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Задача:</strong> @Model.TaskTitle<br />
+                <strong>Текущий срок:</strong> @Model.CurrentDueDate.ToString("dd.MM.yyyy")
+            </div>
+
+            <!-- Form Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form asp-action="RequestExtension" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="TaskId" />
+                        <input type="hidden" asp-for="TaskTitle" />
+                        <input type="hidden" asp-for="CurrentDueDate" />
+
+                        <div class="mb-4">
+                            <label asp-for="NewDueDate" class="form-label">Новый срок <span class="text-danger">*</span></label>
+                            <input asp-for="NewDueDate" type="date" class="form-control" />
+                            <span asp-validation-for="NewDueDate" class="text-danger"></span>
+                            <small class="text-muted">Выберите дату позже текущего дедлайна</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Reason" class="form-label">Причина продления <span class="text-danger">*</span></label>
+                            <textarea asp-for="Reason" class="form-control" rows="4" placeholder="Укажите причину запроса продления (минимум 10 символов)..."></textarea>
+                            <span asp-validation-for="Reason" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Details" asp-route-id="@Model.TaskId" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Отмена
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-send me-1"></i>Отправить запрос
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

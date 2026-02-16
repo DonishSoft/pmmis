@@ -1,0 +1,432 @@
+@using PMMIS.Domain.Entities
+@using PMMIS.Web.Services
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var project = ViewBag.Project as Project;
+    var allProjects = ViewBag.AllProjects as List<Project> ?? new List<Project>();
+    var selectedProjectId = (int?)ViewBag.SelectedProjectId ?? 0;
+    
+    var totalBudget = (decimal)ViewBag.TotalBudget;
+    var totalContractValue = (decimal)ViewBag.TotalContractValue;
+    var totalPaid = (decimal)ViewBag.TotalPaid;
+    var pendingPayments = (decimal)ViewBag.PendingPayments;
+    var disbursementRate = (decimal)ViewBag.DisbursementRate;
+    var averageProgress = (decimal)ViewBag.AverageProgress;
+    var upcomingDeadlines = ViewBag.UpcomingDeadlines as List<Contract> ?? new List<Contract>();
+    var overdueContracts = ViewBag.OverdueContracts as List<Contract> ?? new List<Contract>();
+    var recentContracts = ViewBag.RecentContracts as List<Contract> ?? new List<Contract>();
+    
+    var procurementTotal = (decimal)ViewBag.ProcurementTotal;
+    var procurementPlanned = (int)ViewBag.ProcurementPlanned;
+    var procurementInProgress = (int)ViewBag.ProcurementInProgress;
+    var procurementCompleted = (int)ViewBag.ProcurementCompleted;
+    var procurementCount = (int)ViewBag.ProcurementCount;
+    
+    // Management Alerts (KPI / Red Flags)
+    var managementAlerts = ViewBag.ManagementAlerts as List<ManagementAlert> ?? new List<ManagementAlert>();
+    var criticalAlertsCount = (int)(ViewBag.CriticalAlertsCount ?? 0);
+    var warningAlertsCount = (int)(ViewBag.WarningAlertsCount ?? 0);
+    var kpiSummary = ViewBag.KpiSummary as DashboardKpiSummary;
+}
+
+
+<div class="container-fluid">
+    <!-- Project Selector -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3">
+                <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+                <form method="get" class="d-flex align-items-center gap-2">
+                    <select name="projectId" class="form-select form-select-sm" style="width: auto" onchange="this.form.submit()">
+                        @foreach (var p in allProjects)
+                        {
+                            <option value="@p.Id" selected="@(selectedProjectId == p.Id)">@p.Code - @p.NameRu</option>
+                        }
+                    </select>
+                </form>
+            </div>
+        </div>
+        <div class="col-md-6 text-end">
+            <span class="text-muted">
+                <i class="bi bi-calendar3 me-1"></i>
+                @project?.StartDate.ToString("dd.MM.yyyy") — @project?.EndDate?.ToString("dd.MM.yyyy")
+            </span>
+        </div>
+    </div>
+
+    <!-- Main KPI Cards Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Общий бюджет</h6>
+                            <h3 class="stat-value">$@totalBudget.ToString("N0")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-success">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Сумма контрактов</h6>
+                            <h3 class="stat-value">$@totalContractValue.ToString("N0")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-info">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Выплачено</h6>
+                            <h3 class="stat-value">$@totalPaid.ToString("N0")</h3>
+                            <small class="stat-subtitle">@disbursementRate.ToString("F1")% освоено</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-danger">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Средний прогресс</h6>
+                            <h3 class="stat-value">@averageProgress.ToString("F1")%</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary KPI Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-light">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon icon-primary">
+                            <i class="bi bi-clipboard-check"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Закупки</h6>
+                            <h4 class="stat-value">@procurementCount</h4>
+                            <small class="stat-subtitle">$@procurementTotal.ToString("N0")</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-light">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon icon-warning">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">К оплате</h6>
+                            <h4 class="stat-value">$@pendingPayments.ToString("N0")</h4>
+                            <small class="stat-subtitle">ожидает/одобрено</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-light">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon icon-danger">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Просрочено</h6>
+                            <h4 class="stat-value">@overdueContracts.Count</h4>
+                            <small class="stat-subtitle">контрактов</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow-sm h-100 stat-card stat-card-light">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 stat-icon icon-success">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="stat-title">Завершено закупок</h6>
+                            <h4 class="stat-value">@procurementCompleted / @procurementCount</h4>
+                            <small class="stat-subtitle">@(procurementCount > 0 ? (procurementCompleted * 100 / procurementCount) : 0)%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MANAGEMENT ALERTS (RED FLAGS) -->
+    @if (managementAlerts.Any())
+    {
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-flag-fill me-2 text-danger"></i>Управленческие сигналы
+                        </h5>
+                        <div>
+                            @if (criticalAlertsCount > 0)
+                            {
+                                <span class="badge bg-danger me-2">🔴 @criticalAlertsCount критических</span>
+                            }
+                            @if (warningAlertsCount > 0)
+                            {
+                                <span class="badge bg-warning text-dark">⚠️ @warningAlertsCount предупреждений</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            @foreach (var alert in managementAlerts.Take(5))
+                            {
+                                var alertClass = alert.Severity == AlertSeverity.Critical 
+                                    ? "list-group-item-danger" 
+                                    : "list-group-item-warning";
+                                <a href="@alert.LinkUrl" class="list-group-item list-group-item-action @alertClass py-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>@alert.Title</strong>
+                                            <p class="mb-0 small text-dark">@alert.Description</p>
+                                        </div>
+                                        <span class="badge @(alert.Severity == AlertSeverity.Critical ? "bg-danger" : "bg-warning text-dark")">
+                                            @(alert.Severity == AlertSeverity.Critical ? "Критично" : "Внимание")
+                                        </span>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Charts Row -->
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0"><i class="bi bi-bar-chart me-2"></i>Бюджет по компонентам</h5>
+                </div>
+                <div class="card-body">
+                    <div id="componentBudgetChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h5 class="card-title mb-0"><i class="bi bi-pie-chart me-2"></i>Статус закупок</h5>
+                </div>
+                <div class="card-body">
+                    <div id="procurementStatusChart" style="height: 300px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Row -->
+    <div class="row g-4">
+        <!-- Upcoming Deadlines -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock me-2 text-warning"></i>Дедлайны
+                    </h5>
+                    <span class="badge bg-warning">@upcomingDeadlines.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (upcomingDeadlines.Any())
+                        {
+                            @foreach (var contract in upcomingDeadlines)
+                            {
+                                <a href="@Url.Action("Details", "Contracts", new { id = contract.Id })" class="list-group-item list-group-item-action py-3">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@contract.ContractNumber</strong>
+                                        <span class="badge bg-warning">@contract.RemainingDays дн.</span>
+                                    </div>
+                                </a>
+                            }
+                        }
+                        else
+                        {
+                            <div class="list-group-item text-center text-muted py-4">
+                                <i class="bi bi-check-circle fs-3 text-success"></i>
+                                <p class="mb-0 mt-2 small">Нет приближающихся дедлайнов</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overdue Contracts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle me-2 text-danger"></i>Просрочено
+                    </h5>
+                    <span class="badge bg-danger">@overdueContracts.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (overdueContracts.Any())
+                        {
+                            @foreach (var contract in overdueContracts)
+                            {
+                                <a href="@Url.Action("Details", "Contracts", new { id = contract.Id })" class="list-group-item list-group-item-action list-group-item-danger py-3">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@contract.ContractNumber</strong>
+                                        <span class="badge bg-danger">@Math.Abs(contract.RemainingDays) дн.</span>
+                                    </div>
+                                    <small>Прогресс: @contract.WorkCompletedPercent%</small>
+                                </a>
+                            }
+                        }
+                        else
+                        {
+                            <div class="list-group-item text-center text-muted py-4">
+                                <i class="bi bi-check-circle fs-3 text-success"></i>
+                                <p class="mb-0 mt-2 small">Нет просроченных контрактов</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Contracts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark-plus me-2 text-info"></i>Новые контракты
+                    </h5>
+                    <a asp-controller="Contracts" asp-action="Index" class="btn btn-sm btn-outline-primary">Все</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @if (recentContracts.Any())
+                        {
+                            @foreach (var contract in recentContracts)
+                            {
+                                <a href="@Url.Action("Details", "Contracts", new { id = contract.Id })" class="list-group-item list-group-item-action py-3">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>@contract.ContractNumber</strong>
+                                        <span class="text-muted small">$@contract.FinalAmount.ToString("N0")</span>
+                                    </div>
+                                    <small class="text-muted">@contract.Contractor?.Name</small>
+                                </a>
+                            }
+                        }
+                        else
+                        {
+                            <div class="list-group-item text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-3"></i>
+                                <p class="mb-0 mt-2 small">Нет контрактов</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Component Budget Chart
+    var chartData = [
+        @foreach (var component in project?.Components ?? Enumerable.Empty<Component>())
+        {
+            <text>{ x: 'Компонент @component.Number', y: @component.AllocatedBudget },</text>
+        }
+    ];
+
+    var chart = new ej.charts.Chart({
+        primaryXAxis: { valueType: 'Category' },
+        primaryYAxis: { labelFormat: '${value}' },
+        series: [{
+            dataSource: chartData,
+            xName: 'x',
+            yName: 'y',
+            type: 'Column',
+            fill: '#667eea',
+            cornerRadius: { topLeft: 8, topRight: 8 }
+        }],
+        tooltip: { enable: true }
+    });
+    chart.appendTo('#componentBudgetChart');
+
+    // Procurement Status Chart
+    var procurementData = [
+        { x: 'Запланировано', y: @procurementPlanned, fill: '#6c757d' },
+        { x: 'В процессе', y: @procurementInProgress, fill: '#ffc107' },
+        { x: 'Завершено', y: @procurementCompleted, fill: '#28a745' }
+    ];
+
+    var pieChart = new ej.charts.AccumulationChart({
+        series: [{
+            dataSource: procurementData,
+            xName: 'x',
+            yName: 'y',
+            pointColorMapping: 'fill',
+            dataLabel: {
+                visible: true,
+                position: 'Inside',
+                name: 'x'
+            },
+            innerRadius: '40%'
+        }],
+        legendSettings: { visible: true, position: 'Bottom' },
+        tooltip: { enable: true }
+    });
+    pieChart.appendTo('#procurementStatusChart');
+</script>
+}

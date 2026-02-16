@@ -1,0 +1,49 @@
+@model PMMIS.Domain.Entities.IndicatorCategory
+@{
+    ViewData["Title"] = "Редактировать категорию индикаторов";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-pencil me-2"></i>Редактировать категорию индикаторов</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="EditIndicatorCategory" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <div class="mb-3">
+                            <label class="form-label">Название <span class="text-danger">*</span></label>
+                            <input asp-for="Name" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">№ сортировки</label>
+                            <input asp-for="SortOrder" class="form-control" type="number" />
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" />
+                                <label class="form-check-label">Активен</label>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="IndicatorCategories" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer bg-white">
+                    <form asp-action="DeleteIndicatorCategory" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Удалить категорию?')">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash me-1"></i> Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
