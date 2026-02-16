@@ -82,8 +82,8 @@ public class TasksController : Controller
             SearchTerm = search,
             Users = await GetAssignableUsersAsync(currentUser),
             Contracts = await _context.Contracts.ToListAsync(),
-            OverdueCount = (await _taskService.GetOverdueTasksAsync()).Count,
-            UpcomingCount = (await _taskService.GetUpcomingDeadlinesAsync(3)).Count
+            OverdueCount = (await _taskService.GetOverdueTasksAsync(currentUser.Id)).Count,
+            UpcomingCount = (await _taskService.GetUpcomingDeadlinesAsync(3, currentUser.Id)).Count
         };
 
         // For Quick Add modal

@@ -310,24 +310,29 @@ public class TaskService : ITaskService
 
         if (!string.IsNullOrEmpty(userId))
         {
-            query = query.Where(t => t.AssigneeId == userId);
+            query = query.Where(t => t.AssigneeId == userId || t.AssignedById == userId);
         }
 
         return await query.OrderBy(t => t.DueDate).ToListAsync();
     }
 
-    public async Task<List<ProjectTask>> GetUpcomingDeadlinesAsync(int daysAhead = 3)
+    public async Task<List<ProjectTask>> GetUpcomingDeadlinesAsync(int daysAhead = 3, string? userId = null)
     {
         var deadline = DateTime.UtcNow.AddDays(daysAhead);
         
-        return await _context.ProjectTasks
+        var query = _context.ProjectTasks
             .Include(t => t.Assignee)
             .Where(t => t.Status != ProjectTaskStatus.Completed && 
                         t.Status != ProjectTaskStatus.Cancelled &&
                         t.DueDate >= DateTime.UtcNow &&
-                        t.DueDate <= deadline)
-            .OrderBy(t => t.DueDate)
-            .ToListAsync();
+                        t.DueDate <= deadline);
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            query = query.Where(t => t.AssigneeId == userId || t.AssignedById == userId);
+        }
+
+        return await query.OrderBy(t => t.DueDate).ToListAsync();
     }
 
     private IQueryable<ProjectTask> ApplyFilter(IQueryable<ProjectTask> query, TaskFilterDto? filter)

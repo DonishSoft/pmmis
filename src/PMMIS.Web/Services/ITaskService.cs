@@ -75,7 +75,7 @@ public interface ITaskService
     /// <summary>
     /// Получить задачи с приближающимся дедлайном
     /// </summary>
-    Task<List<ProjectTask>> GetUpcomingDeadlinesAsync(int daysAhead = 3);
+    Task<List<ProjectTask>> GetUpcomingDeadlinesAsync(int daysAhead = 3, string? userId = null);
     
     #endregion
 

@@ -1,0 +1,104 @@
+@model PMMIS.Domain.Entities.Contractor
+@{
+    ViewData["Title"] = "Редактировать подрядчика";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Подрядчики</a></li>
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.Id">@Model.Name</a></li>
+            <li class="breadcrumb-item active">Редактирование</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-pencil-square me-2"></i>Редактировать подрядчика</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <input type="hidden" asp-for="CreatedAt" />
+                        
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Название компании <span class="text-danger">*</span></label>
+                                <input asp-for="Name" class="form-control" required />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Страна</label>
+                                <input asp-for="Country" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+                        <h6 class="text-muted mb-3"><i class="bi bi-person-lines-fill me-2"></i>Контактная информация</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Контактное лицо</label>
+                                <input asp-for="ContactPerson" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input asp-for="Email" type="email" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Телефон</label>
+                                <input asp-for="Phone" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Адрес</label>
+                                <input asp-for="Address" class="form-control" />
+                            </div>
+                        </div>
+
+                        <hr class="my-4" />
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Сохранить
+                            </button>
+                            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Отмена</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Documents?.Any() == true)
+        {
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-folder me-2"></i>Документы</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var doc in Model.Documents)
+                            {
+                                <li class="d-flex justify-content-between align-items-center mb-2">
+                                    <a href="@doc.FilePath" target="_blank">
+                                        <i class="bi bi-file-earmark me-1"></i>@(doc.Description ?? doc.OriginalFileName)
+                                    </a>
+                                    <form asp-action="DeleteDocument" method="post" class="d-inline">
+                                        <input type="hidden" name="documentId" value="@doc.Id" />
+                                        <input type="hidden" name="contractorId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить документ?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
