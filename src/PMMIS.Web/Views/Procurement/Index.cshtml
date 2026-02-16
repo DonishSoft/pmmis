@@ -7,6 +7,7 @@
     var selectedProjectId = ViewBag.SelectedProjectId as int?;
     var selectedStatus = ViewBag.SelectedStatus as ProcurementStatus?;
     var selectedType = ViewBag.SelectedType as ProcurementType?;
+    var searchQuery = ViewBag.Search as string ?? "";
     var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
     var canCreate = await permissionService.HasPermissionAsync(User, "Procurement", "create");
     var canEdit = await permissionService.HasPermissionAsync(User, "Procurement", "edit");
@@ -68,6 +69,13 @@
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-md-3">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Ref No или описание..." value="@searchQuery" />
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">Проект</label>
                     <select name="projectId" class="form-select">
                         <option value="">— Все проекты —</option>
@@ -99,12 +107,12 @@
                         <option value="@((int)ProcurementType.NonConsultingServices)" selected="@(selectedType == ProcurementType.NonConsultingServices)">Некон. услуги</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <button type="submit" class="btn btn-outline-primary w-100">
                         <i class="bi bi-funnel me-1"></i> Фильтр
                     </button>
                 </div>
-                <div class="col-md-3 text-end">
+                <div class="col-md-2 text-end">
                     <span class="text-muted">Найдено: <strong>@Model.Count</strong></span>
                 </div>
             </form>

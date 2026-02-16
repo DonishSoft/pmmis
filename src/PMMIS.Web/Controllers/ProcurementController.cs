@@ -27,7 +27,7 @@ public class ProcurementController : Controller
         _taskService = taskService;
     }
 
-    public async Task<IActionResult> Index(int? projectId, ProcurementStatus? status, ProcurementType? type)
+    public async Task<IActionResult> Index(int? projectId, ProcurementStatus? status, ProcurementType? type, string? search)
     {
         var query = _context.ProcurementPlans
             .Include(p => p.Project)
@@ -44,6 +44,9 @@ public class ProcurementController : Controller
         if (type.HasValue)
             query = query.Where(p => p.Type == type.Value);
 
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(p => p.ReferenceNo.Contains(search) || p.Description.Contains(search));
+
         var items = await query
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
@@ -52,6 +55,7 @@ public class ProcurementController : Controller
         ViewBag.SelectedProjectId = projectId;
         ViewBag.SelectedStatus = status;
         ViewBag.SelectedType = type;
+        ViewBag.Search = search;
 
         return View(items);
     }
