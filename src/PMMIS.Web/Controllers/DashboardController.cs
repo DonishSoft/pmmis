@@ -57,7 +57,7 @@ public class DashboardController : Controller
         ViewBag.SelectedProjectId = project.Id;
 
         // Calculate summary statistics
-        var totalBudget = project.TotalBudget;
+        var totalBudget = project.Components.Sum(c => c.AllocatedBudget);
         var totalContracts = project.Contracts.Count;
         var activeContracts = project.Contracts.Count(c => c.ContractEndDate > DateTime.Today);
         
