@@ -66,7 +66,7 @@ public class ContractorsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Contractor contractor, List<IFormFile>? contractorFiles)
+    public async Task<IActionResult> Create(Contractor contractor, List<IFormFile>? DocFiles, List<int>? DocTypes, List<string>? DocNames, List<int>? DocSortOrders)
     {
         if (ModelState.IsValid)
         {
@@ -74,16 +74,28 @@ public class ContractorsController : Controller
             _context.Contractors.Add(contractor);
             await _context.SaveChangesAsync();
             
-            // Upload contractor documents
-            if (contractorFiles?.Any() == true)
+            // Upload contractor documents with per-file metadata
+            if (DocFiles?.Any() == true)
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var docs = await _fileService.UploadFilesAsync(
-                    contractorFiles, $"contractors/{contractor.Id}", DocumentType.CompanyRegistration, userId);
-                foreach (var doc in docs)
+                for (int i = 0; i < DocFiles.Count; i++)
                 {
-                    doc.ContractorId = contractor.Id;
-                    _context.Documents.Add(doc);
+                    var docType = DocTypes != null && i < DocTypes.Count ? (DocumentType)DocTypes[i] : DocumentType.Other;
+                    var docName = DocNames != null && i < DocNames.Count ? DocNames[i] : null;
+                    var sortOrder = DocSortOrders != null && i < DocSortOrders.Count ? DocSortOrders[i] : i + 1;
+
+                    var docs = await _fileService.UploadFilesAsync(
+                        new List<IFormFile> { DocFiles[i] }, $"contractors/{contractor.Id}", docType, userId);
+                    foreach (var doc in docs)
+                    {
+                        doc.ContractorId = contractor.Id;
+                        doc.SortOrder = sortOrder;
+                        if (!string.IsNullOrWhiteSpace(docName))
+                        {
+                            doc.Description = docName;
+                        }
+                        _context.Documents.Add(doc);
+                    }
                 }
                 await _context.SaveChangesAsync();
             }
