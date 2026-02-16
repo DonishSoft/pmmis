@@ -63,6 +63,7 @@ public class Contract : BaseEntity
     public ICollection<Document> Documents { get; set; } = new List<Document>();
     public ICollection<ContractIndicator> ContractIndicators { get; set; } = new List<ContractIndicator>();
     public ICollection<ContractMilestone> Milestones { get; set; } = new List<ContractMilestone>();
+    public ICollection<ContractAmendment> Amendments { get; set; } = new List<ContractAmendment>();
     
     // Calculated properties
     public decimal PaidAmount => Payments.Where(p => p.Status == PaymentStatus.Paid).Sum(p => p.Amount);

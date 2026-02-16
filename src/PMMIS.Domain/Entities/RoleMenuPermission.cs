@@ -43,6 +43,7 @@ public static class MenuKeys
     public const string Notifications = "Notifications";
     public const string WorkProgressReports = "WorkProgressReports";
     public const string CurrencyRates = "CurrencyRates";
+    public const string ContractAmendments = "ContractAmendments";
     
     public static readonly Dictionary<string, string> Names = new()
     {
@@ -65,9 +66,10 @@ public static class MenuKeys
         { Tasks, "Задачи" },
         { Notifications, "Уведомления" },
         { WorkProgressReports, "АВР" },
-        { CurrencyRates, "Курсы валют" }
+        { CurrencyRates, "Курсы валют" },
+        { ContractAmendments, "Поправки к контракту" }
     };
     
-    public static readonly string[] All = { Home, Contracts, Contractors, Projects, Procurement, Payments, WorkProgress, WorkProgressReports, Geography, Indicators, ReferenceData, Import, Reports, Documents, Users, Roles, Settings, Tasks, Notifications, CurrencyRates };
+    public static readonly string[] All = { Home, Contracts, Contractors, Projects, Procurement, Payments, WorkProgress, WorkProgressReports, Geography, Indicators, ReferenceData, Import, Reports, Documents, Users, Roles, Settings, Tasks, Notifications, CurrencyRates, ContractAmendments };
 }
 

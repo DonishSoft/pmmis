@@ -109,6 +109,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Currency Rate Cache
     public DbSet<CurrencyRate> CurrencyRates => Set<CurrencyRate>();
 
+    // Contract Amendments
+    public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -308,6 +311,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany(ct => ct.Documents)
                 .HasForeignKey(d => d.ContractorId)
                 .OnDelete(DeleteBehavior.SetNull);
+                
+            e.HasOne(d => d.ContractAmendment)
+                .WithMany(ca => ca.Documents)
+                .HasForeignKey(d => d.ContractAmendmentId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Notifications
@@ -400,6 +408,24 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         {
             e.HasIndex(cr => new { cr.Date, cr.CharCode }).IsUnique();
             e.Property(cr => cr.Value).HasPrecision(18, 6);
+        });
+
+        // Contract Amendments
+        builder.Entity<ContractAmendment>(e =>
+        {
+            e.Property(ca => ca.AmountChangeTjs).HasPrecision(18, 2);
+            e.Property(ca => ca.AmountChangeUsd).HasPrecision(18, 2);
+            e.Property(ca => ca.ExchangeRate).HasPrecision(18, 6);
+            
+            e.HasOne(ca => ca.Contract)
+                .WithMany(c => c.Amendments)
+                .HasForeignKey(ca => ca.ContractId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            e.HasOne(ca => ca.CreatedBy)
+                .WithMany()
+                .HasForeignKey(ca => ca.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

@@ -85,6 +85,10 @@ public class ContractsController : Controller
             .Include(c => c.Payments)
             .Include(c => c.WorkProgresses)
             .Include(c => c.Documents)
+            .Include(c => c.Amendments.OrderByDescending(a => a.AmendmentDate))
+                .ThenInclude(a => a.Documents)
+            .Include(c => c.Amendments)
+                .ThenInclude(a => a.CreatedBy)
             .Include(c => c.Milestones.OrderBy(m => m.SortOrder))
             .Include(c => c.Curator)
             .Include(c => c.ProjectManager)
@@ -756,4 +760,156 @@ public class ContractsController : Controller
     }
     
     #endregion
+    
+    // =============================================
+    //  CONTRACT AMENDMENTS (Поправки к контракту)
+    // =============================================
+    
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequirePermission(MenuKeys.ContractAmendments, PermissionType.Create)]
+    public async Task<IActionResult> CreateAmendment(ContractAmendmentViewModel model)
+    {
+        var contract = await _context.Contracts
+            .Include(c => c.Payments)
+            .FirstOrDefaultAsync(c => c.Id == model.ContractId);
+        if (contract == null)
+            return NotFound();
+        
+        var userId = _userManager.GetUserId(User);
+        var amendmentType = (AmendmentType)model.Type;
+        
+        // Create amendment record
+        var amendment = new ContractAmendment
+        {
+            ContractId = contract.Id,
+            Type = amendmentType,
+            AmendmentDate = model.AmendmentDate,
+            Description = model.Description,
+            CreatedByUserId = userId
+        };
+        
+        // === Apply amendment based on type ===
+        switch (amendmentType)
+        {
+            case AmendmentType.AmountChange:
+                amendment.AmountChangeTjs = model.AmountChangeTjs;
+                amendment.ExchangeRate = model.ExchangeRate;
+                amendment.AmountChangeUsd = model.AmountChangeUsd;
+                // Update contract
+                if (model.AmountChangeUsd.HasValue)
+                    contract.AdditionalAmount += model.AmountChangeUsd.Value;
+                break;
+                
+            case AmendmentType.DeadlineExtension:
+                amendment.PreviousEndDate = contract.ExtendedToDate ?? contract.ContractEndDate;
+                amendment.NewEndDate = model.NewEndDate;
+                // Update contract
+                if (model.NewEndDate.HasValue)
+                    contract.ExtendedToDate = model.NewEndDate.Value;
+                break;
+                
+            case AmendmentType.ScopeChange:
+                // Amount change
+                amendment.AmountChangeTjs = model.AmountChangeTjs;
+                amendment.ExchangeRate = model.ExchangeRate;
+                amendment.AmountChangeUsd = model.AmountChangeUsd;
+                if (model.AmountChangeUsd.HasValue)
+                    contract.AdditionalAmount += model.AmountChangeUsd.Value;
+                    
+                // Date change
+                amendment.PreviousEndDate = contract.ExtendedToDate ?? contract.ContractEndDate;
+                amendment.NewEndDate = model.NewEndDate;
+                if (model.NewEndDate.HasValue)
+                    contract.ExtendedToDate = model.NewEndDate.Value;
+                    
+                // Scope text
+                amendment.NewScopeOfWork = model.NewScopeOfWork;
+                if (!string.IsNullOrWhiteSpace(model.NewScopeOfWork))
+                    contract.ScopeOfWork = model.NewScopeOfWork;
+                break;
+        }
+        
+        _context.ContractAmendments.Add(amendment);
+        await _context.SaveChangesAsync();
+        
+        // Upload agreement document (required)
+        if (model.AgreementFile != null && model.AgreementFile.Length > 0)
+        {
+            var doc = await _fileService.UploadFileAsync(model.AgreementFile, 
+                $"contracts/{contract.Id}/amendments", DocumentType.AmendmentAgreement, userId);
+            doc.ContractId = contract.Id;
+            doc.ContractAmendmentId = amendment.Id;
+            doc.Description = model.AgreementName ?? "Дополнительное соглашение";
+            _context.Documents.Add(doc);
+        }
+        
+        // Upload additional documents
+        if (model.AdditionalFiles != null)
+        {
+            for (int i = 0; i < model.AdditionalFiles.Count; i++)
+            {
+                if (model.AdditionalFiles[i].Length <= 0) continue;
+                var doc = await _fileService.UploadFileAsync(model.AdditionalFiles[i],
+                    $"contracts/{contract.Id}/amendments", DocumentType.AdditionalDocument, userId);
+                doc.ContractId = contract.Id;
+                doc.ContractAmendmentId = amendment.Id;
+                doc.Description = model.AdditionalNames != null && i < model.AdditionalNames.Count 
+                    ? model.AdditionalNames[i] : null;
+                _context.Documents.Add(doc);
+            }
+        }
+        
+        await _context.SaveChangesAsync();
+        
+        TempData["SuccessMessage"] = "Поправка к контракту успешно добавлена.";
+        return RedirectToAction(nameof(Details), new { id = contract.Id });
+    }
+    
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequirePermission(MenuKeys.ContractAmendments, PermissionType.Delete)]
+    public async Task<IActionResult> DeleteAmendment(int id)
+    {
+        var amendment = await _context.ContractAmendments
+            .Include(a => a.Contract)
+                .ThenInclude(c => c.Payments)
+            .Include(a => a.Documents)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
+        if (amendment == null)
+            return NotFound();
+            
+        var contractId = amendment.ContractId;
+        var contract = amendment.Contract;
+        
+        // Revert amendment effects
+        switch (amendment.Type)
+        {
+            case AmendmentType.AmountChange:
+                if (amendment.AmountChangeUsd.HasValue)
+                    contract.AdditionalAmount -= amendment.AmountChangeUsd.Value;
+                break;
+                
+            case AmendmentType.DeadlineExtension:
+                if (amendment.PreviousEndDate.HasValue)
+                    contract.ExtendedToDate = amendment.PreviousEndDate == contract.ContractEndDate 
+                        ? null : amendment.PreviousEndDate;
+                break;
+                
+            case AmendmentType.ScopeChange:
+                if (amendment.AmountChangeUsd.HasValue)
+                    contract.AdditionalAmount -= amendment.AmountChangeUsd.Value;
+                if (amendment.PreviousEndDate.HasValue)
+                    contract.ExtendedToDate = amendment.PreviousEndDate == contract.ContractEndDate 
+                        ? null : amendment.PreviousEndDate;
+                break;
+        }
+        
+        _context.ContractAmendments.Remove(amendment);
+        await _context.SaveChangesAsync();
+        
+        TempData["SuccessMessage"] = "Поправка удалена.";
+        return RedirectToAction(nameof(Details), new { id = contractId });
+    }
 }

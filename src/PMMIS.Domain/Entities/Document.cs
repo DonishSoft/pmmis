@@ -26,6 +26,9 @@ public class Document : BaseEntity
     public int? ContractorId { get; set; }
     public Contractor? Contractor { get; set; }
     
+    public int? ContractAmendmentId { get; set; }
+    public ContractAmendment? ContractAmendment { get; set; }
+    
     // Uploaded by
     public string? UploadedByUserId { get; set; }
 }
@@ -47,5 +50,6 @@ public enum DocumentType
     Insurance,           // Страховка
     SignedContract,      // Подписанный контракт
     MandatoryDocument,   // Обязательные документы
-    AdditionalDocument   // Дополнительные документы
+    AdditionalDocument,  // Дополнительные документы
+    AmendmentAgreement   // Дополнительное соглашение (поправка)
 }
