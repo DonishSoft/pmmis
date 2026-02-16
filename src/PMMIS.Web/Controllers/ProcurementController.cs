@@ -45,7 +45,7 @@ public class ProcurementController : Controller
             query = query.Where(p => p.Type == type.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.ReferenceNo.Contains(search) || p.Description.Contains(search));
+            query = query.Where(p => p.ReferenceNo.ToLower().Contains(search.ToLower()) || p.Description.ToLower().Contains(search.ToLower()));
 
         var items = await query
             .OrderByDescending(p => p.CreatedAt)
