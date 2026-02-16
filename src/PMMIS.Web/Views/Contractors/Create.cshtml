@@ -14,7 +14,7 @@
     </nav>
 
     <div class="row">
-        <div class="col-lg-8">
+        <div class="col-lg-10">
             <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white">
@@ -103,8 +103,9 @@
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
-                <div class="row g-2">
-                    <div class="col-md-4">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Тип</label>
                         <select name="DocTypes" class="form-select form-select-sm" required>
                             <option value="">— Тип документа —</option>
                             <option value="${@((int)DocumentType.CompanyRegistration)}">📄 Свид. регистрации</option>
@@ -118,15 +119,18 @@
                             <option value="${@((int)DocumentType.Other)}">📎 Прочее</option>
                         </select>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-4">
+                        <label class="form-label mb-0 small text-muted">Файл</label>
                         <input type="file" name="DocFiles" class="form-control form-control-sm doc-file-input"
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required />
                     </div>
-                    <div class="col-md-2">
-                        <input type="text" name="DocNames" class="form-control form-control-sm doc-name-input" placeholder="Название" />
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small text-muted">Название</label>
+                        <input type="text" name="DocNames" class="form-control form-control-sm doc-name-input" placeholder="Авто из файла" />
                     </div>
-                    <div class="col-md-1">
-                        <input type="number" name="DocSortOrders" class="form-control form-control-sm" value="${idx + 1}" min="0" title="Порядок" />
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small text-muted">Порядок</label>
+                        <input type="number" name="DocSortOrders" class="form-control form-control-sm" value="${idx + 1}" min="0" />
                     </div>
                 </div>
             </div>
