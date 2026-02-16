@@ -82,10 +82,15 @@
                     <label class="form-label">Дата до</label>
                     <input type="date" name="dateTo" class="form-control" value="@(ViewBag.DateTo?.ToString("yyyy-MM-dd"))">
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="bi bi-funnel me-1"></i>Фильтр
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary" title="Применить фильтр">
+                        <i class="bi bi-search"></i>
                     </button>
+                </div>
+                <div class="col-auto">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary" title="Сбросить">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
                 </div>
             </form>
         </div>
