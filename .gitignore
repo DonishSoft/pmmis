@@ -44,6 +44,9 @@ Thumbs.db
 .agent/
 .gemini/
 
+# Local Docker overrides (dev ports etc.)
+docker-compose.override.yml
+
 # Data files (large, not source code)
 *.xlsx
 *.xls
