@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Индикаторы";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var allCategories = Model.Where(i => i.Category != null).Select(i => i.Category!).DistinctBy(c => c.Id).OrderBy(c => c.Name).ToList();
 }
 
 <div class="container-fluid">
@@ -20,9 +21,56 @@
         </div>
     }
 
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchFilter" placeholder="Код или название...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Категория</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">— Все —</option>
+                        @foreach (var cat in allCategories)
+                        {
+                            <option value="@cat.Name">@cat.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Тип</label>
+                    <select class="form-select" id="typeFilter">
+                        <option value="">— Все —</option>
+                        <option value="Число">Число</option>
+                        <option value="%">%</option>
+                        <option value="Да/Нет">Да/Нет</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-primary" onclick="applyFilters()" title="Применить фильтр">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()" title="Сбросить">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="col text-end">
+                    <span class="text-muted">Найдено: <strong id="indicatorCount">@Model.Count</strong></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="indicatorsTable">
                 <thead class="table-light">
                     <tr>
                         <th style="width: 60px">№</th>
@@ -38,7 +86,16 @@
                 <tbody>
                     @foreach (var indicator in Model)
                     {
-                        <tr>
+                        <tr data-parent-row="true" data-indicator-id="@indicator.Id"
+                            data-code="@indicator.Code" 
+                            data-name="@indicator.NameRu"
+                            data-type="@(indicator.MeasurementType switch {
+                                PMMIS.Domain.Entities.MeasurementType.Number => "Число",
+                                PMMIS.Domain.Entities.MeasurementType.Percentage => "%",
+                                PMMIS.Domain.Entities.MeasurementType.YesNo => "Да/Нет",
+                                _ => indicator.MeasurementType.ToString()
+                            })"
+                            data-category="@(indicator.Category?.Name ?? "")">
                             <td>@indicator.SortOrder</td>
                             <td><code>@indicator.Code</code></td>
                             <td>
@@ -96,7 +153,7 @@
                         @* Sub-indicators *@
                         @foreach (var sub in indicator.SubIndicators.OrderBy(s => s.SortOrder))
                         {
-                            <tr class="table-secondary">
+                            <tr class="table-secondary" data-child-of="@indicator.Id">
                                 <td class="ps-4">↳ @sub.SortOrder</td>
                                 <td><code class="text-muted">@sub.Code</code></td>
                                 <td class="ps-4">@sub.NameRu</td>
@@ -136,3 +193,61 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    function applyFilters() {
+        var search = document.getElementById('searchFilter').value.trim().toLowerCase();
+        var category = document.getElementById('categoryFilter').value;
+        var type = document.getElementById('typeFilter').value;
+        
+        var parentRows = document.querySelectorAll('tr[data-parent-row]');
+        var visibleCount = 0;
+        
+        parentRows.forEach(function(row) {
+            var code = (row.dataset.code || '').toLowerCase();
+            var name = (row.dataset.name || '').toLowerCase();
+            var rowType = row.dataset.type || '';
+            var rowCategory = row.dataset.category || '';
+            var indicatorId = row.dataset.indicatorId;
+            
+            var matches = true;
+            
+            if (search && !code.includes(search) && !name.includes(search)) {
+                matches = false;
+            }
+            if (category && rowCategory !== category) {
+                matches = false;
+            }
+            if (type && rowType !== type) {
+                matches = false;
+            }
+            
+            row.style.display = matches ? '' : 'none';
+            
+            // Show/hide child rows
+            var childRows = document.querySelectorAll('tr[data-child-of="' + indicatorId + '"]');
+            childRows.forEach(function(child) {
+                child.style.display = matches ? '' : 'none';
+            });
+            
+            if (matches) visibleCount++;
+        });
+        
+        document.getElementById('indicatorCount').textContent = visibleCount;
+    }
+    
+    function clearFilters() {
+        document.getElementById('searchFilter').value = '';
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('typeFilter').value = '';
+        applyFilters();
+    }
+    
+    // Support Enter key in search
+    document.getElementById('searchFilter').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') applyFilters();
+    });
+</script>
+}
+
