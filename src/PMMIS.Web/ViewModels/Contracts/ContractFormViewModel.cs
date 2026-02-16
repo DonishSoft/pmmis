@@ -43,9 +43,22 @@ public class ContractFormViewModel
     public string? MilestonesJson { get; set; }
     
     /// <summary>
-    /// Документы для загрузки (тендерные, контрактные)
+    /// Подписанный контракт — файлы
     /// </summary>
-    public List<IFormFile>? Documents { get; set; }
+    public List<IFormFile>? SignedContractFiles { get; set; }
+    public List<string>? SignedContractNames { get; set; }
+    
+    /// <summary>
+    /// Обязательные документы — файлы
+    /// </summary>
+    public List<IFormFile>? MandatoryDocumentFiles { get; set; }
+    public List<string>? MandatoryDocumentNames { get; set; }
+    
+    /// <summary>
+    /// Дополнительные документы — файлы
+    /// </summary>
+    public List<IFormFile>? AdditionalDocumentFiles { get; set; }
+    public List<string>? AdditionalDocumentNames { get; set; }
     
     /// <summary>
     /// Существующие документы

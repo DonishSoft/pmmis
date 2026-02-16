@@ -107,12 +107,17 @@
                         <option value="@((int)ProcurementType.NonConsultingServices)" selected="@(selectedType == ProcurementType.NonConsultingServices)">Некон. услуги</option>
                     </select>
                 </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-outline-primary w-100">
-                        <i class="bi bi-funnel me-1"></i> Фильтр
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary" title="Применить фильтр">
+                        <i class="bi bi-search"></i>
                     </button>
                 </div>
-                <div class="col-md-2 text-end">
+                <div class="col-auto">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary" title="Сбросить">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+                <div class="col text-end">
                     <span class="text-muted">Найдено: <strong>@Model.Count</strong></span>
                 </div>
             </form>

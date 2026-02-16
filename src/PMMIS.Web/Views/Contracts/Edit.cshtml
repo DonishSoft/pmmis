@@ -316,38 +316,121 @@
                     </div>
                 </div>
 
-                <!-- Документы контракта -->
+                <!-- Документы контракта (3 вкладки) -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="bi bi-paperclip me-2"></i>Документы</h5>
+                        <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Документы</h5>
                     </div>
                     <div class="card-body">
-                        @if (Model.ExistingDocuments?.Any() == true)
-                        {
-                            <h6 class="mb-3">Прикреплённые файлы</h6>
-                            <ul class="list-group mb-3">
-                                @foreach (var doc in Model.ExistingDocuments)
+                        <ul class="nav nav-tabs" id="docTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="signedTab" data-bs-toggle="tab" data-bs-target="#signedContent" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Подписанный контракт
+                                    @{ var signedDocs = Model.ExistingDocuments?.Where(d => d.Type == DocumentType.SignedContract).ToList() ?? new List<Document>(); }
+                                    @if (signedDocs.Any()) { <span class="badge bg-primary ms-1">@signedDocs.Count</span> }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="mandatoryTab" data-bs-toggle="tab" data-bs-target="#mandatoryContent" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-lock me-1"></i>Обязательные
+                                    @{ var mandatoryDocs = Model.ExistingDocuments?.Where(d => d.Type == DocumentType.MandatoryDocument).ToList() ?? new List<Document>(); }
+                                    @if (mandatoryDocs.Any()) { <span class="badge bg-warning text-dark ms-1">@mandatoryDocs.Count</span> }
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="additionalTab" data-bs-toggle="tab" data-bs-target="#additionalContent" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-plus me-1"></i>Дополнительные
+                                    @{ var additionalDocs = Model.ExistingDocuments?.Where(d => d.Type == DocumentType.AdditionalDocument).ToList() ?? new List<Document>(); }
+                                    @if (additionalDocs.Any()) { <span class="badge bg-info ms-1">@additionalDocs.Count</span> }
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content pt-3" id="docTabContent">
+                            <!-- Подписанный контракт -->
+                            <div class="tab-pane fade show active" id="signedContent" role="tabpanel">
+                                @if (signedDocs.Any())
                                 {
-                                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                                        <a href="@doc.FilePath" target="_blank">
-                                            <i class="bi bi-file-earmark me-2"></i>@(doc.Description ?? doc.OriginalFileName)
-                                        </a>
-                                        <form asp-action="DeleteDocument" method="post" class="d-inline"
-                                              onsubmit="return confirm('Удалить документ?')">
-                                            <input type="hidden" name="documentId" value="@doc.Id" />
-                                            <input type="hidden" name="contractId" value="@Model.Contract.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </li>
+                                    <ul class="list-group mb-3">
+                                        @foreach (var doc in signedDocs)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
+                                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                                    <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                                </div>
+                                                <form asp-action="DeleteDocument" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Удалить документ?')">
+                                                    <input type="hidden" name="documentId" value="@doc.Id" />
+                                                    <input type="hidden" name="contractId" value="@Model.Contract.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </li>
+                                        }
+                                    </ul>
                                 }
-                            </ul>
-                        }
-                        <h6 class="mb-2">Добавить новые файлы</h6>
-                        <input type="file" name="Documents" class="form-control" multiple 
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" />
-                        <small class="text-muted">PDF, Word, Excel, изображения</small>
+                                <div id="signedUploadContainer"></div>
+                                <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addDocRow('signedUploadContainer', 'SignedContractFiles', 'SignedContractNames')">
+                                    <i class="bi bi-plus-lg me-1"></i>Добавить файл
+                                </button>
+                            </div>
+                            <!-- Обязательные документы -->
+                            <div class="tab-pane fade" id="mandatoryContent" role="tabpanel">
+                                @if (mandatoryDocs.Any())
+                                {
+                                    <ul class="list-group mb-3">
+                                        @foreach (var doc in mandatoryDocs)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <i class="bi bi-file-earmark-text text-warning me-2"></i>
+                                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                                    <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                                </div>
+                                                <form asp-action="DeleteDocument" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Удалить документ?')">
+                                                    <input type="hidden" name="documentId" value="@doc.Id" />
+                                                    <input type="hidden" name="contractId" value="@Model.Contract.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                <div id="mandatoryUploadContainer"></div>
+                                <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addDocRow('mandatoryUploadContainer', 'MandatoryDocumentFiles', 'MandatoryDocumentNames')">
+                                    <i class="bi bi-plus-lg me-1"></i>Добавить файл
+                                </button>
+                            </div>
+                            <!-- Дополнительные документы -->
+                            <div class="tab-pane fade" id="additionalContent" role="tabpanel">
+                                @if (additionalDocs.Any())
+                                {
+                                    <ul class="list-group mb-3">
+                                        @foreach (var doc in additionalDocs)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <i class="bi bi-file-earmark text-info me-2"></i>
+                                                    <a href="@doc.FilePath" target="_blank">@(doc.Description ?? doc.OriginalFileName)</a>
+                                                    <small class="text-muted ms-2">@(doc.FileSize / 1024) KB</small>
+                                                </div>
+                                                <form asp-action="DeleteDocument" method="post" class="d-inline"
+                                                      onsubmit="return confirm('Удалить документ?')">
+                                                    <input type="hidden" name="documentId" value="@doc.Id" />
+                                                    <input type="hidden" name="contractId" value="@Model.Contract.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                                <div id="additionalUploadContainer"></div>
+                                <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addDocRow('additionalUploadContainer', 'AdditionalDocumentFiles', 'AdditionalDocumentNames')">
+                                    <i class="bi bi-plus-lg me-1"></i>Добавить файл
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -921,5 +1004,27 @@
 
     initUserDropdown('curatorDropdown', 'curatorValue', '— Не назначен —');
     initUserDropdown('pmDropdown', 'pmValue', '— Не назначен —');
+
+    // === Document upload rows ===
+    function addDocRow(containerId, fileFieldName, nameFieldName) {
+        const container = document.getElementById(containerId);
+        const row = document.createElement('div');
+        row.className = 'row g-2 mb-2 align-items-end doc-upload-row';
+        row.innerHTML = `
+            <div class="col-md-5">
+                <input type="text" name="${nameFieldName}" class="form-control form-control-sm" placeholder="Название документа" />
+            </div>
+            <div class="col-md-6">
+                <input type="file" name="${fileFieldName}" class="form-control form-control-sm" 
+                       accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required />
+            </div>
+            <div class="col-md-1 text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('.doc-upload-row').remove()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    }
 </script>
 }

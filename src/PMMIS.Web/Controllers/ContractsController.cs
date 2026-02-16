@@ -190,19 +190,9 @@ public class ContractsController : Controller
                 await SaveMilestones(viewModel.Contract.Id, viewModel.MilestonesJson);
             }
             
-            // Upload contract documents
-            if (viewModel.Documents?.Any() == true)
-            {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var docs = await _fileService.UploadFilesAsync(
-                    viewModel.Documents, $"contracts/{viewModel.Contract.Id}", DocumentType.Contract, userId);
-                foreach (var doc in docs)
-                {
-                    doc.ContractId = viewModel.Contract.Id;
-                    _context.Documents.Add(doc);
-                }
-                await _context.SaveChangesAsync();
-            }
+            // Upload categorized documents
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await UploadCategorizedDocuments(viewModel, viewModel.Contract.Id, userId);
             
             // Save selected indicators
             if (viewModel.SelectedIndicators?.Any() == true)
@@ -528,18 +518,9 @@ public class ContractsController : Controller
                     catch (JsonException) { /* invalid JSON, skip */ }
                 }
                 
-                // Upload new documents
-                if (viewModel.Documents?.Any() == true)
-                {
-                    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    var docs = await _fileService.UploadFilesAsync(
-                        viewModel.Documents, $"contracts/{id}", DocumentType.Contract, currentUserId);
-                    foreach (var doc in docs)
-                    {
-                        doc.ContractId = id;
-                        _context.Documents.Add(doc);
-                    }
-                }
+                // Upload categorized documents
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                await UploadCategorizedDocuments(viewModel, id, currentUserId);
                 
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Контракт успешно обновлён";
@@ -746,6 +727,33 @@ public class ContractsController : Controller
     }
     
     private record MilestoneInput(string? Title, string? TitleTj, string? TitleEn, string? Description, string DueDate, int Frequency, int SortOrder);
+    
+    private async Task UploadCategorizedDocuments(ContractFormViewModel viewModel, int contractId, string? userId)
+    {
+        await UploadDocumentCategory(viewModel.SignedContractFiles, viewModel.SignedContractNames, 
+            contractId, DocumentType.SignedContract, userId);
+        await UploadDocumentCategory(viewModel.MandatoryDocumentFiles, viewModel.MandatoryDocumentNames, 
+            contractId, DocumentType.MandatoryDocument, userId);
+        await UploadDocumentCategory(viewModel.AdditionalDocumentFiles, viewModel.AdditionalDocumentNames, 
+            contractId, DocumentType.AdditionalDocument, userId);
+        await _context.SaveChangesAsync();
+    }
+    
+    private async Task UploadDocumentCategory(List<IFormFile>? files, List<string>? names, 
+        int contractId, DocumentType type, string? userId)
+    {
+        if (files == null || !files.Any()) return;
+        
+        for (int i = 0; i < files.Count; i++)
+        {
+            if (files[i].Length <= 0) continue;
+            var doc = await _fileService.UploadFileAsync(files[i], $"contracts/{contractId}", type, userId);
+            doc.ContractId = contractId;
+            doc.Description = names != null && i < names.Count && !string.IsNullOrWhiteSpace(names[i]) 
+                ? names[i] : null;
+            _context.Documents.Add(doc);
+        }
+    }
     
     #endregion
 }

@@ -44,5 +44,8 @@ public enum DocumentType
     CompanyLicense,      // Лицензия
     TaxCertificate,      // Налоговый сертификат
     BankDetails,         // Банковские реквизиты
-    Insurance            // Страховка
+    Insurance,           // Страховка
+    SignedContract,      // Подписанный контракт
+    MandatoryDocument,   // Обязательные документы
+    AdditionalDocument   // Дополнительные документы
 }
