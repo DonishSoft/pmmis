@@ -67,7 +67,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Подкомпонент</label>
-                                <select asp-for="SubComponentId" class="form-select" id="subComponentSelect">
+                                <select asp-for="SubComponentId" asp-items="ViewBag.SubComponents" class="form-select" id="subComponentSelect">
                                     <option value="">— Необязательно —</option>
                                 </select>
                             </div>

@@ -147,11 +147,12 @@ public class ProcurementController : Controller
         var plan = await _context.ProcurementPlans
             .Include(p => p.Project)
             .Include(p => p.Component)
+            .Include(p => p.SubComponent)
             .FirstOrDefaultAsync(p => p.Id == id);
             
         if (plan == null) return NotFound();
 
-        await LoadDropdowns(plan.ProjectId);
+        await LoadDropdowns(plan.ProjectId, plan.ComponentId);
         ViewBag.Contracts = await GetContractsForProject(plan.ProjectId);
         
         return View(plan);
@@ -240,7 +241,7 @@ public class ProcurementController : Controller
 
     #region Helpers
 
-    private async Task LoadDropdowns(int? selectedProjectId = null)
+    private async Task LoadDropdowns(int? selectedProjectId = null, int? selectedComponentId = null)
     {
         ViewBag.Projects = new SelectList(
             await _context.Projects.OrderBy(p => p.Code).ToListAsync(),
@@ -249,6 +250,12 @@ public class ProcurementController : Controller
         ViewBag.Components = selectedProjectId.HasValue
             ? new SelectList(
                 await _context.Components.Where(c => c.ProjectId == selectedProjectId).OrderBy(c => c.Number).ToListAsync(),
+                "Id", "NameRu")
+            : new SelectList(Enumerable.Empty<SelectListItem>());
+
+        ViewBag.SubComponents = selectedComponentId.HasValue
+            ? new SelectList(
+                await _context.SubComponents.Where(sc => sc.ComponentId == selectedComponentId).OrderBy(sc => sc.Code).ToListAsync(),
                 "Id", "NameRu")
             : new SelectList(Enumerable.Empty<SelectListItem>());
 

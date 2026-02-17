@@ -52,7 +52,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Проект <span class="text-danger">*</span></label>
                                 <select asp-for="Contract.ProjectId" class="form-select" id="projectSelect" required>
                                     <option value="">— Выберите —</option>
@@ -62,14 +62,16 @@
                                     }
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label">Компонент</label>
+                                <select class="form-select" id="componentSelect" disabled>
+                                    <option value="">— Заполняется из плана закупок —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Подкомпонент</label>
                                 <select asp-for="Contract.SubComponentId" class="form-select" id="subComponentSelect">
                                     <option value="">— Необязательно —</option>
-                                    @foreach (var sc in Model.SubComponents)
-                                    {
-                                        <option value="@sc.Id" data-project="@sc.Component.ProjectId">@sc.Component.NameRu - @sc.Code: @sc.NameRu</option>
-                                    }
                                 </select>
                             </div>
                         </div>
@@ -83,7 +85,7 @@
                                         <option value="@pp.Id" data-project="@pp.ProjectId">@pp.ReferenceNo — @pp.Description (@pp.Method, @pp.EstimatedAmount.ToString("N0") USD)</option>
                                     }
                                 </select>
-                                <small class="text-muted">Выберите позицию плана закупок для автозаполнения данных контракта</small>
+                                <small class="text-muted">Выберите позицию плана закупок — проект, компонент и подкомпонент заполнятся автоматически</small>
                             </div>
                         </div>
                     </div>
@@ -719,19 +721,10 @@
     // ContractType: Works=0, Consulting=1, Goods=2
     const procTypeToContractType = { 0: 2, 1: 0, 2: 1, 3: 1 };
 
-    // Filter subcomponents and procurement plans by selected project
+    // Filter procurement plans by selected project
     document.getElementById('projectSelect').addEventListener('change', function() {
         const projectId = this.value;
-        const subComponentSelect = document.getElementById('subComponentSelect');
         const procPlanSelect = document.getElementById('procurementPlanSelect');
-        
-        // Filter subcomponents
-        subComponentSelect.querySelectorAll('option[data-project]').forEach(opt => {
-            opt.style.display = (!projectId || opt.dataset.project === projectId) ? '' : 'none';
-        });
-        if (subComponentSelect.selectedOptions[0]?.style.display === 'none') {
-            subComponentSelect.value = '';
-        }
         
         // Filter procurement plans by project
         procPlanSelect.querySelectorAll('option[data-project]').forEach(opt => {
@@ -740,6 +733,11 @@
         if (procPlanSelect.selectedOptions[0]?.style.display === 'none') {
             procPlanSelect.value = '';
         }
+        
+        // Reset component and subcomponent when project changes
+        const componentSelect = document.getElementById('componentSelect');
+        componentSelect.innerHTML = '<option value="">— Заполняется из плана закупок —</option>';
+        document.getElementById('subComponentSelect').innerHTML = '<option value="">— Необязательно —</option>';
     });
 
     // Auto-fill from procurement plan
@@ -773,13 +771,24 @@
                 scopeInput.value = data.description;
             }
             
-            // Auto-select project if not already selected
+            // Auto-select project
             if (data.projectId) {
                 const projSelect = document.getElementById('projectSelect');
-                if (projSelect && !projSelect.value) {
-                    projSelect.value = data.projectId;
-                    projSelect.dispatchEvent(new Event('change'));
-                }
+                projSelect.value = data.projectId;
+            }
+            
+            // Auto-fill component (display only)
+            const componentSelect = document.getElementById('componentSelect');
+            componentSelect.innerHTML = '<option value="">— Нет компонента —</option>';
+            if (data.componentId && data.componentName) {
+                componentSelect.innerHTML = `<option value="${data.componentId}" selected>${data.componentName}</option>`;
+            }
+            
+            // Auto-fill subcomponent
+            const subComponentSelect = document.getElementById('subComponentSelect');
+            subComponentSelect.innerHTML = '<option value="">— Необязательно —</option>';
+            if (data.subComponentId && data.subComponentName) {
+                subComponentSelect.innerHTML += `<option value="${data.subComponentId}" selected>${data.subComponentName}</option>`;
             }
         } catch(e) {
             console.warn('Failed to load procurement plan data', e);

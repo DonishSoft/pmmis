@@ -1300,13 +1300,19 @@ public class ContractsController : Controller
     public async Task<IActionResult> GetProcurementPlanData(int id)
     {
         var plan = await _context.ProcurementPlans
+            .Include(pp => pp.Component)
+            .Include(pp => pp.SubComponent)
             .Where(pp => pp.Id == id)
             .Select(pp => new {
                 pp.ReferenceNo,
                 Type = (int)pp.Type,
                 pp.Description,
                 pp.EstimatedAmount,
-                pp.ProjectId
+                pp.ProjectId,
+                pp.ComponentId,
+                ComponentName = pp.Component != null ? $"Компонент {pp.Component.Number}: {pp.Component.NameRu}" : null,
+                pp.SubComponentId,
+                SubComponentName = pp.SubComponent != null ? $"{pp.SubComponent.Code}: {pp.SubComponent.NameRu}" : null
             })
             .FirstOrDefaultAsync();
         
