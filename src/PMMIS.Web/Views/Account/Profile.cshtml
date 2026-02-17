@@ -1,0 +1,528 @@
+@model PMMIS.Domain.Entities.ApplicationUser
+@{
+    ViewData["Title"] = "Профиль";
+    var roles = ViewBag.Roles as IList<string> ?? new List<string>();
+    var initials = $"{Model.FirstName?.FirstOrDefault()}{Model.LastName?.FirstOrDefault()}".ToUpper();
+}
+
+<style>
+    .profile-hero {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3b82f6 100%);
+        border-radius: 16px;
+        padding: 2.5rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .profile-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+    .profile-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 700;
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
+        overflow: hidden;
+        position: relative;
+        z-index: 1;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .profile-info {
+        position: relative;
+        z-index: 1;
+    }
+    .role-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+    }
+    .profile-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        transition: box-shadow 0.2s;
+    }
+    .profile-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .profile-card .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem 1.5rem;
+        border-radius: 12px 12px 0 0;
+        font-weight: 600;
+    }
+    .profile-card .card-body {
+        padding: 1.5rem;
+    }
+    .form-label-profile {
+        font-weight: 500;
+        color: #374151;
+        font-size: 0.875rem;
+        margin-bottom: 0.35rem;
+    }
+    .form-control-profile {
+        border-radius: 8px;
+        border: 1.5px solid #d1d5db;
+        padding: 0.6rem 0.9rem;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-control-profile:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: none;
+        padding: 0.65rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-save:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .btn-save:active {
+        transform: translateY(0);
+    }
+    .info-stat {
+        text-align: center;
+        padding: 1rem;
+    }
+    .info-stat .stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1e3a5f;
+    }
+    .info-stat .stat-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+    .photo-upload-area {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .photo-upload-area:hover {
+        border-color: #3b82f6;
+        background: #f0f7ff;
+    }
+    .password-strength {
+        height: 4px;
+        border-radius: 2px;
+        background: #e5e7eb;
+        margin-top: 0.35rem;
+        overflow: hidden;
+    }
+    .password-strength .bar {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.3s, background 0.3s;
+    }
+</style>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>@TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Profile Hero -->
+<div class="profile-hero">
+    <div class="d-flex align-items-center gap-4">
+        <div class="profile-avatar">
+            @if (!string.IsNullOrEmpty(Model.PhotoPath))
+            {
+                <img src="@Model.PhotoPath" alt="@Model.FullName" />
+            }
+            else
+            {
+                @initials
+            }
+        </div>
+        <div class="profile-info">
+            <h2 class="mb-1 fw-bold">@Model.FullName</h2>
+            <p class="mb-2 opacity-75">
+                <i class="bi bi-envelope me-1"></i>@Model.Email
+                @if (!string.IsNullOrEmpty(Model.Position))
+                {
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-briefcase me-1"></i>@Model.Position
+                }
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+                @foreach (var role in roles)
+                {
+                    <span class="role-badge">@role</span>
+                }
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats row -->
+    <div class="row mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.15);">
+        <div class="col-auto">
+            <div class="d-flex align-items-center gap-2 opacity-75">
+                <i class="bi bi-calendar3"></i>
+                <small>В системе с @Model.CreatedAt.ToString("dd.MM.yyyy")</small>
+            </div>
+        </div>
+        @if (Model.LastLoginAt.HasValue)
+        {
+            <div class="col-auto">
+                <div class="d-flex align-items-center gap-2 opacity-75">
+                    <i class="bi bi-clock-history"></i>
+                    <small>Последний вход: @Model.LastLoginAt.Value.ToString("dd.MM.yyyy HH:mm")</small>
+                </div>
+            </div>
+        }
+        <div class="col-auto">
+            <div class="d-flex align-items-center gap-2 opacity-75">
+                <i class="bi bi-globe"></i>
+                <small>Язык: @(Model.PreferredLanguage == "ru" ? "Русский" : Model.PreferredLanguage == "tg" ? "Тоҷикӣ" : "English")</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Personal Info -->
+    <div class="col-lg-8">
+        <div class="profile-card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-person-vcard me-2 text-primary"></i>
+                Личная информация
+            </div>
+            <div class="card-body">
+                <form asp-action="Profile" method="post" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Фамилия <span class="text-danger">*</span></label>
+                            <input type="text" name="lastName" value="@Model.LastName" 
+                                   class="form-control form-control-profile" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Имя <span class="text-danger">*</span></label>
+                            <input type="text" name="firstName" value="@Model.FirstName" 
+                                   class="form-control form-control-profile" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Отчество</label>
+                            <input type="text" name="middleName" value="@Model.MiddleName" 
+                                   class="form-control form-control-profile" />
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Пол</label>
+                            <select name="gender" class="form-select form-control-profile">
+                                <option value="Male" selected="@(Model.Gender == PMMIS.Domain.Entities.Gender.Male)">Мужской</option>
+                                <option value="Female" selected="@(Model.Gender == PMMIS.Domain.Entities.Gender.Female)">Женский</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Должность</label>
+                            <input type="text" name="position" value="@Model.Position" 
+                                   class="form-control form-control-profile" 
+                                   placeholder="Например: Менеджер проекта" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-profile">Дата рождения</label>
+                            <input type="date" name="birthDate" 
+                                   value="@Model.BirthDate?.ToString("yyyy-MM-dd")" 
+                                   class="form-control form-control-profile" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label-profile">Email</label>
+                            <input type="email" value="@Model.Email" 
+                                   class="form-control form-control-profile" disabled 
+                                   style="background: #f3f4f6;" />
+                            <small class="text-muted">Email нельзя изменить</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-profile">Язык интерфейса</label>
+                            <select name="preferredLanguage" class="form-select form-control-profile">
+                                <option value="ru" selected="@(Model.PreferredLanguage == "ru")">🇷🇺 Русский</option>
+                                <option value="tg" selected="@(Model.PreferredLanguage == "tg")">🇹🇯 Тоҷикӣ</option>
+                                <option value="en" selected="@(Model.PreferredLanguage == "en")">🇬🇧 English</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label-profile">Фото профиля</label>
+                            <div class="photo-upload-area" onclick="document.getElementById('photoInput').click()">
+                                <input type="file" id="photoInput" name="photo" accept="image/*" 
+                                       class="d-none" onchange="previewPhoto(this)" />
+                                <div id="photoPreview">
+                                    @if (!string.IsNullOrEmpty(Model.PhotoPath))
+                                    {
+                                        <img src="@Model.PhotoPath" alt="Текущее фото" 
+                                             style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;" />
+                                        <p class="text-muted small mt-2 mb-0">Нажмите, чтобы изменить фото</p>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-cloud-arrow-up text-muted" style="font-size: 2rem;"></i>
+                                        <p class="text-muted small mt-1 mb-0">Нажмите или перетащите фото</p>
+                                        <p class="text-muted small mb-0">JPG, PNG до 5 МБ</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4 pt-3" style="border-top: 1px solid #e5e7eb;">
+                        <button type="submit" class="btn btn-primary btn-save">
+                            <i class="bi bi-check2 me-2"></i>Сохранить изменения
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Password + Info -->
+    <div class="col-lg-4">
+        <!-- Change Password Card -->
+        <div class="profile-card mb-4">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-shield-lock me-2 text-warning"></i>
+                Смена пароля
+            </div>
+            <div class="card-body">
+                @if (TempData["PasswordSuccess"] != null)
+                {
+                    <div class="alert alert-success py-2 small">
+                        <i class="bi bi-check-circle me-1"></i>@TempData["PasswordSuccess"]
+                    </div>
+                }
+                @if (TempData["PasswordError"] != null)
+                {
+                    <div class="alert alert-danger py-2 small">
+                        <i class="bi bi-exclamation-circle me-1"></i>@TempData["PasswordError"]
+                    </div>
+                }
+                
+                <form asp-action="ChangePassword" method="post">
+                    <div class="mb-3">
+                        <label class="form-label-profile">Текущий пароль</label>
+                        <div class="input-group">
+                            <input type="password" id="currentPassword" name="currentPassword" 
+                                   class="form-control form-control-profile" required />
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    onclick="togglePassword('currentPassword', this)"
+                                    style="border-radius: 0 8px 8px 0;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-profile">Новый пароль</label>
+                        <div class="input-group">
+                            <input type="password" id="newPassword" name="newPassword" 
+                                   class="form-control form-control-profile" required
+                                   oninput="checkPasswordStrength(this.value)" />
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    onclick="togglePassword('newPassword', this)"
+                                    style="border-radius: 0 8px 8px 0;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength">
+                            <div class="bar" id="strengthBar" style="width: 0%;"></div>
+                        </div>
+                        <small class="text-muted" id="strengthText">Мин. 6 символов</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-profile">Подтвердите пароль</label>
+                        <div class="input-group">
+                            <input type="password" id="confirmPassword" name="confirmPassword" 
+                                   class="form-control form-control-profile" required />
+                            <button type="button" class="btn btn-outline-secondary" 
+                                    onclick="togglePassword('confirmPassword', this)"
+                                    style="border-radius: 0 8px 8px 0;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100" style="border-radius: 8px; font-weight: 600;">
+                        <i class="bi bi-key me-2"></i>Изменить пароль
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Account Info Card -->
+        <div class="profile-card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-info-circle me-2 text-info"></i>
+                Информация об аккаунте
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="border-radius: 0 0 12px 12px;">
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                        <span class="text-muted small">
+                            <i class="bi bi-person-badge me-2"></i>ID
+                        </span>
+                        <span class="small fw-medium" style="font-family: monospace;">@Model.Id[..8]…</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                        <span class="text-muted small">
+                            <i class="bi bi-calendar-plus me-2"></i>Дата регистрации
+                        </span>
+                        <span class="small fw-medium">@Model.CreatedAt.ToString("dd.MM.yyyy")</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                        <span class="text-muted small">
+                            <i class="bi bi-clock me-2"></i>Последний вход
+                        </span>
+                        <span class="small fw-medium">@(Model.LastLoginAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                        <span class="text-muted small">
+                            <i class="bi bi-check-circle me-2"></i>Статус
+                        </span>
+                        <span class="badge bg-success">Активен</span>
+                    </div>
+                    @if (Model.Gender == PMMIS.Domain.Entities.Gender.Male)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                            <span class="text-muted small">
+                                <i class="bi bi-gender-male me-2"></i>Пол
+                            </span>
+                            <span class="small fw-medium">Мужской</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-4">
+                            <span class="text-muted small">
+                                <i class="bi bi-gender-female me-2"></i>Пол
+                            </span>
+                            <span class="small fw-medium">Женский</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+
+    function checkPasswordStrength(password) {
+        const bar = document.getElementById('strengthBar');
+        const text = document.getElementById('strengthText');
+        let strength = 0;
+        
+        if (password.length >= 6) strength += 25;
+        if (password.length >= 10) strength += 25;
+        if (/[A-Z]/.test(password)) strength += 15;
+        if (/[a-z]/.test(password)) strength += 10;
+        if (/[0-9]/.test(password)) strength += 15;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 10;
+        
+        strength = Math.min(strength, 100);
+        bar.style.width = strength + '%';
+        
+        if (strength < 30) {
+            bar.style.background = '#ef4444';
+            text.textContent = 'Слабый пароль';
+            text.style.color = '#ef4444';
+        } else if (strength < 60) {
+            bar.style.background = '#f59e0b';
+            text.textContent = 'Средний пароль';
+            text.style.color = '#f59e0b';
+        } else if (strength < 80) {
+            bar.style.background = '#10b981';
+            text.textContent = 'Хороший пароль';
+            text.style.color = '#10b981';
+        } else {
+            bar.style.background = '#059669';
+            text.textContent = 'Отличный пароль';
+            text.style.color = '#059669';
+        }
+        
+        if (password.length === 0) {
+            bar.style.width = '0%';
+            text.textContent = 'Мин. 6 символов';
+            text.style.color = '#6b7280';
+        }
+    }
+
+    function previewPhoto(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('photoPreview').innerHTML = `
+                    <img src="${e.target.result}" alt="Предварительный просмотр" 
+                         style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;" />
+                    <p class="text-success small mt-2 mb-0"><i class="bi bi-check-circle me-1"></i>Фото выбрано. Нажмите «Сохранить» для загрузки</p>
+                `;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+}
