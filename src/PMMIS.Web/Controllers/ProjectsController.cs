@@ -77,6 +77,7 @@ public class ProjectsController : Controller
 
         if (ModelState.IsValid)
         {
+            project.CreatedAt = DateTime.SpecifyKind(project.CreatedAt, DateTimeKind.Utc);
             project.UpdatedAt = DateTime.UtcNow;
             _context.Update(project);
             await _context.SaveChangesAsync();
@@ -150,6 +151,7 @@ public class ProjectsController : Controller
 
         if (ModelState.IsValid)
         {
+            component.CreatedAt = DateTime.SpecifyKind(component.CreatedAt, DateTimeKind.Utc);
             component.UpdatedAt = DateTime.UtcNow;
             _context.Update(component);
             await _context.SaveChangesAsync();
@@ -249,6 +251,7 @@ public class ProjectsController : Controller
 
         if (ModelState.IsValid)
         {
+            subComponent.CreatedAt = DateTime.SpecifyKind(subComponent.CreatedAt, DateTimeKind.Utc);
             subComponent.UpdatedAt = DateTime.UtcNow;
             _context.Update(subComponent);
             await _context.SaveChangesAsync();

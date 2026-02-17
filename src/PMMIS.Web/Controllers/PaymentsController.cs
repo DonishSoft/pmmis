@@ -247,6 +247,7 @@ public class PaymentsController : Controller
                 viewModel.Payment.Amount = viewModel.Payment.AmountTjs.Value / viewModel.Payment.ExchangeRate.Value;
             }
             
+            viewModel.Payment.CreatedAt = DateTime.SpecifyKind(viewModel.Payment.CreatedAt, DateTimeKind.Utc);
             viewModel.Payment.UpdatedAt = DateTime.UtcNow;
             viewModel.Payment.PaymentDate = viewModel.Payment.PaymentDate.ToUtc();
             

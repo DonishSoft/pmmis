@@ -235,6 +235,7 @@ public class WorkProgressController : Controller
         if (ModelState.IsValid)
         {
             var progress = viewModel.WorkProgress;
+            progress.CreatedAt = DateTime.SpecifyKind(progress.CreatedAt, DateTimeKind.Utc);
             progress.UpdatedAt = DateTime.UtcNow;
             progress.ReportDate = progress.ReportDate.ToUtc();
             

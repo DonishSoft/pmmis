@@ -124,6 +124,7 @@ public class ContractorsController : Controller
 
         if (ModelState.IsValid)
         {
+            contractor.CreatedAt = DateTime.SpecifyKind(contractor.CreatedAt, DateTimeKind.Utc);
             contractor.UpdatedAt = DateTime.UtcNow;
             _context.Update(contractor);
             await _context.SaveChangesAsync();
