@@ -16,6 +16,7 @@ public static class SeedData
         {
             new ApplicationRole { Name = UserRoles.PmuAdmin, Description = "Администратор PMU", DescriptionTj = "Маъмури PMU", DescriptionEn = "PMU Administrator" },
             new ApplicationRole { Name = UserRoles.PmuStaff, Description = "Сотрудник PMU", DescriptionTj = "Кормандони PMU", DescriptionEn = "PMU Staff" },
+            new ApplicationRole { Name = UserRoles.Accountant, Description = "Бухгалтер", DescriptionTj = "Муҳосиб", DescriptionEn = "Accountant" },
             new ApplicationRole { Name = UserRoles.WorldBank, Description = "Всемирный банк", DescriptionTj = "Бонки Ҷаҳонӣ", DescriptionEn = "World Bank" },
             new ApplicationRole { Name = UserRoles.Contractor, Description = "Подрядчик", DescriptionTj = "Пудратчӣ", DescriptionEn = "Contractor" }
         };

@@ -496,33 +496,45 @@ public class WorkProgressController : Controller
         _context.Payments.Add(payment);
         await _context.SaveChangesAsync();
         
-        // Create task for Accountant (PMU_STAFF or first available)
-        var staffRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == UserRoles.PmuStaff);
-        if (staffRole != null)
-        {
-            var staffUserId = await _context.UserRoles
-                .Where(ur => ur.RoleId == staffRole.Id)
+        // Create task for Accountant (ACCOUNTANT role, fallback to PMU_STAFF)
+        var accountantRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == UserRoles.Accountant);
+        var staffUserId = accountantRole != null
+            ? await _context.UserRoles
+                .Where(ur => ur.RoleId == accountantRole.Id)
                 .Select(ur => ur.UserId)
-                .FirstOrDefaultAsync();
-            
-            if (staffUserId != null)
+                .FirstOrDefaultAsync()
+            : null;
+        
+        // Fallback to PMU_STAFF if no Accountant found
+        if (staffUserId == null)
+        {
+            var staffRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == UserRoles.PmuStaff);
+            if (staffRole != null)
             {
-                await _taskService.CreateAsync(new ProjectTask
-                {
-                    Title = $"Подготовить платёжку #{payment.Id} — {contract.ContractNumber}",
-                    Description = $"АВР утверждён Директором.\nСумма: {paymentAmount:N2}\n" +
-                                  $"Подрядчик: {contract.Contractor.Name}\n" +
-                                  $"Проверьте и подтвердите платёжку.",
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.High,
-                    DueDate = DateTime.UtcNow.AddDays(5),
-                    AssigneeId = staffUserId,
-                    AssignedById = userId,
-                    ContractId = contract.Id,
-                    WorkProgressId = progress.Id,
-                    ProjectId = contract.ProjectId
-                }, userId!);
+                staffUserId = await _context.UserRoles
+                    .Where(ur => ur.RoleId == staffRole.Id)
+                    .Select(ur => ur.UserId)
+                    .FirstOrDefaultAsync();
             }
+        }
+        
+        if (staffUserId != null)
+        {
+            await _taskService.CreateAsync(new ProjectTask
+            {
+                Title = $"Подготовить платёжку #{payment.Id} — {contract.ContractNumber}",
+                Description = $"АВР утверждён Директором.\nСумма: {paymentAmount:N2}\n" +
+                              $"Подрядчик: {contract.Contractor.Name}\n" +
+                              $"Проверьте и подтвердите платёжку.",
+                Status = ProjectTaskStatus.New,
+                Priority = TaskPriority.High,
+                DueDate = DateTime.UtcNow.AddDays(5),
+                AssigneeId = staffUserId,
+                AssignedById = userId,
+                ContractId = contract.Id,
+                WorkProgressId = progress.Id,
+                ProjectId = contract.ProjectId
+            }, userId!);
         }
         
         TempData["Success"] = $"АВР утверждён. Платёжка #{payment.Id} создана для бухгалтерии.";

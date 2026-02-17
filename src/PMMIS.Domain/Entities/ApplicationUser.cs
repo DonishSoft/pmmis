@@ -65,6 +65,7 @@ public static class UserRoles
 {
     public const string PmuAdmin = "PMU_ADMIN";
     public const string PmuStaff = "PMU_STAFF";
+    public const string Accountant = "ACCOUNTANT";
     public const string WorldBank = "WORLD_BANK";
     public const string Contractor = "CONTRACTOR";
 }

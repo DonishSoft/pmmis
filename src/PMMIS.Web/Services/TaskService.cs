@@ -171,10 +171,11 @@ public class TaskService : ITaskService
         // PMU_ADMIN can assign to anyone
         if (assignerRoles.Contains(UserRoles.PmuAdmin)) return true;
 
-        // PMU_STAFF can assign to PMU_STAFF and CONTRACTOR
-        if (assignerRoles.Contains(UserRoles.PmuStaff))
+        // PMU_STAFF can assign to PMU_STAFF, ACCOUNTANT and CONTRACTOR
+        if (assignerRoles.Contains(UserRoles.PmuStaff) || assignerRoles.Contains(UserRoles.Accountant))
         {
             return assigneeRoles.Contains(UserRoles.PmuStaff) || 
+                   assigneeRoles.Contains(UserRoles.Accountant) ||
                    assigneeRoles.Contains(UserRoles.Contractor);
         }
 
