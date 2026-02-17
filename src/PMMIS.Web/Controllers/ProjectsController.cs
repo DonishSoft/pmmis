@@ -114,6 +114,9 @@ public class ProjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateComponent(Component component)
     {
+        ModelState.Remove("Project");
+        ModelState.Remove("SubComponents");
+        
         if (ModelState.IsValid)
         {
             component.CreatedAt = DateTime.UtcNow;
@@ -141,6 +144,9 @@ public class ProjectsController : Controller
     public async Task<IActionResult> EditComponent(int id, Component component)
     {
         if (id != component.Id) return NotFound();
+
+        ModelState.Remove("Project");
+        ModelState.Remove("SubComponents");
 
         if (ModelState.IsValid)
         {
@@ -203,6 +209,9 @@ public class ProjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateSubComponent(SubComponent subComponent)
     {
+        ModelState.Remove("Component");
+        ModelState.Remove("Contracts");
+        
         if (ModelState.IsValid)
         {
             subComponent.CreatedAt = DateTime.UtcNow;
@@ -234,6 +243,9 @@ public class ProjectsController : Controller
     public async Task<IActionResult> EditSubComponent(int id, SubComponent subComponent)
     {
         if (id != subComponent.Id) return NotFound();
+
+        ModelState.Remove("Component");
+        ModelState.Remove("Contracts");
 
         if (ModelState.IsValid)
         {
