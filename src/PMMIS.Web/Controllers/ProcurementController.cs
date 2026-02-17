@@ -150,76 +150,56 @@ public class ProcurementController : Controller
 
     public async Task<IActionResult> Edit(int id)
     {
-        try
-        {
-            var plan = await _context.ProcurementPlans
-                .Include(p => p.Project)
-                .Include(p => p.Component)
-                .Include(p => p.SubComponent)
-                .FirstOrDefaultAsync(p => p.Id == id);
-                
-            if (plan == null) return NotFound();
-
-            await LoadDropdowns(plan.ProjectId, plan.ComponentId);
-            ViewBag.Contracts = await GetContractsForProject(plan.ProjectId);
+        var plan = await _context.ProcurementPlans
+            .Include(p => p.Project)
+            .Include(p => p.Component)
+            .Include(p => p.SubComponent)
+            .FirstOrDefaultAsync(p => p.Id == id);
             
-            return View(plan);
-        }
-        catch (Exception ex)
-        {
-            return Content($"DIAGNOSTIC ERROR (GET Edit): {ex}", "text/plain");
-        }
+        if (plan == null) return NotFound();
+
+        await LoadDropdowns(plan.ProjectId, plan.ComponentId);
+        ViewBag.Contracts = await GetContractsForProject(plan.ProjectId);
+        
+        return View(plan);
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, ProcurementPlan plan)
     {
-        try
+        if (id != plan.Id) return NotFound();
+
+        // Remove navigation property validation (only IDs come from the form)
+        ModelState.Remove("Project");
+        ModelState.Remove("Component");
+        ModelState.Remove("SubComponent");
+        ModelState.Remove("Contract");
+
+        if (ModelState.IsValid)
         {
-            if (id != plan.Id) return NotFound();
-
-            // Remove navigation property validation (only IDs come from the form)
-            ModelState.Remove("Project");
-            ModelState.Remove("Component");
-            ModelState.Remove("SubComponent");
-            ModelState.Remove("Contract");
-
-            if (ModelState.IsValid)
-            {
-                plan.UpdatedAt = DateTime.UtcNow;
-                
-                // Convert dates to UTC
-                plan.PlannedBidOpeningDate = plan.PlannedBidOpeningDate.ToUtc();
-                plan.PlannedContractSigningDate = plan.PlannedContractSigningDate.ToUtc();
-                plan.PlannedCompletionDate = plan.PlannedCompletionDate.ToUtc();
-                plan.ActualBidOpeningDate = plan.ActualBidOpeningDate.ToUtc();
-                plan.ActualContractSigningDate = plan.ActualContractSigningDate.ToUtc();
-                plan.ActualCompletionDate = plan.ActualCompletionDate.ToUtc();
-                
-                _context.Update(plan);
-                await _context.SaveChangesAsync();
-                
-                TempData["Success"] = "Позиция плана закупок обновлена";
-                return RedirectToAction(nameof(Index), new { projectId = plan.ProjectId });
-            }
-
-            // Log ModelState errors for debugging
-            var errors = string.Join("\n", ModelState.Where(x => x.Value!.Errors.Count > 0)
-                .Select(x => $"{x.Key}: {string.Join(", ", x.Value!.Errors.Select(e => e.ErrorMessage))}"));
-            if (!string.IsNullOrEmpty(errors))
-            {
-                return Content($"DIAGNOSTIC: ModelState errors:\n{errors}", "text/plain");
-            }
-
-            await LoadDropdowns(plan.ProjectId);
-            ViewBag.Contracts = await GetContractsForProject(plan.ProjectId);
-            return View(plan);
+            plan.UpdatedAt = DateTime.UtcNow;
+            
+            // Convert ALL dates to UTC (PostgreSQL requires DateTimeKind.Utc)
+            plan.CreatedAt = DateTime.SpecifyKind(plan.CreatedAt, DateTimeKind.Utc);
+            plan.AdvertisementDate = plan.AdvertisementDate.ToUtc();
+            plan.PlannedBidOpeningDate = plan.PlannedBidOpeningDate.ToUtc();
+            plan.PlannedContractSigningDate = plan.PlannedContractSigningDate.ToUtc();
+            plan.PlannedCompletionDate = plan.PlannedCompletionDate.ToUtc();
+            plan.ActualBidOpeningDate = plan.ActualBidOpeningDate.ToUtc();
+            plan.ActualContractSigningDate = plan.ActualContractSigningDate.ToUtc();
+            plan.ActualCompletionDate = plan.ActualCompletionDate.ToUtc();
+            
+            _context.Update(plan);
+            await _context.SaveChangesAsync();
+            
+            TempData["Success"] = "Позиция плана закупок обновлена";
+            return RedirectToAction(nameof(Index), new { projectId = plan.ProjectId });
         }
-        catch (Exception ex)
-        {
-            return Content($"DIAGNOSTIC ERROR (POST Edit): {ex}", "text/plain");
-        }
+
+        await LoadDropdowns(plan.ProjectId);
+        ViewBag.Contracts = await GetContractsForProject(plan.ProjectId);
+        return View(plan);
     }
 
     [HttpPost]
