@@ -5,6 +5,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
     var canEdit = await permissionService.HasPermissionAsync(User, "Procurement", "edit");
+    var canDelete = await permissionService.HasPermissionAsync(User, "Procurement", "delete");
 
     string GetMethodName(ProcurementMethod method) => method switch
     {
@@ -81,9 +82,15 @@
                     <i class="bi bi-pencil me-1"></i> Редактировать
                 </a>
             }
-            <a asp-action="Index" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Назад
-            </a>
+            @if (canDelete)
+            {
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline"
+                      onsubmit="return confirm('Вы действительно хотите удалить план закупки @Model.ReferenceNo?')">
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i> Удалить
+                    </button>
+                </form>
+            }
         </div>
     </div>
 
