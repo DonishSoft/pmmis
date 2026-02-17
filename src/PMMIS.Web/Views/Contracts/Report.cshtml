@@ -15,11 +15,11 @@
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1"><i class="bi bi-clipboard-data me-2"></i>Contract Monitoring Report</h2>
+            <h2 class="mb-1"><i class="bi bi-clipboard-data me-2" data-bs-toggle="tooltip" title="Отчёт мониторинга"></i>Contract Monitoring Report</h2>
             <p class="text-muted mb-0">Дата отчёта: @Model.ReportDate.ToString("dd.MM.yyyy")</p>
         </div>
-        <div class="d-flex gap-2 align-items-center">
-            <form method="get" class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
                 <select name="projectId" class="form-select form-select-sm" style="width: 250px;" onchange="this.form.submit()">
                     <option value="">Все проекты</option>
                     @foreach (var p in Model.Projects)
@@ -27,8 +27,35 @@
                         <option value="@p.Id" selected="@(Model.SelectedProjectId == p.Id)">@p.Code — @p.NameRu</option>
                     }
                 </select>
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text">С</span>
+                    <input type="date" name="fromDate" class="form-control form-control-sm" style="width: 140px;"
+                           value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+                    <span class="input-group-text">По</span>
+                    <input type="date" name="toDate" class="form-control form-control-sm" style="width: 140px;"
+                           value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel me-1" data-bs-toggle="tooltip" title="Применить фильтр"></i>Применить
+                </button>
             </form>
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <div class="btn-group btn-group-sm">
+                <a asp-action="ExportExcel"
+                   asp-route-projectId="@Model.SelectedProjectId"
+                   asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                   asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                   class="btn btn-success" data-bs-toggle="tooltip" title="Экспорт в формате Excel (.xlsx)">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                </a>
+                <a asp-action="ExportWord"
+                   asp-route-projectId="@Model.SelectedProjectId"
+                   asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                   asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                   class="btn btn-primary" data-bs-toggle="tooltip" title="Экспорт в формате Word (.doc)">
+                    <i class="bi bi-file-earmark-word me-1"></i>Word
+                </a>
+            </div>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Вернуться к списку контрактов">
                 <i class="bi bi-arrow-left me-1"></i>Назад
             </a>
         </div>
@@ -93,7 +120,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#table1">
-                    <i class="bi bi-hourglass-split me-2 text-warning"></i>
+                    <span data-bs-toggle="tooltip" title="Закупки в процессе обработки"><i class="bi bi-hourglass-split me-2 text-warning"></i></span>
                     <strong>1. On-Going Procurement Processing</strong>
                     <span class="badge bg-warning text-dark ms-2">@Model.OnGoingProcurements.Count</span>
                 </button>
@@ -133,12 +160,12 @@
                                                 @{
                                                     var procBadge = pp.Status switch
                                                     {
-                                                        ProcurementStatus.InProgress => ("bg-primary", "⏳ В процессе"),
-                                                        ProcurementStatus.Evaluation => ("bg-info", "📋 Оценка"),
+                                                        ProcurementStatus.InProgress => ("bg-primary", "В процессе"),
+                                                        ProcurementStatus.Evaluation => ("bg-info", "Оценка"),
                                                         _ => ("bg-secondary", pp.Status.ToString())
                                                     };
                                                 }
-                                                <span class="badge @procBadge.Item1">@procBadge.Item2</span>
+                                                <span class="badge @procBadge.Item1" data-bs-toggle="tooltip" title="@procBadge.Item2">@procBadge.Item2</span>
                                             </td>
                                         </tr>
                                     }
@@ -161,7 +188,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table2">
-                    <i class="bi bi-file-earmark-check me-2 text-primary"></i>
+                    <span data-bs-toggle="tooltip" title="Активные контракты"><i class="bi bi-file-earmark-check me-2 text-primary"></i></span>
                     <strong>2. Contracted Activities</strong>
                     <span class="badge bg-primary ms-2">@Model.ContractedActivities.Count</span>
                 </button>
@@ -203,15 +230,15 @@
                                             <td>@c.Contractor.Name</td>
                                             <td>
                                                 @{
-                                                    var typeIcon = c.Type switch
+                                                    var (typeIcon, typeLabel) = c.Type switch
                                                     {
-                                                        ContractType.Works => "🏗️",
-                                                        ContractType.Consulting => "💼",
-                                                        ContractType.Goods => "📦",
-                                                        _ => "📄"
+                                                        ContractType.Works => ("🏗️", "Строительные работы"),
+                                                        ContractType.Consulting => ("💼", "Консультационные услуги"),
+                                                        ContractType.Goods => ("📦", "Товары"),
+                                                        _ => ("📄", "Другое")
                                                     };
                                                 }
-                                                @typeIcon
+                                                <span data-bs-toggle="tooltip" title="@typeLabel">@typeIcon</span>
                                             </td>
                                             <td class="text-end">$@c.FinalAmount.ToString("N0")</td>
                                             <td class="text-end text-success">$@c.PaidAmount.ToString("N0")</td>
@@ -219,7 +246,7 @@
                                             <td class="@daysClass fw-bold">
                                                 @if (daysLeft < 0)
                                                 {
-                                                    <span>@Math.Abs(daysLeft) дн. просрочки</span>
+                                                    <span data-bs-toggle="tooltip" title="Просрочено">@Math.Abs(daysLeft) дн. просрочки</span>
                                                 }
                                                 else
                                                 {
@@ -236,14 +263,14 @@
                                             </td>
                                             <td>
                                                 @{
-                                                    var sBadge = c.Status switch
+                                                    var (sBadgeClass, sBadgeIcon, sBadgeTooltip) = c.Status switch
                                                     {
-                                                        ContractStatus.Ongoing => ("bg-primary", "🔄"),
-                                                        ContractStatus.DefectLiability => ("bg-info", "🛡️"),
-                                                        _ => ("bg-secondary", "—")
+                                                        ContractStatus.Ongoing => ("bg-primary", "🔄", "В процессе"),
+                                                        ContractStatus.DefectLiability => ("bg-info", "🛡️", "Гарантийный период"),
+                                                        _ => ("bg-secondary", "—", c.Status.ToString())
                                                     };
                                                 }
-                                                <span class="badge @sBadge.Item1">@sBadge.Item2</span>
+                                                <span class="badge @sBadgeClass" data-bs-toggle="tooltip" title="@sBadgeTooltip">@sBadgeIcon</span>
                                             </td>
                                         </tr>
                                     }
@@ -274,7 +301,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table3">
-                    <i class="bi bi-pause-circle me-2 text-secondary"></i>
+                    <span data-bs-toggle="tooltip" title="Закупки ещё не начаты"><i class="bi bi-pause-circle me-2 text-secondary"></i></span>
                     <strong>3. Activities Not Commenced / Pending Readiness</strong>
                     <span class="badge bg-secondary ms-2">@Model.NotCommencedActivities.Count</span>
                 </button>
@@ -330,7 +357,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table4">
-                    <i class="bi bi-check-circle me-2 text-success"></i>
+                    <span data-bs-toggle="tooltip" title="Завершённые контракты"><i class="bi bi-check-circle me-2 text-success"></i></span>
                     <strong>4. Completed Activities</strong>
                     <span class="badge bg-success ms-2">@Model.CompletedActivities.Count</span>
                 </button>
@@ -368,15 +395,15 @@
                                             <td>@c.Contractor.Name</td>
                                             <td>
                                                 @{
-                                                    var typeIcon4 = c.Type switch
+                                                    var (typeIcon4, typeLabel4) = c.Type switch
                                                     {
-                                                        ContractType.Works => "🏗️",
-                                                        ContractType.Consulting => "💼",
-                                                        ContractType.Goods => "📦",
-                                                        _ => "📄"
+                                                        ContractType.Works => ("🏗️", "Строительные работы"),
+                                                        ContractType.Consulting => ("💼", "Консультационные услуги"),
+                                                        ContractType.Goods => ("📦", "Товары"),
+                                                        _ => ("📄", "Другое")
                                                     };
                                                 }
-                                                @typeIcon4
+                                                <span data-bs-toggle="tooltip" title="@typeLabel4">@typeIcon4</span>
                                             </td>
                                             <td class="text-end">$@c.FinalAmount.ToString("N0")</td>
                                             <td class="text-end text-success fw-bold">$@c.PaidAmount.ToString("N0")</td>
@@ -384,14 +411,14 @@
                                             <td>
                                                 @if (c.PerformanceRating.HasValue)
                                                 {
-                                                    var rBadge = c.PerformanceRating.Value switch
+                                                    var (rBadgeClass, rBadgeText, rBadgeTooltip) = c.PerformanceRating.Value switch
                                                     {
-                                                        PerformanceRating.HighlySatisfactory => ("bg-success", "⭐ HS"),
-                                                        PerformanceRating.Satisfactory => ("bg-primary", "✅ S"),
-                                                        PerformanceRating.Unsatisfactory => ("bg-danger", "⚠️ U"),
-                                                        _ => ("bg-secondary", "—")
+                                                        PerformanceRating.HighlySatisfactory => ("bg-success", "⭐ HS", "Highly Satisfactory — Высокий уровень"),
+                                                        PerformanceRating.Satisfactory => ("bg-primary", "✅ S", "Satisfactory — Удовлетворительно"),
+                                                        PerformanceRating.Unsatisfactory => ("bg-danger", "⚠️ U", "Unsatisfactory — Неудовлетворительно"),
+                                                        _ => ("bg-secondary", "—", "Не указано")
                                                     };
-                                                    <span class="badge @rBadge.Item1">@rBadge.Item2</span>
+                                                    <span class="badge @rBadgeClass" data-bs-toggle="tooltip" title="@rBadgeTooltip">@rBadgeText</span>
                                                 }
                                                 else
                                                 {
@@ -427,7 +454,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table5">
-                    <i class="bi bi-bar-chart me-2 text-info"></i>
+                    <span data-bs-toggle="tooltip" title="Сводка прогресса"><i class="bi bi-bar-chart me-2 text-info"></i></span>
                     <strong>5. Progress Summary</strong>
                 </button>
             </h2>
@@ -441,10 +468,10 @@
                                 </thead>
                                 <tbody>
                                     <tr><td>Всего контрактов</td><td class="text-end fw-bold">@Model.ProgressSummary.TotalContracts</td></tr>
-                                    <tr><td>🔄 В процессе / 🛡️ Гарантийный</td><td class="text-end fw-bold text-primary">@Model.ProgressSummary.OngoingContracts</td></tr>
-                                    <tr><td>✅ Завершено</td><td class="text-end fw-bold text-success">@Model.ProgressSummary.CompletedContracts</td></tr>
-                                    <tr><td>⏸️ Приостановлено</td><td class="text-end fw-bold text-warning">@Model.ProgressSummary.SuspendedContracts</td></tr>
-                                    <tr><td>❌ Расторгнуто</td><td class="text-end fw-bold text-danger">@Model.ProgressSummary.TerminatedContracts</td></tr>
+                                    <tr><td><span data-bs-toggle="tooltip" title="В процессе / Гарантийный период">🔄 В процессе / 🛡️ Гарантийный</span></td><td class="text-end fw-bold text-primary">@Model.ProgressSummary.OngoingContracts</td></tr>
+                                    <tr><td><span data-bs-toggle="tooltip" title="Завершённые контракты">✅ Завершено</span></td><td class="text-end fw-bold text-success">@Model.ProgressSummary.CompletedContracts</td></tr>
+                                    <tr><td><span data-bs-toggle="tooltip" title="Приостановленные контракты">⏸️ Приостановлено</span></td><td class="text-end fw-bold text-warning">@Model.ProgressSummary.SuspendedContracts</td></tr>
+                                    <tr><td><span data-bs-toggle="tooltip" title="Расторгнутые контракты">❌ Расторгнуто</span></td><td class="text-end fw-bold text-danger">@Model.ProgressSummary.TerminatedContracts</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -487,6 +514,65 @@
                             </table>
                         </div>
                     </div>
+
+                    @* Mission comparison — only when date range is set *@
+                    @if (Model.FromDate.HasValue && Model.ToDate.HasValue && Model.ProgressSinceLastMission.Any())
+                    {
+                        <div class="mt-4">
+                            <h5 class="text-primary">
+                                <i class="bi bi-calendar-range me-2"></i>
+                                Прогресс за период: @Model.FromDate.Value.ToString("dd.MM.yyyy") — @Model.ToDate.Value.ToString("dd.MM.yyyy")
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">№</th>
+                                            <th>Этап</th>
+                                            <th>Описание</th>
+                                            <th class="text-end">Сумма (USD)</th>
+                                            <th>Статус</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{ var mIdx = 0; }
+                                        @foreach (var item in Model.ProgressSinceLastMission)
+                                        {
+                                            mIdx++;
+                                            var stageBadge = item.Stage switch
+                                            {
+                                                "Procurement Processing" => "bg-warning text-dark",
+                                                "Signed Contracts" => "bg-primary",
+                                                "Completed Contracts" => "bg-success",
+                                                _ => "bg-secondary"
+                                            };
+                                            <tr>
+                                                <td class="ps-3">@mIdx</td>
+                                                <td><span class="badge @stageBadge">@item.Stage</span></td>
+                                                <td>@item.Description</td>
+                                                <td class="text-end fw-bold">$@item.Amount.ToString("N0")</td>
+                                                <td>@item.Status</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr class="fw-bold">
+                                            <td class="ps-3" colspan="3">Итого за период</td>
+                                            <td class="text-end">$@Model.ProgressSinceLastMission.Sum(i => i.Amount).ToString("N0")</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    }
+                    else if (Model.FromDate.HasValue && Model.ToDate.HasValue)
+                    {
+                        <div class="mt-4 text-center text-muted py-3">
+                            <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
+                            Нет данных за выбранный период (@Model.FromDate.Value.ToString("dd.MM.yyyy") — @Model.ToDate.Value.ToString("dd.MM.yyyy"))
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -495,7 +581,7 @@
         <div class="accordion-item border-0 shadow-sm mb-3">
             <h2 class="accordion-header">
                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#table6">
-                    <i class="bi bi-pie-chart me-2 text-purple"></i>
+                    <span data-bs-toggle="tooltip" title="Сводка по категориям контрактов"><i class="bi bi-pie-chart me-2 text-purple"></i></span>
                     <strong>6. Summary by Category</strong>
                 </button>
             </h2>
@@ -558,3 +644,15 @@
 
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Initialize all Bootstrap tooltips
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipTriggerList.forEach(function (el) {
+                new bootstrap.Tooltip(el);
+            });
+        });
+    </script>
+}

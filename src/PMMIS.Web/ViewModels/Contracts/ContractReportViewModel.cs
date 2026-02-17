@@ -22,6 +22,16 @@ public class ContractReportViewModel
     /// </summary>
     public DateTime ReportDate { get; set; } = DateTime.Today;
     
+    /// <summary>
+    /// Начальная дата периода сравнения (последняя миссия)
+    /// </summary>
+    public DateTime? FromDate { get; set; }
+    
+    /// <summary>
+    /// Конечная дата периода сравнения
+    /// </summary>
+    public DateTime? ToDate { get; set; }
+    
     // === Table 1: On-Going Procurement ===
     public List<ProcurementPlan> OnGoingProcurements { get; set; } = [];
     
@@ -36,6 +46,11 @@ public class ContractReportViewModel
     
     // === Table 5: Progress Summary ===
     public ReportProgressSummary ProgressSummary { get; set; } = new();
+    
+    /// <summary>
+    /// Контракты, подписанные в указанном периоде (для Table 5)
+    /// </summary>
+    public List<MissionProgressItem> ProgressSinceLastMission { get; set; } = [];
     
     // === Table 6: Summary by Category ===
     public List<CategorySummary> CategorySummaries { get; set; } = [];
@@ -54,6 +69,17 @@ public class ReportProgressSummary
     public decimal TotalContractAmount { get; set; }
     public decimal TotalPaidAmount { get; set; }
     public decimal AverageWorkCompleted { get; set; }
+}
+
+/// <summary>
+/// Элемент прогресса с момента последней миссии
+/// </summary>
+public class MissionProgressItem
+{
+    public string Stage { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 /// <summary>
