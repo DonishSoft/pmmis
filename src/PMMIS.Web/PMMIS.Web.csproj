@@ -14,8 +14,10 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Syncfusion.DocIO.Net.Core" Version="32.1.22" />
     <PackageReference Include="Syncfusion.EJ2.AspNet.Core" Version="32.1.22" />
     <PackageReference Include="Syncfusion.Licensing" Version="32.1.22" />
+    <PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="32.1.22" />
   </ItemGroup>
 
   <PropertyGroup>

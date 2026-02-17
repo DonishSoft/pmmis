@@ -11,7 +11,7 @@ using PMMIS.Web.Services;
 using PMMIS.Web.ViewModels.Contracts;
 using System.Security.Claims;
 using System.Text.Json;
-using WP = DocumentFormat.OpenXml.Wordprocessing;
+
 
 namespace PMMIS.Web.Controllers;
 
@@ -168,192 +168,182 @@ public class ContractsController : Controller
     }
 
     /// <summary>
-    /// Экспорт отчёта в Excel
+    /// Экспорт отчёта в Excel (Syncfusion XlsIO)
     /// </summary>
     [RequirePermission(MenuKeys.Contracts, PermissionType.View)]
     public async Task<IActionResult> ExportExcel(int? projectId, DateTime? fromDate, DateTime? toDate)
     {
         var (allContracts, allProcurements) = await LoadReportDataAsync(projectId);
 
-        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        using var excelEngine = new Syncfusion.XlsIO.ExcelEngine();
+        var application = excelEngine.Excel;
+        application.DefaultVersion = Syncfusion.XlsIO.ExcelVersion.Xlsx;
+        var workbook = application.Workbooks.Create(1);
+
+        // Helper: style header row
+        void StyleHeader(Syncfusion.XlsIO.IWorksheet ws, int cols)
+        {
+            for (int c = 1; c <= cols; c++)
+            {
+                ws.Range[1, c].CellStyle.Font.Bold = true;
+                ws.Range[1, c].CellStyle.Color = Syncfusion.Drawing.Color.FromArgb(217, 226, 243);
+                ws.Range[1, c].CellStyle.Font.Size = 10;
+            }
+        }
 
         // --- Sheet 1: On-Going Procurement ---
         var onGoingProc = allProcurements
             .Where(pp => pp.ContractId == null && (pp.Status == ProcurementStatus.InProgress || pp.Status == ProcurementStatus.Evaluation))
             .ToList();
-        var ws1 = workbook.Worksheets.Add("1. Procurement Processing");
-        ws1.Cell(1, 1).Value = "No";
-        ws1.Cell(1, 2).Value = "Ref. No";
-        ws1.Cell(1, 3).Value = "Description";
-        ws1.Cell(1, 4).Value = "Method";
-        ws1.Cell(1, 5).Value = "Type";
-        ws1.Cell(1, 6).Value = "Estimated Amount (USD)";
-        ws1.Cell(1, 7).Value = "Advertisement Date";
-        ws1.Cell(1, 8).Value = "Status";
-        StyleExcelHeader(ws1, 1, 8);
+        var ws1 = workbook.Worksheets[0];
+        ws1.Name = "1. Procurement Processing";
+        ws1[1, 1].Text = "No"; ws1[1, 2].Text = "Ref. No"; ws1[1, 3].Text = "Description";
+        ws1[1, 4].Text = "Method"; ws1[1, 5].Text = "Type"; ws1[1, 6].Text = "Estimated Amount (USD)";
+        ws1[1, 7].Text = "Advertisement Date"; ws1[1, 8].Text = "Status";
+        StyleHeader(ws1, 8);
         for (int i = 0; i < onGoingProc.Count; i++)
         {
             var pp = onGoingProc[i];
-            ws1.Cell(i + 2, 1).Value = i + 1;
-            ws1.Cell(i + 2, 2).Value = pp.ReferenceNo;
-            ws1.Cell(i + 2, 3).Value = pp.Description;
-            ws1.Cell(i + 2, 4).Value = pp.Method.ToString();
-            ws1.Cell(i + 2, 5).Value = GetProcurementTypeText(pp.Type);
-            ws1.Cell(i + 2, 6).Value = (double)pp.EstimatedAmount;
-            ws1.Cell(i + 2, 6).Style.NumberFormat.Format = "#,##0.00";
-            ws1.Cell(i + 2, 7).Value = pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "";
-            ws1.Cell(i + 2, 8).Value = GetProcurementStatusText(pp.Status);
+            ws1[i + 2, 1].Number = i + 1;
+            ws1[i + 2, 2].Text = pp.ReferenceNo;
+            ws1[i + 2, 3].Text = pp.Description;
+            ws1[i + 2, 4].Text = pp.Method.ToString();
+            ws1[i + 2, 5].Text = GetProcurementTypeText(pp.Type);
+            ws1[i + 2, 6].Number = (double)pp.EstimatedAmount;
+            ws1[i + 2, 6].NumberFormat = "#,##0.00";
+            ws1[i + 2, 7].Text = pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "";
+            ws1[i + 2, 8].Text = GetProcurementStatusText(pp.Status);
         }
-        ws1.Columns().AdjustToContents();
+        ws1.UsedRange.AutofitColumns();
 
         // --- Sheet 2: Contracted Activities ---
         var contracted = allContracts
             .Where(c => c.Status == ContractStatus.Ongoing || c.Status == ContractStatus.DefectLiability)
             .ToList();
-        var ws2 = workbook.Worksheets.Add("2. Contracted Activities");
-        ws2.Cell(1, 1).Value = "No";
-        ws2.Cell(1, 2).Value = "Contract No";
-        ws2.Cell(1, 3).Value = "Contractor";
-        ws2.Cell(1, 4).Value = "Type";
-        ws2.Cell(1, 5).Value = "Contract Sum (USD)";
-        ws2.Cell(1, 6).Value = "Paid (USD)";
-        ws2.Cell(1, 7).Value = "Signing Date";
-        ws2.Cell(1, 8).Value = "Deadline";
-        ws2.Cell(1, 9).Value = "Remaining Days";
-        ws2.Cell(1, 10).Value = "Work Completed %";
-        ws2.Cell(1, 11).Value = "Status";
-        StyleExcelHeader(ws2, 1, 11);
+        var ws2 = workbook.Worksheets.Create("2. Contracted Activities");
+        ws2[1, 1].Text = "No"; ws2[1, 2].Text = "Contract No"; ws2[1, 3].Text = "Contractor";
+        ws2[1, 4].Text = "Type"; ws2[1, 5].Text = "Contract Sum (USD)"; ws2[1, 6].Text = "Paid (USD)";
+        ws2[1, 7].Text = "Signing Date"; ws2[1, 8].Text = "Deadline"; ws2[1, 9].Text = "Remaining Days";
+        ws2[1, 10].Text = "Work Completed %"; ws2[1, 11].Text = "Status";
+        StyleHeader(ws2, 11);
         for (int i = 0; i < contracted.Count; i++)
         {
             var c = contracted[i];
-            ws2.Cell(i + 2, 1).Value = i + 1;
-            ws2.Cell(i + 2, 2).Value = c.ContractNumber;
-            ws2.Cell(i + 2, 3).Value = c.Contractor?.Name ?? "";
-            ws2.Cell(i + 2, 4).Value = GetContractTypeText(c.Type);
-            ws2.Cell(i + 2, 5).Value = (double)c.FinalAmount;
-            ws2.Cell(i + 2, 5).Style.NumberFormat.Format = "#,##0.00";
-            ws2.Cell(i + 2, 6).Value = (double)c.PaidAmount;
-            ws2.Cell(i + 2, 6).Style.NumberFormat.Format = "#,##0.00";
-            ws2.Cell(i + 2, 7).Value = c.SigningDate.ToString("dd.MM.yyyy");
-            ws2.Cell(i + 2, 8).Value = c.ContractEndDate.ToString("dd.MM.yyyy");
-            ws2.Cell(i + 2, 9).Value = c.RemainingDays;
-            ws2.Cell(i + 2, 10).Value = (double)c.WorkCompletedPercent;
-            ws2.Cell(i + 2, 10).Style.NumberFormat.Format = "0.0\"%\"";
-            ws2.Cell(i + 2, 11).Value = GetContractStatusText(c.Status);
+            ws2[i + 2, 1].Number = i + 1;
+            ws2[i + 2, 2].Text = c.ContractNumber;
+            ws2[i + 2, 3].Text = c.Contractor?.Name ?? "";
+            ws2[i + 2, 4].Text = GetContractTypeText(c.Type);
+            ws2[i + 2, 5].Number = (double)c.FinalAmount;
+            ws2[i + 2, 5].NumberFormat = "#,##0.00";
+            ws2[i + 2, 6].Number = (double)c.PaidAmount;
+            ws2[i + 2, 6].NumberFormat = "#,##0.00";
+            ws2[i + 2, 7].Text = c.SigningDate.ToString("dd.MM.yyyy");
+            ws2[i + 2, 8].Text = c.ContractEndDate.ToString("dd.MM.yyyy");
+            ws2[i + 2, 9].Number = c.RemainingDays;
+            ws2[i + 2, 10].Number = (double)c.WorkCompletedPercent;
+            ws2[i + 2, 10].NumberFormat = "0.0\"%\"";
+            ws2[i + 2, 11].Text = GetContractStatusText(c.Status);
         }
         // Totals row
         var trRow = contracted.Count + 2;
-        ws2.Cell(trRow, 1).Value = "";
-        ws2.Cell(trRow, 4).Value = "TOTAL";
-        ws2.Cell(trRow, 4).Style.Font.Bold = true;
-        ws2.Cell(trRow, 5).Value = (double)contracted.Sum(c => c.FinalAmount);
-        ws2.Cell(trRow, 5).Style.NumberFormat.Format = "#,##0.00";
-        ws2.Cell(trRow, 5).Style.Font.Bold = true;
-        ws2.Cell(trRow, 6).Value = (double)contracted.Sum(c => c.PaidAmount);
-        ws2.Cell(trRow, 6).Style.NumberFormat.Format = "#,##0.00";
-        ws2.Cell(trRow, 6).Style.Font.Bold = true;
-        ws2.Columns().AdjustToContents();
+        ws2[trRow, 4].Text = "TOTAL";
+        ws2[trRow, 4].CellStyle.Font.Bold = true;
+        ws2[trRow, 5].Number = (double)contracted.Sum(c => c.FinalAmount);
+        ws2[trRow, 5].NumberFormat = "#,##0.00";
+        ws2[trRow, 5].CellStyle.Font.Bold = true;
+        ws2[trRow, 6].Number = (double)contracted.Sum(c => c.PaidAmount);
+        ws2[trRow, 6].NumberFormat = "#,##0.00";
+        ws2[trRow, 6].CellStyle.Font.Bold = true;
+        ws2.UsedRange.AutofitColumns();
 
         // --- Sheet 3: Not Commenced ---
         var notCommenced = allProcurements
             .Where(pp => pp.ContractId == null && pp.Status == ProcurementStatus.Planned)
             .ToList();
-        var ws3 = workbook.Worksheets.Add("3. Not Commenced");
-        ws3.Cell(1, 1).Value = "No";
-        ws3.Cell(1, 2).Value = "Ref. No";
-        ws3.Cell(1, 3).Value = "Description";
-        ws3.Cell(1, 4).Value = "Type";
-        ws3.Cell(1, 5).Value = "Estimated Amount (USD)";
-        ws3.Cell(1, 6).Value = "Planned Bid Opening Date";
-        ws3.Cell(1, 7).Value = "Comments";
-        StyleExcelHeader(ws3, 1, 7);
+        var ws3 = workbook.Worksheets.Create("3. Not Commenced");
+        ws3[1, 1].Text = "No"; ws3[1, 2].Text = "Ref. No"; ws3[1, 3].Text = "Description";
+        ws3[1, 4].Text = "Type"; ws3[1, 5].Text = "Estimated Amount (USD)";
+        ws3[1, 6].Text = "Planned Bid Opening Date"; ws3[1, 7].Text = "Comments";
+        StyleHeader(ws3, 7);
         for (int i = 0; i < notCommenced.Count; i++)
         {
             var pp = notCommenced[i];
-            ws3.Cell(i + 2, 1).Value = i + 1;
-            ws3.Cell(i + 2, 2).Value = pp.ReferenceNo;
-            ws3.Cell(i + 2, 3).Value = pp.Description;
-            ws3.Cell(i + 2, 4).Value = GetProcurementTypeText(pp.Type);
-            ws3.Cell(i + 2, 5).Value = (double)pp.EstimatedAmount;
-            ws3.Cell(i + 2, 5).Style.NumberFormat.Format = "#,##0.00";
-            ws3.Cell(i + 2, 6).Value = pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "";
-            ws3.Cell(i + 2, 7).Value = pp.Comments ?? "";
+            ws3[i + 2, 1].Number = i + 1;
+            ws3[i + 2, 2].Text = pp.ReferenceNo;
+            ws3[i + 2, 3].Text = pp.Description;
+            ws3[i + 2, 4].Text = GetProcurementTypeText(pp.Type);
+            ws3[i + 2, 5].Number = (double)pp.EstimatedAmount;
+            ws3[i + 2, 5].NumberFormat = "#,##0.00";
+            ws3[i + 2, 6].Text = pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "";
+            ws3[i + 2, 7].Text = pp.Comments ?? "";
         }
-        ws3.Columns().AdjustToContents();
+        ws3.UsedRange.AutofitColumns();
 
         // --- Sheet 4: Completed ---
         var completed = allContracts.Where(c => c.Status == ContractStatus.Completed).ToList();
-        var ws4 = workbook.Worksheets.Add("4. Completed Activities");
-        ws4.Cell(1, 1).Value = "No";
-        ws4.Cell(1, 2).Value = "Contract No";
-        ws4.Cell(1, 3).Value = "Contractor";
-        ws4.Cell(1, 4).Value = "Type";
-        ws4.Cell(1, 5).Value = "Contract Sum (USD)";
-        ws4.Cell(1, 6).Value = "Actual Amount (USD)";
-        ws4.Cell(1, 7).Value = "Completion Date";
-        ws4.Cell(1, 8).Value = "Performance Rating";
-        StyleExcelHeader(ws4, 1, 8);
+        var ws4 = workbook.Worksheets.Create("4. Completed Activities");
+        ws4[1, 1].Text = "No"; ws4[1, 2].Text = "Contract No"; ws4[1, 3].Text = "Contractor";
+        ws4[1, 4].Text = "Type"; ws4[1, 5].Text = "Contract Sum (USD)";
+        ws4[1, 6].Text = "Actual Amount (USD)"; ws4[1, 7].Text = "Completion Date";
+        ws4[1, 8].Text = "Performance Rating";
+        StyleHeader(ws4, 8);
         for (int i = 0; i < completed.Count; i++)
         {
             var c = completed[i];
-            ws4.Cell(i + 2, 1).Value = i + 1;
-            ws4.Cell(i + 2, 2).Value = c.ContractNumber;
-            ws4.Cell(i + 2, 3).Value = c.Contractor?.Name ?? "";
-            ws4.Cell(i + 2, 4).Value = GetContractTypeText(c.Type);
-            ws4.Cell(i + 2, 5).Value = (double)c.FinalAmount;
-            ws4.Cell(i + 2, 5).Style.NumberFormat.Format = "#,##0.00";
-            ws4.Cell(i + 2, 6).Value = (double)c.PaidAmount;
-            ws4.Cell(i + 2, 6).Style.NumberFormat.Format = "#,##0.00";
-            ws4.Cell(i + 2, 7).Value = c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "";
-            ws4.Cell(i + 2, 8).Value = GetPerformanceRatingText(c.PerformanceRating);
+            ws4[i + 2, 1].Number = i + 1;
+            ws4[i + 2, 2].Text = c.ContractNumber;
+            ws4[i + 2, 3].Text = c.Contractor?.Name ?? "";
+            ws4[i + 2, 4].Text = GetContractTypeText(c.Type);
+            ws4[i + 2, 5].Number = (double)c.FinalAmount;
+            ws4[i + 2, 5].NumberFormat = "#,##0.00";
+            ws4[i + 2, 6].Number = (double)c.PaidAmount;
+            ws4[i + 2, 6].NumberFormat = "#,##0.00";
+            ws4[i + 2, 7].Text = c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "";
+            ws4[i + 2, 8].Text = GetPerformanceRatingText(c.PerformanceRating);
         }
-        ws4.Columns().AdjustToContents();
+        ws4.UsedRange.AutofitColumns();
 
         // --- Sheet 5: Progress Summary ---
         var summary = BuildProgressSummary(allContracts);
-        var ws5 = workbook.Worksheets.Add("5. Progress Summary");
-        ws5.Cell(1, 1).Value = "Contract Statistics";
-        ws5.Cell(1, 1).Style.Font.Bold = true;
-        ws5.Range(1, 1, 1, 2).Merge();
-        ws5.Cell(2, 1).Value = "Total Contracts";    ws5.Cell(2, 2).Value = summary.TotalContracts;
-        ws5.Cell(3, 1).Value = "Ongoing / Defect Liability";  ws5.Cell(3, 2).Value = summary.OngoingContracts;
-        ws5.Cell(4, 1).Value = "Completed";           ws5.Cell(4, 2).Value = summary.CompletedContracts;
-        ws5.Cell(5, 1).Value = "Suspended";            ws5.Cell(5, 2).Value = summary.SuspendedContracts;
-        ws5.Cell(6, 1).Value = "Terminated";           ws5.Cell(6, 2).Value = summary.TerminatedContracts;
-        ws5.Cell(8, 1).Value = "Financial Summary";
-        ws5.Cell(8, 1).Style.Font.Bold = true;
-        ws5.Range(8, 1, 8, 2).Merge();
-        ws5.Cell(9, 1).Value = "Total Contract Amount";   ws5.Cell(9, 2).Value = (double)summary.TotalContractAmount; ws5.Cell(9, 2).Style.NumberFormat.Format = "#,##0.00";
-        ws5.Cell(10, 1).Value = "Total Paid Amount";      ws5.Cell(10, 2).Value = (double)summary.TotalPaidAmount; ws5.Cell(10, 2).Style.NumberFormat.Format = "#,##0.00";
-        ws5.Cell(11, 1).Value = "Average Work Completed %"; ws5.Cell(11, 2).Value = (double)summary.AverageWorkCompleted; ws5.Cell(11, 2).Style.NumberFormat.Format = "0.0\"%\"";
-        ws5.Columns().AdjustToContents();
+        var ws5 = workbook.Worksheets.Create("5. Progress Summary");
+        ws5[1, 1].Text = "Contract Statistics";
+        ws5[1, 1].CellStyle.Font.Bold = true;
+        ws5.Range["A1:B1"].Merge();
+        ws5[2, 1].Text = "Total Contracts";    ws5[2, 2].Number = summary.TotalContracts;
+        ws5[3, 1].Text = "Ongoing / Defect Liability";  ws5[3, 2].Number = summary.OngoingContracts;
+        ws5[4, 1].Text = "Completed";           ws5[4, 2].Number = summary.CompletedContracts;
+        ws5[5, 1].Text = "Suspended";            ws5[5, 2].Number = summary.SuspendedContracts;
+        ws5[6, 1].Text = "Terminated";           ws5[6, 2].Number = summary.TerminatedContracts;
+        ws5[8, 1].Text = "Financial Summary";
+        ws5[8, 1].CellStyle.Font.Bold = true;
+        ws5.Range["A8:B8"].Merge();
+        ws5[9, 1].Text = "Total Contract Amount";   ws5[9, 2].Number = (double)summary.TotalContractAmount; ws5[9, 2].NumberFormat = "#,##0.00";
+        ws5[10, 1].Text = "Total Paid Amount";      ws5[10, 2].Number = (double)summary.TotalPaidAmount; ws5[10, 2].NumberFormat = "#,##0.00";
+        ws5[11, 1].Text = "Average Work Completed %"; ws5[11, 2].Number = (double)summary.AverageWorkCompleted; ws5[11, 2].NumberFormat = "0.0\"%\"";
+        ws5.UsedRange.AutofitColumns();
 
         // --- Sheet 6: Summary by Category ---
         var categories = BuildCategorySummaries(allContracts);
-        var ws6 = workbook.Worksheets.Add("6. Summary by Category");
-        ws6.Cell(1, 1).Value = "Category";
-        ws6.Cell(1, 2).Value = "Contracts";
-        ws6.Cell(1, 3).Value = "Total Amount (USD)";
-        ws6.Cell(1, 4).Value = "Paid (USD)";
-        ws6.Cell(1, 5).Value = "Disbursement %";
-        ws6.Cell(1, 6).Value = "Avg Completion %";
-        StyleExcelHeader(ws6, 1, 6);
+        var ws6 = workbook.Worksheets.Create("6. Summary by Category");
+        ws6[1, 1].Text = "Category"; ws6[1, 2].Text = "Contracts"; ws6[1, 3].Text = "Total Amount (USD)";
+        ws6[1, 4].Text = "Paid (USD)"; ws6[1, 5].Text = "Disbursement %"; ws6[1, 6].Text = "Avg Completion %";
+        StyleHeader(ws6, 6);
         for (int i = 0; i < categories.Count; i++)
         {
             var cs = categories[i];
-            ws6.Cell(i + 2, 1).Value = cs.CategoryName;
-            ws6.Cell(i + 2, 2).Value = cs.Count;
-            ws6.Cell(i + 2, 3).Value = (double)cs.TotalAmount;
-            ws6.Cell(i + 2, 3).Style.NumberFormat.Format = "#,##0.00";
-            ws6.Cell(i + 2, 4).Value = (double)cs.PaidAmount;
-            ws6.Cell(i + 2, 4).Style.NumberFormat.Format = "#,##0.00";
+            ws6[i + 2, 1].Text = cs.CategoryName;
+            ws6[i + 2, 2].Number = cs.Count;
+            ws6[i + 2, 3].Number = (double)cs.TotalAmount;
+            ws6[i + 2, 3].NumberFormat = "#,##0.00";
+            ws6[i + 2, 4].Number = (double)cs.PaidAmount;
+            ws6[i + 2, 4].NumberFormat = "#,##0.00";
             var disbursement = cs.TotalAmount > 0 ? (double)(cs.PaidAmount / cs.TotalAmount * 100) : 0;
-            ws6.Cell(i + 2, 5).Value = disbursement;
-            ws6.Cell(i + 2, 5).Style.NumberFormat.Format = "0.0\"%\"";
-            ws6.Cell(i + 2, 6).Value = (double)cs.AverageCompletion;
-            ws6.Cell(i + 2, 6).Style.NumberFormat.Format = "0.0\"%\"";
+            ws6[i + 2, 5].Number = disbursement;
+            ws6[i + 2, 5].NumberFormat = "0.0\"%\"";
+            ws6[i + 2, 6].Number = (double)cs.AverageCompletion;
+            ws6[i + 2, 6].NumberFormat = "0.0\"%\"";
         }
-        ws6.Columns().AdjustToContents();
+        ws6.UsedRange.AutofitColumns();
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
@@ -383,214 +373,170 @@ public class ContractsController : Controller
             .Where(pp => pp.ContractId == null && pp.Status == ProcurementStatus.Planned).ToList();
         var completed = allContracts.Where(c => c.Status == ContractStatus.Completed).ToList();
 
-        using var stream = new MemoryStream();
-        using (var doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Create(
-            stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
+        using var document = new Syncfusion.DocIO.DLS.WordDocument();
+        var section = document.AddSection();
+        section.PageSetup.Orientation = Syncfusion.DocIO.DLS.PageOrientation.Landscape;
+        section.PageSetup.Margins.All = 36; // 0.5 inch margins
+
+        // Helper: add heading
+        void AddDocHeading(string text, bool isTitle = false)
         {
-            var mainPart = doc.AddMainDocumentPart();
-            mainPart.Document = new WP.Document();
-            var body = mainPart.Document.AppendChild(new WP.Body());
-
-            // ----- Helper lambdas -----
-            void AddTitle(string text)
-            {
-                var p = body.AppendChild(new WP.Paragraph());
-                var ppr = p.AppendChild(new WP.ParagraphProperties());
-                ppr.AppendChild(new WP.Justification { Val = WP.JustificationValues.Center });
-                var run = p.AppendChild(new WP.Run());
-                run.AppendChild(new WP.RunProperties(
-                    new WP.Bold(),
-                    new WP.FontSize { Val = "32" },
-                    new WP.Color { Val = "1a3763" }));
-                run.AppendChild(new WP.Text(text));
-            }
-
-            void AddHeading(string text)
-            {
-                var p = body.AppendChild(new WP.Paragraph());
-                var run = p.AppendChild(new WP.Run());
-                run.AppendChild(new WP.RunProperties(
-                    new WP.Bold(),
-                    new WP.FontSize { Val = "26" },
-                    new WP.Color { Val = "1a3763" }));
-                run.AppendChild(new WP.Text(text));
-            }
-
-            void AddParagraph(string text, bool bold = false)
-            {
-                var p = body.AppendChild(new WP.Paragraph());
-                var run = p.AppendChild(new WP.Run());
-                if (bold)
-                    run.AppendChild(new WP.RunProperties(new WP.Bold()));
-                run.AppendChild(new WP.Text(text));
-            }
-
-            WP.Table CreateTable(string[] headers)
-            {
-                var table = new WP.Table();
-                var tblPr = new WP.TableProperties(
-                    new WP.TableBorders(
-                        new WP.TopBorder { Val = WP.BorderValues.Single, Size = 4 },
-                        new WP.BottomBorder { Val = WP.BorderValues.Single, Size = 4 },
-                        new WP.LeftBorder { Val = WP.BorderValues.Single, Size = 4 },
-                        new WP.RightBorder { Val = WP.BorderValues.Single, Size = 4 },
-                        new WP.InsideHorizontalBorder { Val = WP.BorderValues.Single, Size = 4 },
-                        new WP.InsideVerticalBorder { Val = WP.BorderValues.Single, Size = 4 }),
-                    new WP.TableWidth { Width = "5000", Type = WP.TableWidthUnitValues.Pct });
-                table.AppendChild(tblPr);
-
-                // Header row
-                var headerRow = new WP.TableRow();
-                foreach (var h in headers)
-                {
-                    var cell = new WP.TableCell();
-                    cell.AppendChild(new WP.TableCellProperties(
-                        new WP.Shading { Fill = "d9e2f3", Val = WP.ShadingPatternValues.Clear }));
-                    var p = cell.AppendChild(new WP.Paragraph());
-                    var run = p.AppendChild(new WP.Run());
-                    run.AppendChild(new WP.RunProperties(new WP.Bold(), new WP.FontSize { Val = "20" }));
-                    run.AppendChild(new WP.Text(h));
-                    headerRow.AppendChild(cell);
-                }
-                table.AppendChild(headerRow);
-                return table;
-            }
-
-            void AddRow(WP.Table table, string[] values, bool isBold = false)
-            {
-                var row = new WP.TableRow();
-                foreach (var v in values)
-                {
-                    var cell = new WP.TableCell();
-                    if (isBold)
-                        cell.AppendChild(new WP.TableCellProperties(
-                            new WP.Shading { Fill = "f2f2f2", Val = WP.ShadingPatternValues.Clear }));
-                    var p = cell.AppendChild(new WP.Paragraph());
-                    var run = p.AppendChild(new WP.Run());
-                    if (isBold)
-                        run.AppendChild(new WP.RunProperties(new WP.Bold()));
-                    run.AppendChild(new WP.Text(v) { Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve });
-                    row.AppendChild(cell);
-                }
-                table.AppendChild(row);
-            }
-
-            // ----- Build document content -----
-            AddTitle("CONTRACT MONITORING REPORT");
-            AddParagraph($"Report Date: {DateTime.Today:dd.MM.yyyy}");
-            body.AppendChild(new WP.Paragraph()); // spacer
-
-            // Table 1: On-Going Procurement
-            AddHeading("1. On-Going Procurement Processing");
-            if (onGoingProc.Count > 0)
-            {
-                var t1 = CreateTable(["No", "Ref. No", "Description", "Method", "Type", "Estimated Amount (USD)", "Advertisement Date", "Status"]);
-                for (int i = 0; i < onGoingProc.Count; i++)
-                {
-                    var pp = onGoingProc[i];
-                    AddRow(t1, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, pp.Method.ToString(),
-                        GetProcurementTypeText(pp.Type), pp.EstimatedAmount.ToString("N2"),
-                        pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "—", GetProcurementStatusText(pp.Status)]);
-                }
-                body.AppendChild(t1);
-            }
-            else
-                AddParagraph("No active procurements in process");
-
-            body.AppendChild(new WP.Paragraph());
-
-            // Table 2: Contracted Activities
-            AddHeading("2. Contracted Activities");
-            if (contracted.Count > 0)
-            {
-                var t2 = CreateTable(["No", "Contract No", "Contractor", "Type", "Sum (USD)", "Paid (USD)", "Signing Date", "Deadline", "Work %", "Status"]);
-                for (int i = 0; i < contracted.Count; i++)
-                {
-                    var c = contracted[i];
-                    AddRow(t2, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
-                        c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"), c.SigningDate.ToString("dd.MM.yyyy"),
-                        c.ContractEndDate.ToString("dd.MM.yyyy"), $"{c.WorkCompletedPercent:N1}%", GetContractStatusText(c.Status)]);
-                }
-                AddRow(t2, ["", "", "", "TOTAL", contracted.Sum(c => c.FinalAmount).ToString("N2"),
-                    contracted.Sum(c => c.PaidAmount).ToString("N2"), "", "", "", ""], true);
-                body.AppendChild(t2);
-            }
-            else
-                AddParagraph("No active contracts");
-
-            body.AppendChild(new WP.Paragraph());
-
-            // Table 3: Not Commenced
-            AddHeading("3. Activities Not Commenced / Pending Readiness");
-            if (notCommenced.Count > 0)
-            {
-                var t3 = CreateTable(["No", "Ref. No", "Description", "Type", "Estimated Amount (USD)", "Planned Bid Opening", "Comments"]);
-                for (int i = 0; i < notCommenced.Count; i++)
-                {
-                    var pp = notCommenced[i];
-                    AddRow(t3, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, GetProcurementTypeText(pp.Type),
-                        pp.EstimatedAmount.ToString("N2"), pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—", pp.Comments ?? "—"]);
-                }
-                body.AppendChild(t3);
-            }
-            else
-                AddParagraph("All procurements have commenced");
-
-            body.AppendChild(new WP.Paragraph());
-
-            // Table 4: Completed
-            AddHeading("4. Completed Activities");
-            if (completed.Count > 0)
-            {
-                var t4 = CreateTable(["No", "Contract No", "Contractor", "Type", "Contract Sum (USD)", "Actual Amount (USD)", "Completion Date", "Rating"]);
-                for (int i = 0; i < completed.Count; i++)
-                {
-                    var c = completed[i];
-                    AddRow(t4, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
-                        c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"),
-                        c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "—", GetPerformanceRatingText(c.PerformanceRating)]);
-                }
-                AddRow(t4, ["", "", "", "TOTAL", completed.Sum(c => c.FinalAmount).ToString("N2"),
-                    completed.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
-                body.AppendChild(t4);
-            }
-            else
-                AddParagraph("No completed contracts");
-
-            body.AppendChild(new WP.Paragraph());
-
-            // Table 5: Progress Summary
-            AddHeading("5. Progress Summary");
-            var t5a = CreateTable(["Indicator", "Value"]);
-            AddRow(t5a, ["Total Contracts", summary.TotalContracts.ToString()]);
-            AddRow(t5a, ["Ongoing / Defect Liability", summary.OngoingContracts.ToString()]);
-            AddRow(t5a, ["Completed", summary.CompletedContracts.ToString()]);
-            AddRow(t5a, ["Suspended", summary.SuspendedContracts.ToString()]);
-            AddRow(t5a, ["Terminated", summary.TerminatedContracts.ToString()]);
-            AddRow(t5a, ["Total Contract Amount", $"${summary.TotalContractAmount:N2}"]);
-            AddRow(t5a, ["Total Paid Amount", $"${summary.TotalPaidAmount:N2}"]);
-            AddRow(t5a, ["Average Work Completed", $"{summary.AverageWorkCompleted:N1}%"]);
-            body.AppendChild(t5a);
-
-            body.AppendChild(new WP.Paragraph());
-
-            // Table 6: Summary by Category
-            AddHeading("6. Summary by Category");
-            var t6 = CreateTable(["Category", "Contracts", "Total Amount (USD)", "Paid (USD)", "Disbursement %", "Avg Completion %"]);
-            foreach (var cs in categories)
-            {
-                var disb = cs.TotalAmount > 0 ? (cs.PaidAmount / cs.TotalAmount * 100) : 0;
-                AddRow(t6, [cs.CategoryName, cs.Count.ToString(), cs.TotalAmount.ToString("N2"),
-                    cs.PaidAmount.ToString("N2"), $"{disb:N1}%", $"{cs.AverageCompletion:N1}%"]);
-            }
-            AddRow(t6, ["TOTAL", categories.Sum(c => c.Count).ToString(), categories.Sum(c => c.TotalAmount).ToString("N2"),
-                categories.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
-            body.AppendChild(t6);
-
-            mainPart.Document.Save();
+            var p = section.AddParagraph();
+            var tr = p.AppendText(text);
+            tr.CharacterFormat.Bold = true;
+            tr.CharacterFormat.FontSize = isTitle ? 16 : 13;
+            tr.CharacterFormat.TextColor = Syncfusion.Drawing.Color.FromArgb(26, 55, 99);
+            if (isTitle)
+                p.ParagraphFormat.HorizontalAlignment = Syncfusion.DocIO.DLS.HorizontalAlignment.Center;
+            p.ParagraphFormat.AfterSpacing = isTitle ? 12 : 6;
         }
 
+        // Helper: create table with headers
+        Syncfusion.DocIO.DLS.IWTable CreateDocTable(string[] headers)
+        {
+            var table = section.AddTable();
+            table.ResetCells(1, headers.Length);
+            table.TableFormat.IsAutoResized = true;
+
+            for (int c = 0; c < headers.Length; c++)
+            {
+                var cell = table.Rows[0].Cells[c];
+                cell.CellFormat.BackColor = Syncfusion.Drawing.Color.FromArgb(217, 226, 243);
+                var p = cell.AddParagraph();
+                var tr = p.AppendText(headers[c]);
+                tr.CharacterFormat.Bold = true;
+                tr.CharacterFormat.FontSize = 9;
+            }
+            return table;
+        }
+
+        // Helper: add row
+        void AddDocRow(Syncfusion.DocIO.DLS.IWTable table, string[] values, bool isBold = false)
+        {
+            var row = table.AddRow();
+            for (int c = 0; c < values.Length && c < row.Cells.Count; c++)
+            {
+                var cell = row.Cells[c];
+                if (isBold)
+                    cell.CellFormat.BackColor = Syncfusion.Drawing.Color.FromArgb(242, 242, 242);
+                var p = cell.AddParagraph();
+                var tr = p.AppendText(values[c] ?? "");
+                tr.CharacterFormat.FontSize = 9;
+                if (isBold) tr.CharacterFormat.Bold = true;
+            }
+        }
+
+        // ----- Title -----
+        AddDocHeading("CONTRACT MONITORING REPORT", true);
+        var datePara = section.AddParagraph();
+        datePara.AppendText($"Report Date: {DateTime.Today:dd.MM.yyyy}");
+        datePara.ParagraphFormat.AfterSpacing = 12;
+
+        // Table 1: On-Going Procurement
+        AddDocHeading("1. On-Going Procurement Processing");
+        if (onGoingProc.Count > 0)
+        {
+            var t1 = CreateDocTable(["No", "Ref. No", "Description", "Method", "Type", "Est. Amount (USD)", "Adv. Date", "Status"]);
+            for (int i = 0; i < onGoingProc.Count; i++)
+            {
+                var pp = onGoingProc[i];
+                AddDocRow(t1, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, pp.Method.ToString(),
+                    GetProcurementTypeText(pp.Type), pp.EstimatedAmount.ToString("N2"),
+                    pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "—", GetProcurementStatusText(pp.Status)]);
+            }
+        }
+        else
+            section.AddParagraph().AppendText("No active procurements in process");
+
+        section.AddParagraph();
+
+        // Table 2: Contracted Activities
+        AddDocHeading("2. Contracted Activities");
+        if (contracted.Count > 0)
+        {
+            var t2 = CreateDocTable(["No", "Contract No", "Contractor", "Type", "Sum (USD)", "Paid (USD)", "Signing", "Deadline", "Work %", "Status"]);
+            for (int i = 0; i < contracted.Count; i++)
+            {
+                var c = contracted[i];
+                AddDocRow(t2, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
+                    c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"), c.SigningDate.ToString("dd.MM.yyyy"),
+                    c.ContractEndDate.ToString("dd.MM.yyyy"), $"{c.WorkCompletedPercent:N1}%", GetContractStatusText(c.Status)]);
+            }
+            AddDocRow(t2, ["", "", "", "TOTAL", contracted.Sum(c => c.FinalAmount).ToString("N2"),
+                contracted.Sum(c => c.PaidAmount).ToString("N2"), "", "", "", ""], true);
+        }
+        else
+            section.AddParagraph().AppendText("No active contracts");
+
+        section.AddParagraph();
+
+        // Table 3: Not Commenced
+        AddDocHeading("3. Activities Not Commenced / Pending Readiness");
+        if (notCommenced.Count > 0)
+        {
+            var t3 = CreateDocTable(["No", "Ref. No", "Description", "Type", "Est. Amount (USD)", "Planned Bid Opening", "Comments"]);
+            for (int i = 0; i < notCommenced.Count; i++)
+            {
+                var pp = notCommenced[i];
+                AddDocRow(t3, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, GetProcurementTypeText(pp.Type),
+                    pp.EstimatedAmount.ToString("N2"), pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—", pp.Comments ?? "—"]);
+            }
+        }
+        else
+            section.AddParagraph().AppendText("All procurements have commenced");
+
+        section.AddParagraph();
+
+        // Table 4: Completed
+        AddDocHeading("4. Completed Activities");
+        if (completed.Count > 0)
+        {
+            var t4 = CreateDocTable(["No", "Contract No", "Contractor", "Type", "Sum (USD)", "Actual (USD)", "Completed", "Rating"]);
+            for (int i = 0; i < completed.Count; i++)
+            {
+                var c = completed[i];
+                AddDocRow(t4, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
+                    c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"),
+                    c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "—", GetPerformanceRatingText(c.PerformanceRating)]);
+            }
+            AddDocRow(t4, ["", "", "", "TOTAL", completed.Sum(c => c.FinalAmount).ToString("N2"),
+                completed.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
+        }
+        else
+            section.AddParagraph().AppendText("No completed contracts");
+
+        section.AddParagraph();
+
+        // Table 5: Progress Summary
+        AddDocHeading("5. Progress Summary");
+        var t5 = CreateDocTable(["Indicator", "Value"]);
+        AddDocRow(t5, ["Total Contracts", summary.TotalContracts.ToString()]);
+        AddDocRow(t5, ["Ongoing / Defect Liability", summary.OngoingContracts.ToString()]);
+        AddDocRow(t5, ["Completed", summary.CompletedContracts.ToString()]);
+        AddDocRow(t5, ["Suspended", summary.SuspendedContracts.ToString()]);
+        AddDocRow(t5, ["Terminated", summary.TerminatedContracts.ToString()]);
+        AddDocRow(t5, ["Total Contract Amount", $"${summary.TotalContractAmount:N2}"]);
+        AddDocRow(t5, ["Total Paid Amount", $"${summary.TotalPaidAmount:N2}"]);
+        AddDocRow(t5, ["Average Work Completed", $"{summary.AverageWorkCompleted:N1}%"]);
+
+        section.AddParagraph();
+
+        // Table 6: Summary by Category
+        AddDocHeading("6. Summary by Category");
+        var t6 = CreateDocTable(["Category", "Contracts", "Total Amount (USD)", "Paid (USD)", "Disbursement %", "Avg Completion %"]);
+        foreach (var cs in categories)
+        {
+            var disb = cs.TotalAmount > 0 ? (cs.PaidAmount / cs.TotalAmount * 100) : 0;
+            AddDocRow(t6, [cs.CategoryName, cs.Count.ToString(), cs.TotalAmount.ToString("N2"),
+                cs.PaidAmount.ToString("N2"), $"{disb:N1}%", $"{cs.AverageCompletion:N1}%"]);
+        }
+        AddDocRow(t6, ["TOTAL", categories.Sum(c => c.Count).ToString(), categories.Sum(c => c.TotalAmount).ToString("N2"),
+            categories.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
+
+        using var stream = new MemoryStream();
+        document.Save(stream, Syncfusion.DocIO.FormatType.Docx);
         stream.Position = 0;
+
         var fileName = $"Contract_Monitoring_Report_{DateTime.Today:yyyy-MM-dd}.docx";
         return File(stream.ToArray(),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -657,15 +603,6 @@ public class ContractsController : Controller
         .OrderByDescending(cs => cs.TotalAmount)
         .ToList();
 
-    private static void StyleExcelHeader(ClosedXML.Excel.IXLWorksheet ws, int row, int colCount)
-    {
-        for (int c = 1; c <= colCount; c++)
-        {
-            ws.Cell(row, c).Style.Font.Bold = true;
-            ws.Cell(row, c).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#D9E2F3");
-            ws.Cell(row, c).Style.Border.BottomBorder = ClosedXML.Excel.XLBorderStyleValues.Thin;
-        }
-    }
 
     private static string GetContractTypeText(ContractType type) => type switch
     {
