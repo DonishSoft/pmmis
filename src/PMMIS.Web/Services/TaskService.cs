@@ -234,6 +234,46 @@ public class TaskService : ITaskService
         await _context.SaveChangesAsync();
     }
 
+    public async Task CompleteRelatedTasksAsync(int? contractId, int? workProgressId, string completedByUserId)
+    {
+        var query = _context.ProjectTasks
+            .Where(t => t.Status != ProjectTaskStatus.Completed && t.Status != ProjectTaskStatus.Cancelled);
+
+        // Prefer workProgressId match (more specific), fallback to contractId
+        if (workProgressId.HasValue)
+        {
+            query = query.Where(t => t.WorkProgressId == workProgressId.Value);
+        }
+        else if (contractId.HasValue)
+        {
+            query = query.Where(t => t.ContractId == contractId.Value);
+        }
+        else
+        {
+            return; // Nothing to match
+        }
+
+        var tasks = await query.ToListAsync();
+        foreach (var task in tasks)
+        {
+            task.Status = ProjectTaskStatus.Completed;
+            task.CompletedAt = DateTime.UtcNow;
+            task.CompletionPercent = 100;
+            task.UpdatedAt = DateTime.UtcNow;
+
+            await AddHistoryAsync(task.Id, completedByUserId, TaskChangeType.StatusChanged,
+                "Status", task.Status.ToString(), ProjectTaskStatus.Completed.ToString(),
+                "Автозавершение: действие выполнено в системе");
+        }
+
+        if (tasks.Any())
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Auto-completed {Count} tasks for ContractId={ContractId}, WorkProgressId={WorkProgressId} by {UserId}",
+                tasks.Count, contractId, workProgressId, completedByUserId);
+        }
+    }
+
     #endregion
 
     #region Queries

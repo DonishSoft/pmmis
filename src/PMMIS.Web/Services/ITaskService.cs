@@ -35,6 +35,11 @@ public interface ITaskService
     Task ChangeStatusAsync(int taskId, ProjectTaskStatus newStatus, string userId);
     Task UpdateProgressAsync(int taskId, decimal completionPercent, string userId);
     
+    /// <summary>
+    /// Автозавершение связанных задач при выполнении действия в workflow
+    /// </summary>
+    Task CompleteRelatedTasksAsync(int? contractId, int? workProgressId, string completedByUserId);
+    
     #endregion
 
     #region Queries

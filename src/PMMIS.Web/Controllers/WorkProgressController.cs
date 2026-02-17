@@ -177,35 +177,7 @@ public class WorkProgressController : Controller
             // Update contract's work completed percent
             await UpdateContractProgress(progress.ContractId);
             
-            // Auto-create task for АВР review
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var contract = await _context.Contracts
-                .Include(c => c.Contractor)
-                .FirstOrDefaultAsync(c => c.Id == progress.ContractId);
-            
-            if (!string.IsNullOrEmpty(currentUserId) && contract != null)
-            {
-                // Assign to project manager if set, otherwise to current user
-                var reviewerId = contract.ProjectManagerId ?? currentUserId;
-                await _taskService.CreateAsync(new ProjectTask
-                {
-                    Title = $"Проверить АВР по контракту {contract.ContractNumber}",
-                    Description = $"Подрядчик: {contract.Contractor.Name}\n" +
-                                  $"Дата отчёта: {progress.ReportDate:dd.MM.yyyy}\n" +
-                                  $"Прогресс: {progress.CompletedPercent}%\n" +
-                                  $"{progress.Description}",
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.High,
-                    DueDate = DateTime.UtcNow.AddDays(3),
-                    AssigneeId = reviewerId,
-                    AssignedById = currentUserId,
-                    ContractId = progress.ContractId,
-                    WorkProgressId = progress.Id,
-                    ProjectId = contract.ProjectId
-                }, currentUserId);
-            }
-            
-            TempData["Success"] = "Отчёт о прогрессе создан. Задача на проверку АВР добавлена.";
+            TempData["Success"] = "Отчёт о прогрессе создан.";
             return RedirectToAction(nameof(Index), new { contractId = progress.ContractId });
         }
 
@@ -439,6 +411,9 @@ public class WorkProgressController : Controller
         progress.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         
+        // Auto-complete PM's review task for this AVR
+        await _taskService.CompleteRelatedTasksAsync(null, progress.Id, userId!);
+        
         // Create task for Director (PMU_ADMIN)
         var directors = await _context.Users
             .Where(u => u.IsActive)
@@ -500,6 +475,9 @@ public class WorkProgressController : Controller
         progress.DirectorComment = comment;
         progress.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        
+        // Auto-complete Director's approval task for this AVR
+        await _taskService.CompleteRelatedTasksAsync(null, progress.Id, userId!);
         
         // --- Auto-create Payment ---
         var contract = progress.Contract;

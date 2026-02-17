@@ -357,6 +357,13 @@ public class PaymentsController : Controller
         payment.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         
+        // Auto-complete related payment preparation tasks
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await _taskService.CompleteRelatedTasksAsync(payment.ContractId, null, userId);
+        }
+        
         TempData["Success"] = $"Платёж #{id} отмечен как оплаченный";
         return RedirectToAction(nameof(Index), new { contractId = payment?.ContractId });
     }
