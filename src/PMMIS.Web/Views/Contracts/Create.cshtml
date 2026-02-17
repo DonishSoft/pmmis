@@ -48,17 +48,60 @@
                 }
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Привязка к проекту</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Проект <span class="text-danger">*</span></label>
+                                <select asp-for="Contract.ProjectId" class="form-select" id="projectSelect" required>
+                                    <option value="">— Выберите —</option>
+                                    @foreach (var p in Model.Projects)
+                                    {
+                                        <option value="@p.Id">@p.Code - @p.NameRu</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Подкомпонент</label>
+                                <select asp-for="Contract.SubComponentId" class="form-select" id="subComponentSelect">
+                                    <option value="">— Необязательно —</option>
+                                    @foreach (var sc in Model.SubComponents)
+                                    {
+                                        <option value="@sc.Id" data-project="@sc.Component.ProjectId">@sc.Component.NameRu - @sc.Code: @sc.NameRu</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label"><i class="bi bi-cart-check me-1"></i>Позиция плана закупок <span class="text-danger">*</span></label>
+                                <select asp-for="Contract.ProcurementPlanId" class="form-select" id="procurementPlanSelect" required>
+                                    <option value="">— Выберите позицию —</option>
+                                    @foreach (var pp in Model.ProcurementPlans)
+                                    {
+                                        <option value="@pp.Id" data-project="@pp.ProjectId">@pp.ReferenceNo — @pp.Description (@pp.Method, @pp.EstimatedAmount.ToString("N0") USD)</option>
+                                    }
+                                </select>
+                                <small class="text-muted">Выберите позицию плана закупок для автозаполнения данных контракта</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white">
                         <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Основная информация</h5>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">Номер контракта <span class="text-danger">*</span></label>
-                                <input type="text" asp-for="Contract.ContractNumber" class="form-control" placeholder="WSIP-AF3/W/001" required />
+                                <input type="text" asp-for="Contract.ContractNumber" class="form-control" id="contractNumber" placeholder="WSIP-AF3/W/001" required />
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Тип контракта <span class="text-danger">*</span></label>
-                                <select asp-for="Contract.Type" class="form-select">
+                                <select asp-for="Contract.Type" class="form-select" id="contractType">
                                     <option value="@((int)ContractType.Works)">🏗️ Строительные работы</option>
                                     <option value="@((int)ContractType.Consulting)">💼 Консультационные услуги</option>
                                     <option value="@((int)ContractType.Goods)">📦 Товары</option>
@@ -106,7 +149,7 @@
                         <div class="row g-3 mt-2">
                             <div class="col-12">
                                 <label class="form-label">Объём работ (RU) <span class="text-danger">*</span></label>
-                                <textarea asp-for="Contract.ScopeOfWork" class="form-control" rows="3" required></textarea>
+                                <textarea asp-for="Contract.ScopeOfWork" class="form-control" id="scopeOfWork" rows="3" required></textarea>
                             </div>
                         </div>
                         
@@ -118,49 +161,6 @@
                             <div class="col-md-6">
                                 <label class="form-label">Объём работ (EN)</label>
                                 <textarea asp-for="Contract.ScopeOfWorkEn" class="form-control" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Привязка к проекту</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Проект <span class="text-danger">*</span></label>
-                                <select asp-for="Contract.ProjectId" class="form-select" id="projectSelect" required>
-                                    <option value="">— Выберите —</option>
-                                    @foreach (var p in Model.Projects)
-                                    {
-                                        <option value="@p.Id">@p.Code - @p.NameRu</option>
-                                    }
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Подкомпонент</label>
-                                <select asp-for="Contract.SubComponentId" class="form-select" id="subComponentSelect">
-                                    <option value="">— Необязательно —</option>
-                                    @foreach (var sc in Model.SubComponents)
-                                    {
-                                        <option value="@sc.Id" data-project="@sc.Component.ProjectId">@sc.Component.NameRu - @sc.Code: @sc.NameRu</option>
-                                    }
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-3 mt-2">
-                            <div class="col-md-12">
-                                <label class="form-label"><i class="bi bi-cart-check me-1"></i>Позиция плана закупок</label>
-                                <select asp-for="Contract.ProcurementPlanId" class="form-select" id="procurementPlanSelect">
-                                    <option value="">— Не привязан к плану закупок —</option>
-                                    @foreach (var pp in Model.ProcurementPlans)
-                                    {
-                                        <option value="@pp.Id">@pp.ReferenceNo — @pp.Description (@pp.Method, @pp.EstimatedAmount.ToString("N0") USD)</option>
-                                    }
-                                </select>
-                                <small class="text-muted">Свяжите контракт с позицией из плана закупок</small>
                             </div>
                         </div>
                     </div>
@@ -203,11 +203,7 @@
                                 <label class="form-label">Дата завершения <span class="text-danger">*</span></label>
                                 <input type="date" asp-for="Contract.ContractEndDate" class="form-control" required />
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Продлён до</label>
-                                <input type="date" asp-for="Contract.ExtendedToDate" class="form-control" />
-                                <small class="text-muted">Если контракт продлён</small>
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -718,23 +714,75 @@
         addIndicatorRow();
     });
 
-    // Filter subcomponents by selected project
+    // ProcurementType -> ContractType mapping
+    // ProcurementType: Goods=0, Works=1, ConsultingServices=2, NonConsultingServices=3
+    // ContractType: Works=0, Consulting=1, Goods=2
+    const procTypeToContractType = { 0: 2, 1: 0, 2: 1, 3: 1 };
+
+    // Filter subcomponents and procurement plans by selected project
     document.getElementById('projectSelect').addEventListener('change', function() {
         const projectId = this.value;
         const subComponentSelect = document.getElementById('subComponentSelect');
-        const options = subComponentSelect.querySelectorAll('option[data-project]');
+        const procPlanSelect = document.getElementById('procurementPlanSelect');
         
-        options.forEach(opt => {
-            if (!projectId || opt.dataset.project === projectId) {
-                opt.style.display = '';
-            } else {
-                opt.style.display = 'none';
-            }
+        // Filter subcomponents
+        subComponentSelect.querySelectorAll('option[data-project]').forEach(opt => {
+            opt.style.display = (!projectId || opt.dataset.project === projectId) ? '' : 'none';
         });
-        
-        // Reset selection if current option is hidden
         if (subComponentSelect.selectedOptions[0]?.style.display === 'none') {
             subComponentSelect.value = '';
+        }
+        
+        // Filter procurement plans by project
+        procPlanSelect.querySelectorAll('option[data-project]').forEach(opt => {
+            opt.style.display = (!projectId || opt.dataset.project === projectId) ? '' : 'none';
+        });
+        if (procPlanSelect.selectedOptions[0]?.style.display === 'none') {
+            procPlanSelect.value = '';
+        }
+    });
+
+    // Auto-fill from procurement plan
+    document.getElementById('procurementPlanSelect').addEventListener('change', async function() {
+        const planId = this.value;
+        if (!planId) return;
+        
+        try {
+            const resp = await fetch(`/Contracts/GetProcurementPlanData?id=${planId}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            
+            // Fill contract number from reference number
+            const contractNumInput = document.getElementById('contractNumber');
+            if (contractNumInput && data.referenceNo) {
+                contractNumInput.value = data.referenceNo;
+            }
+            
+            // Map procurement type to contract type
+            const contractTypeSelect = document.getElementById('contractType');
+            if (contractTypeSelect && data.type !== undefined) {
+                const mappedType = procTypeToContractType[data.type];
+                if (mappedType !== undefined) {
+                    contractTypeSelect.value = mappedType;
+                }
+            }
+            
+            // Fill scope of work from description
+            const scopeInput = document.getElementById('scopeOfWork');
+            if (scopeInput && data.description) {
+                scopeInput.value = data.description;
+            }
+            
+            // Auto-select project if not already selected
+            if (data.projectId) {
+                const projSelect = document.getElementById('projectSelect');
+                if (projSelect && !projSelect.value) {
+                    projSelect.value = data.projectId;
+                    projSelect.dispatchEvent(new Event('change'));
+                }
+            }
+        } catch(e) {
+            console.warn('Failed to load procurement plan data', e);
         }
     });
 

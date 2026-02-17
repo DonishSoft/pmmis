@@ -769,13 +769,14 @@ public class ContractsController : Controller
             _context.Add(viewModel.Contract);
             await _context.SaveChangesAsync();
             
-            // Link procurement plan to this contract
+            // Link procurement plan to this contract and sync status
             if (viewModel.Contract.ProcurementPlanId.HasValue)
             {
                 var procPlan = await _context.ProcurementPlans.FindAsync(viewModel.Contract.ProcurementPlanId.Value);
                 if (procPlan != null)
                 {
                     procPlan.ContractId = viewModel.Contract.Id;
+                    procPlan.Status = ProcurementStatus.Awarded;
                     await _context.SaveChangesAsync();
                 }
             }
@@ -983,13 +984,18 @@ public class ContractsController : Controller
                 {
                     oldProcPlan.ContractId = null;
                 }
-                // Link new procurement plan
+                // Link new procurement plan and sync status
                 if (viewModel.Contract.ProcurementPlanId.HasValue)
                 {
                     var newProcPlan = await _context.ProcurementPlans.FindAsync(viewModel.Contract.ProcurementPlanId.Value);
                     if (newProcPlan != null)
                     {
                         newProcPlan.ContractId = id;
+                        // Sync procurement plan status with contract status
+                        if (viewModel.Contract.Status == ContractStatus.Completed)
+                            newProcPlan.Status = ProcurementStatus.Completed;
+                        else
+                            newProcPlan.Status = ProcurementStatus.Awarded;
                     }
                 }
                 
@@ -1285,6 +1291,29 @@ public class ContractsController : Controller
             .Select(g => new { IndicatorId = g.Key, VillageIds = g.Select(x => x.VillageId).ToList() });
         
         return Json(result);
+    }
+
+    /// <summary>
+    /// API: Returns procurement plan data for auto-fill in contract form
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetProcurementPlanData(int id)
+    {
+        var plan = await _context.ProcurementPlans
+            .Where(pp => pp.Id == id)
+            .Select(pp => new {
+                pp.ReferenceNo,
+                Type = (int)pp.Type,
+                pp.Description,
+                pp.EstimatedAmount,
+                pp.ProjectId
+            })
+            .FirstOrDefaultAsync();
+        
+        if (plan == null)
+            return NotFound();
+        
+        return Json(plan);
     }
     
     /// <summary>
