@@ -96,6 +96,12 @@ public class ProcurementController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ProcurementPlan plan)
     {
+        // Remove navigation property validation (only IDs come from the form)
+        ModelState.Remove("Project");
+        ModelState.Remove("Component");
+        ModelState.Remove("SubComponent");
+        ModelState.Remove("Contract");
+        
         if (await _context.ProcurementPlans.AnyAsync(p => p.ReferenceNo == plan.ReferenceNo))
         {
             ModelState.AddModelError("ReferenceNo", "Позиция с таким номером уже существует");
@@ -163,6 +169,12 @@ public class ProcurementController : Controller
     public async Task<IActionResult> Edit(int id, ProcurementPlan plan)
     {
         if (id != plan.Id) return NotFound();
+
+        // Remove navigation property validation (only IDs come from the form)
+        ModelState.Remove("Project");
+        ModelState.Remove("Component");
+        ModelState.Remove("SubComponent");
+        ModelState.Remove("Contract");
 
         if (ModelState.IsValid)
         {
