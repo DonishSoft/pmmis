@@ -42,6 +42,16 @@
                                 <input type="text" asp-for="Description" class="form-control" required />
                             </div>
                         </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label">🇹🇯 Тавсиф (тоҷикӣ) <span class="text-muted small">— необязательно</span></label>
+                                <input type="text" asp-for="DescriptionTj" class="form-control" placeholder="Тавсифи харид бо забони тоҷикӣ" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">🇬🇧 Description (English) <span class="text-muted small">— optional</span></label>
+                                <input type="text" asp-for="DescriptionEn" class="form-control" placeholder="Procurement description in English" />
+                            </div>
+                        </div>
 
                         <div class="row g-3 mt-2">
                             <div class="col-md-4">
