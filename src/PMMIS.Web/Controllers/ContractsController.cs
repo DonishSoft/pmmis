@@ -11,6 +11,7 @@ using PMMIS.Web.Services;
 using PMMIS.Web.ViewModels.Contracts;
 using System.Security.Claims;
 using System.Text.Json;
+using WP = DocumentFormat.OpenXml.Wordprocessing;
 
 namespace PMMIS.Web.Controllers;
 
@@ -365,7 +366,7 @@ public class ContractsController : Controller
     }
 
     /// <summary>
-    /// Экспорт отчёта в Word (HTML→DOC)
+    /// Экспорт отчёта в Word (DOCX via OpenXml)
     /// </summary>
     [RequirePermission(MenuKeys.Contracts, PermissionType.View)]
     public async Task<IActionResult> ExportWord(int? projectId, DateTime? fromDate, DateTime? toDate)
@@ -382,113 +383,218 @@ public class ContractsController : Controller
             .Where(pp => pp.ContractId == null && pp.Status == ProcurementStatus.Planned).ToList();
         var completed = allContracts.Where(c => c.Status == ContractStatus.Completed).ToList();
 
-        var html = $@"
-<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
-<head><meta charset='utf-8'><title>Contract Monitoring Report</title>
-<style>
-    body {{ font-family: 'Times New Roman', serif; font-size: 11pt; }}
-    h1 {{ text-align: center; color: #1a3763; font-size: 16pt; text-transform: uppercase; }}
-    h2 {{ color: #1a3763; font-size: 13pt; margin-top: 20pt; border-bottom: 1px solid #1a3763; padding-bottom: 4pt; }}
-    h3 {{ text-align: center; font-size: 12pt; color: #333; }}
-    table {{ border-collapse: collapse; width: 100%; margin-top: 8pt; }}
-    th {{ background-color: #d9e2f3; border: 1px solid #999; padding: 4pt 6pt; text-align: left; font-weight: bold; }}
-    td {{ border: 1px solid #999; padding: 4pt 6pt; }}
-    .num {{ text-align: right; }}
-    .bold {{ font-weight: bold; }}
-    .total-row td {{ font-weight: bold; background-color: #f2f2f2; }}
-</style>
-</head><body>
-<h1>Contract Monitoring Report</h1>
-<p style='text-align:center;'>Report Date: {DateTime.Today:dd.MM.yyyy}</p>
-
-<h2>1. On-Going Procurement Processing</h2>";
-
-        if (onGoingProc.Count > 0)
+        using var stream = new MemoryStream();
+        using (var doc = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Create(
+            stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
         {
-            html += "<table><tr><th>No</th><th>Ref. No</th><th>Description</th><th>Method</th><th>Type</th><th>Estimated Amount (USD)</th><th>Advertisement Date</th><th>Status</th></tr>";
-            for (int i = 0; i < onGoingProc.Count; i++)
+            var mainPart = doc.AddMainDocumentPart();
+            mainPart.Document = new WP.Document();
+            var body = mainPart.Document.AppendChild(new WP.Body());
+
+            // ----- Helper lambdas -----
+            void AddTitle(string text)
             {
-                var pp = onGoingProc[i];
-                html += $"<tr><td>{i + 1}</td><td>{pp.ReferenceNo}</td><td>{pp.Description}</td><td>{pp.Method}</td><td>{GetProcurementTypeText(pp.Type)}</td><td class='num'>{pp.EstimatedAmount:N2}</td><td>{pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "—"}</td><td>{GetProcurementStatusText(pp.Status)}</td></tr>";
+                var p = body.AppendChild(new WP.Paragraph());
+                var ppr = p.AppendChild(new WP.ParagraphProperties());
+                ppr.AppendChild(new WP.Justification { Val = WP.JustificationValues.Center });
+                var run = p.AppendChild(new WP.Run());
+                run.AppendChild(new WP.RunProperties(
+                    new WP.Bold(),
+                    new WP.FontSize { Val = "32" },
+                    new WP.Color { Val = "1a3763" }));
+                run.AppendChild(new WP.Text(text));
             }
-            html += "</table>";
-        }
-        else
-            html += "<p><em>No active procurements in process</em></p>";
 
-        html += "<h2>2. Contracted Activities</h2>";
-        if (contracted.Count > 0)
-        {
-            html += "<table><tr><th>No</th><th>Contract No</th><th>Contractor</th><th>Type</th><th>Sum (USD)</th><th>Paid (USD)</th><th>Signing Date</th><th>Deadline</th><th>Work %</th><th>Status</th></tr>";
-            for (int i = 0; i < contracted.Count; i++)
+            void AddHeading(string text)
             {
-                var c = contracted[i];
-                html += $"<tr><td>{i + 1}</td><td>{c.ContractNumber}</td><td>{c.Contractor?.Name}</td><td>{GetContractTypeText(c.Type)}</td><td class='num'>{c.FinalAmount:N2}</td><td class='num'>{c.PaidAmount:N2}</td><td>{c.SigningDate:dd.MM.yyyy}</td><td>{c.ContractEndDate:dd.MM.yyyy}</td><td class='num'>{c.WorkCompletedPercent:N1}%</td><td>{GetContractStatusText(c.Status)}</td></tr>";
+                var p = body.AppendChild(new WP.Paragraph());
+                var run = p.AppendChild(new WP.Run());
+                run.AppendChild(new WP.RunProperties(
+                    new WP.Bold(),
+                    new WP.FontSize { Val = "26" },
+                    new WP.Color { Val = "1a3763" }));
+                run.AppendChild(new WP.Text(text));
             }
-            html += $"<tr class='total-row'><td colspan='4'>TOTAL</td><td class='num'>{contracted.Sum(c => c.FinalAmount):N2}</td><td class='num'>{contracted.Sum(c => c.PaidAmount):N2}</td><td colspan='4'></td></tr></table>";
-        }
-        else
-            html += "<p><em>No active contracts</em></p>";
 
-        html += "<h2>3. Activities Not Commenced / Pending Readiness</h2>";
-        if (notCommenced.Count > 0)
-        {
-            html += "<table><tr><th>No</th><th>Ref. No</th><th>Description</th><th>Type</th><th>Estimated Amount (USD)</th><th>Planned Bid Opening</th><th>Comments</th></tr>";
-            for (int i = 0; i < notCommenced.Count; i++)
+            void AddParagraph(string text, bool bold = false)
             {
-                var pp = notCommenced[i];
-                html += $"<tr><td>{i + 1}</td><td>{pp.ReferenceNo}</td><td>{pp.Description}</td><td>{GetProcurementTypeText(pp.Type)}</td><td class='num'>{pp.EstimatedAmount:N2}</td><td>{pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—"}</td><td>{pp.Comments ?? "—"}</td></tr>";
+                var p = body.AppendChild(new WP.Paragraph());
+                var run = p.AppendChild(new WP.Run());
+                if (bold)
+                    run.AppendChild(new WP.RunProperties(new WP.Bold()));
+                run.AppendChild(new WP.Text(text));
             }
-            html += "</table>";
-        }
-        else
-            html += "<p><em>All procurements have commenced</em></p>";
 
-        html += "<h2>4. Completed Activities</h2>";
-        if (completed.Count > 0)
-        {
-            html += "<table><tr><th>No</th><th>Contract No</th><th>Contractor</th><th>Type</th><th>Contract Sum (USD)</th><th>Actual Amount (USD)</th><th>Completion Date</th><th>Rating</th></tr>";
-            for (int i = 0; i < completed.Count; i++)
+            WP.Table CreateTable(string[] headers)
             {
-                var c = completed[i];
-                html += $"<tr><td>{i + 1}</td><td>{c.ContractNumber}</td><td>{c.Contractor?.Name}</td><td>{GetContractTypeText(c.Type)}</td><td class='num'>{c.FinalAmount:N2}</td><td class='num'>{c.PaidAmount:N2}</td><td>{c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "—"}</td><td>{GetPerformanceRatingText(c.PerformanceRating)}</td></tr>";
+                var table = new WP.Table();
+                var tblPr = new WP.TableProperties(
+                    new WP.TableBorders(
+                        new WP.TopBorder { Val = WP.BorderValues.Single, Size = 4 },
+                        new WP.BottomBorder { Val = WP.BorderValues.Single, Size = 4 },
+                        new WP.LeftBorder { Val = WP.BorderValues.Single, Size = 4 },
+                        new WP.RightBorder { Val = WP.BorderValues.Single, Size = 4 },
+                        new WP.InsideHorizontalBorder { Val = WP.BorderValues.Single, Size = 4 },
+                        new WP.InsideVerticalBorder { Val = WP.BorderValues.Single, Size = 4 }),
+                    new WP.TableWidth { Width = "5000", Type = WP.TableWidthUnitValues.Pct });
+                table.AppendChild(tblPr);
+
+                // Header row
+                var headerRow = new WP.TableRow();
+                foreach (var h in headers)
+                {
+                    var cell = new WP.TableCell();
+                    cell.AppendChild(new WP.TableCellProperties(
+                        new WP.Shading { Fill = "d9e2f3", Val = WP.ShadingPatternValues.Clear }));
+                    var p = cell.AppendChild(new WP.Paragraph());
+                    var run = p.AppendChild(new WP.Run());
+                    run.AppendChild(new WP.RunProperties(new WP.Bold(), new WP.FontSize { Val = "20" }));
+                    run.AppendChild(new WP.Text(h));
+                    headerRow.AppendChild(cell);
+                }
+                table.AppendChild(headerRow);
+                return table;
             }
-            html += $"<tr class='total-row'><td colspan='4'>TOTAL</td><td class='num'>{completed.Sum(c => c.FinalAmount):N2}</td><td class='num'>{completed.Sum(c => c.PaidAmount):N2}</td><td colspan='2'></td></tr></table>";
+
+            void AddRow(WP.Table table, string[] values, bool isBold = false)
+            {
+                var row = new WP.TableRow();
+                foreach (var v in values)
+                {
+                    var cell = new WP.TableCell();
+                    if (isBold)
+                        cell.AppendChild(new WP.TableCellProperties(
+                            new WP.Shading { Fill = "f2f2f2", Val = WP.ShadingPatternValues.Clear }));
+                    var p = cell.AppendChild(new WP.Paragraph());
+                    var run = p.AppendChild(new WP.Run());
+                    if (isBold)
+                        run.AppendChild(new WP.RunProperties(new WP.Bold()));
+                    run.AppendChild(new WP.Text(v) { Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve });
+                    row.AppendChild(cell);
+                }
+                table.AppendChild(row);
+            }
+
+            // ----- Build document content -----
+            AddTitle("CONTRACT MONITORING REPORT");
+            AddParagraph($"Report Date: {DateTime.Today:dd.MM.yyyy}");
+            body.AppendChild(new WP.Paragraph()); // spacer
+
+            // Table 1: On-Going Procurement
+            AddHeading("1. On-Going Procurement Processing");
+            if (onGoingProc.Count > 0)
+            {
+                var t1 = CreateTable(["No", "Ref. No", "Description", "Method", "Type", "Estimated Amount (USD)", "Advertisement Date", "Status"]);
+                for (int i = 0; i < onGoingProc.Count; i++)
+                {
+                    var pp = onGoingProc[i];
+                    AddRow(t1, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, pp.Method.ToString(),
+                        GetProcurementTypeText(pp.Type), pp.EstimatedAmount.ToString("N2"),
+                        pp.AdvertisementDate?.ToString("dd.MM.yyyy") ?? "—", GetProcurementStatusText(pp.Status)]);
+                }
+                body.AppendChild(t1);
+            }
+            else
+                AddParagraph("No active procurements in process");
+
+            body.AppendChild(new WP.Paragraph());
+
+            // Table 2: Contracted Activities
+            AddHeading("2. Contracted Activities");
+            if (contracted.Count > 0)
+            {
+                var t2 = CreateTable(["No", "Contract No", "Contractor", "Type", "Sum (USD)", "Paid (USD)", "Signing Date", "Deadline", "Work %", "Status"]);
+                for (int i = 0; i < contracted.Count; i++)
+                {
+                    var c = contracted[i];
+                    AddRow(t2, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
+                        c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"), c.SigningDate.ToString("dd.MM.yyyy"),
+                        c.ContractEndDate.ToString("dd.MM.yyyy"), $"{c.WorkCompletedPercent:N1}%", GetContractStatusText(c.Status)]);
+                }
+                AddRow(t2, ["", "", "", "TOTAL", contracted.Sum(c => c.FinalAmount).ToString("N2"),
+                    contracted.Sum(c => c.PaidAmount).ToString("N2"), "", "", "", ""], true);
+                body.AppendChild(t2);
+            }
+            else
+                AddParagraph("No active contracts");
+
+            body.AppendChild(new WP.Paragraph());
+
+            // Table 3: Not Commenced
+            AddHeading("3. Activities Not Commenced / Pending Readiness");
+            if (notCommenced.Count > 0)
+            {
+                var t3 = CreateTable(["No", "Ref. No", "Description", "Type", "Estimated Amount (USD)", "Planned Bid Opening", "Comments"]);
+                for (int i = 0; i < notCommenced.Count; i++)
+                {
+                    var pp = notCommenced[i];
+                    AddRow(t3, [(i + 1).ToString(), pp.ReferenceNo, pp.Description, GetProcurementTypeText(pp.Type),
+                        pp.EstimatedAmount.ToString("N2"), pp.PlannedBidOpeningDate?.ToString("dd.MM.yyyy") ?? "—", pp.Comments ?? "—"]);
+                }
+                body.AppendChild(t3);
+            }
+            else
+                AddParagraph("All procurements have commenced");
+
+            body.AppendChild(new WP.Paragraph());
+
+            // Table 4: Completed
+            AddHeading("4. Completed Activities");
+            if (completed.Count > 0)
+            {
+                var t4 = CreateTable(["No", "Contract No", "Contractor", "Type", "Contract Sum (USD)", "Actual Amount (USD)", "Completion Date", "Rating"]);
+                for (int i = 0; i < completed.Count; i++)
+                {
+                    var c = completed[i];
+                    AddRow(t4, [(i + 1).ToString(), c.ContractNumber, c.Contractor?.Name ?? "", GetContractTypeText(c.Type),
+                        c.FinalAmount.ToString("N2"), c.PaidAmount.ToString("N2"),
+                        c.ActualCompletionDate?.ToString("dd.MM.yyyy") ?? "—", GetPerformanceRatingText(c.PerformanceRating)]);
+                }
+                AddRow(t4, ["", "", "", "TOTAL", completed.Sum(c => c.FinalAmount).ToString("N2"),
+                    completed.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
+                body.AppendChild(t4);
+            }
+            else
+                AddParagraph("No completed contracts");
+
+            body.AppendChild(new WP.Paragraph());
+
+            // Table 5: Progress Summary
+            AddHeading("5. Progress Summary");
+            var t5a = CreateTable(["Indicator", "Value"]);
+            AddRow(t5a, ["Total Contracts", summary.TotalContracts.ToString()]);
+            AddRow(t5a, ["Ongoing / Defect Liability", summary.OngoingContracts.ToString()]);
+            AddRow(t5a, ["Completed", summary.CompletedContracts.ToString()]);
+            AddRow(t5a, ["Suspended", summary.SuspendedContracts.ToString()]);
+            AddRow(t5a, ["Terminated", summary.TerminatedContracts.ToString()]);
+            AddRow(t5a, ["Total Contract Amount", $"${summary.TotalContractAmount:N2}"]);
+            AddRow(t5a, ["Total Paid Amount", $"${summary.TotalPaidAmount:N2}"]);
+            AddRow(t5a, ["Average Work Completed", $"{summary.AverageWorkCompleted:N1}%"]);
+            body.AppendChild(t5a);
+
+            body.AppendChild(new WP.Paragraph());
+
+            // Table 6: Summary by Category
+            AddHeading("6. Summary by Category");
+            var t6 = CreateTable(["Category", "Contracts", "Total Amount (USD)", "Paid (USD)", "Disbursement %", "Avg Completion %"]);
+            foreach (var cs in categories)
+            {
+                var disb = cs.TotalAmount > 0 ? (cs.PaidAmount / cs.TotalAmount * 100) : 0;
+                AddRow(t6, [cs.CategoryName, cs.Count.ToString(), cs.TotalAmount.ToString("N2"),
+                    cs.PaidAmount.ToString("N2"), $"{disb:N1}%", $"{cs.AverageCompletion:N1}%"]);
+            }
+            AddRow(t6, ["TOTAL", categories.Sum(c => c.Count).ToString(), categories.Sum(c => c.TotalAmount).ToString("N2"),
+                categories.Sum(c => c.PaidAmount).ToString("N2"), "", ""], true);
+            body.AppendChild(t6);
+
+            mainPart.Document.Save();
         }
-        else
-            html += "<p><em>No completed contracts</em></p>";
 
-        html += $@"
-<h2>5. Progress Summary</h2>
-<table>
-    <tr><th colspan='2'>Contract Statistics</th></tr>
-    <tr><td>Total Contracts</td><td class='num bold'>{summary.TotalContracts}</td></tr>
-    <tr><td>Ongoing / Defect Liability</td><td class='num bold'>{summary.OngoingContracts}</td></tr>
-    <tr><td>Completed</td><td class='num bold'>{summary.CompletedContracts}</td></tr>
-    <tr><td>Suspended</td><td class='num bold'>{summary.SuspendedContracts}</td></tr>
-    <tr><td>Terminated</td><td class='num bold'>{summary.TerminatedContracts}</td></tr>
-</table>
-<table>
-    <tr><th colspan='2'>Financial Summary</th></tr>
-    <tr><td>Total Contract Amount</td><td class='num bold'>${summary.TotalContractAmount:N2}</td></tr>
-    <tr><td>Total Paid Amount</td><td class='num bold'>${summary.TotalPaidAmount:N2}</td></tr>
-    <tr><td>Average Work Completed</td><td class='num bold'>{summary.AverageWorkCompleted:N1}%</td></tr>
-</table>
-
-<h2>6. Summary by Category</h2>
-<table><tr><th>Category</th><th>Contracts</th><th>Total Amount (USD)</th><th>Paid (USD)</th><th>Disbursement %</th><th>Avg Completion %</th></tr>";
-
-        foreach (var cs in categories)
-        {
-            var disb = cs.TotalAmount > 0 ? (cs.PaidAmount / cs.TotalAmount * 100) : 0;
-            html += $"<tr><td class='bold'>{cs.CategoryName}</td><td class='num'>{cs.Count}</td><td class='num'>{cs.TotalAmount:N2}</td><td class='num'>{cs.PaidAmount:N2}</td><td class='num'>{disb:N1}%</td><td class='num'>{cs.AverageCompletion:N1}%</td></tr>";
-        }
-        html += $"<tr class='total-row'><td>TOTAL</td><td class='num'>{categories.Sum(c => c.Count)}</td><td class='num'>{categories.Sum(c => c.TotalAmount):N2}</td><td class='num'>{categories.Sum(c => c.PaidAmount):N2}</td><td colspan='2'></td></tr></table>";
-        html += "</body></html>";
-
-        var bytes = System.Text.Encoding.UTF8.GetBytes(html);
-        var fileName = $"Contract_Monitoring_Report_{DateTime.Today:yyyy-MM-dd}.doc";
-        return File(bytes, "application/msword", fileName);
+        stream.Position = 0;
+        var fileName = $"Contract_Monitoring_Report_{DateTime.Today:yyyy-MM-dd}.docx";
+        return File(stream.ToArray(),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            fileName);
     }
 
     // ===== Report helper methods =====
