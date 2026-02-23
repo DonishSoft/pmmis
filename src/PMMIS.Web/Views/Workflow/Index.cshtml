@@ -29,127 +29,84 @@
         <!-- ═══ AVR Tab ═══ -->
         <div class="tab-pane fade show active" id="tab-avr" role="tabpanel">
             <div class="card border-0 shadow-sm rounded-0 rounded-bottom">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        При отказе документ вернётся на указанный шаг (пусто = на 1-й)
+                    </span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="addStep('AVR')">
+                            <i class="bi bi-plus-lg me-1"></i>Добавить шаг
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="saveWorkflow('AVR')">
+                            <i class="bi bi-check-lg me-1"></i>Сохранить
+                        </button>
+                    </div>
+                </div>
                 <div class="card-body p-0">
                     <div id="avr-grid"></div>
                 </div>
-                <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Откл. = при отказе вернуть документ на указанный шаг (пусто = на 1-й шаг)
-                    </small>
-                    <button class="btn btn-primary" onclick="saveWorkflow('AVR')">
-                        <i class="bi bi-check-lg me-1"></i> Сохранить маршрут АВР
-                    </button>
-                </div>
             </div>
-            <!-- Visual Flow -->
             <div class="card border-0 shadow-sm mt-3">
                 <div class="card-header bg-white py-2">
-                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема АВР</strong>
+                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</strong>
                 </div>
-                <div class="card-body" id="avr-flow" style="min-height: 80px;"></div>
+                <div class="card-body" id="avr-flow" style="min-height: 60px;"></div>
             </div>
         </div>
 
         <!-- ═══ Payment Tab ═══ -->
         <div class="tab-pane fade" id="tab-payment" role="tabpanel">
             <div class="card border-0 shadow-sm rounded-0 rounded-bottom">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        При отказе документ вернётся на указанный шаг (пусто = на 1-й)
+                    </span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="addStep('Payment')">
+                            <i class="bi bi-plus-lg me-1"></i>Добавить шаг
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="saveWorkflow('Payment')">
+                            <i class="bi bi-check-lg me-1"></i>Сохранить
+                        </button>
+                    </div>
+                </div>
                 <div class="card-body p-0">
                     <div id="payment-grid"></div>
                 </div>
-                <div class="card-footer bg-white d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Откл. = при отказе вернуть документ на указанный шаг (пусто = на 1-й шаг)
-                    </small>
-                    <button class="btn btn-primary" onclick="saveWorkflow('Payment')">
-                        <i class="bi bi-check-lg me-1"></i> Сохранить маршрут платежей
-                    </button>
-                </div>
             </div>
-            <!-- Visual Flow -->
             <div class="card border-0 shadow-sm mt-3">
                 <div class="card-header bg-white py-2">
-                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема Платежей</strong>
+                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</strong>
                 </div>
-                <div class="card-body" id="payment-flow" style="min-height: 80px;"></div>
+                <div class="card-body" id="payment-flow" style="min-height: 60px;"></div>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    /* ─── Flow diagram styles ─── */
-    .flow-container {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        flex-wrap: wrap;
-        padding: 8px 0;
-    }
+    .flow-container { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
     .flow-step {
-        position: relative;
-        background: linear-gradient(135deg, #f8f9ff, #eef2ff);
-        border: 2px solid #6366f1;
-        border-radius: 12px;
-        padding: 14px 18px;
-        min-width: 160px;
-        max-width: 200px;
-        text-align: center;
-        transition: all 0.2s;
+        position: relative; background: linear-gradient(135deg, #f8f9ff, #eef2ff);
+        border: 2px solid #6366f1; border-radius: 12px; padding: 14px 18px;
+        min-width: 150px; max-width: 200px; text-align: center; transition: all 0.2s;
     }
-    .flow-step:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(99,102,241,0.2);
-    }
+    .flow-step:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.2); }
     .flow-step .step-num {
-        position: absolute;
-        top: -10px;
-        left: -10px;
-        width: 24px;
-        height: 24px;
-        background: #6366f1;
-        color: #fff;
-        border-radius: 50%;
-        font-size: 12px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: absolute; top: -10px; left: -10px; width: 24px; height: 24px;
+        background: #6366f1; color: #fff; border-radius: 50%; font-size: 12px;
+        font-weight: 700; display: flex; align-items: center; justify-content: center;
     }
-    .flow-step .step-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+    .flow-step .step-icon { font-size: 22px; display: block; margin-bottom: 2px; }
     .flow-step .step-title { font-weight: 600; font-size: 13px; color: #1e293b; }
     .flow-step .step-role { font-size: 11px; color: #64748b; margin-top: 2px; }
-    .flow-arrow {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        align-self: center;
-        color: #22c55e;
-        font-size: 22px;
-        font-weight: 700;
-        line-height: 1;
-    }
-    .flow-arrow .arrow-label { font-size: 9px; color: #22c55e; font-weight: 600; }
-    .flow-reject {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        margin-top: 4px;
-    }
+    .flow-arrow { display: flex; flex-direction: column; align-items: center; align-self: center; color: #22c55e; font-size: 20px; font-weight: 700; }
     .flow-reject-badge {
-        font-size: 10px;
-        background: #fee2e2;
-        color: #dc2626;
-        border: 1px solid #fca5a5;
-        border-radius: 6px;
-        padding: 2px 8px;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
+        font-size: 10px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;
+        border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px;
     }
-    /* Grid styling */
-    .e-grid .e-toolbar { border-bottom: 2px solid #e2e8f0; }
     .e-grid .e-headercell { background: #f1f5f9 !important; font-weight: 600 !important; }
 </style>
 
@@ -160,25 +117,55 @@
     let avrData = @Html.Raw(ViewBag.AvrStepsJson);
     let paymentData = @Html.Raw(ViewBag.PaymentStepsJson);
 
-    const actionTypes = [
+    const actionTypesList = [
         { value: 'Create', text: '📝 Создание' },
         { value: 'Review', text: '👁️ Проверка' },
         { value: 'Approve', text: '✅ Утверждение' },
         { value: 'FinalApprove', text: '🏆 Финальное утверждение' }
     ];
 
-    const actionIcons = {
-        'Create': '📝', 'Review': '👁️', 'Approve': '✅', 'FinalApprove': '🏆'
-    };
-    const actionLabels = {
-        'Create': 'Создание', 'Review': 'Проверка', 'Approve': 'Утверждение', 'FinalApprove': 'Финал'
+    const actionIcons = { 'Create': '📝', 'Review': '👁️', 'Approve': '✅', 'FinalApprove': '🏆' };
+    const actionLabels = { 'Create': 'Создание', 'Review': 'Проверка', 'Approve': 'Утверждение', 'FinalApprove': 'Финал' };
+
+    // ─── Custom edit templates for DropDownList (fixes "No records found" bug) ───
+    let actionTypeDropdown, roleDropdown;
+
+    const actionTypeEditParams = {
+        create: function() { return document.createElement('input'); },
+        read: function() { return actionTypeDropdown ? actionTypeDropdown.value : ''; },
+        destroy: function() { if (actionTypeDropdown) actionTypeDropdown.destroy(); },
+        write: function(args) {
+            actionTypeDropdown = new ej.dropdowns.DropDownList({
+                dataSource: actionTypesList,
+                fields: { value: 'value', text: 'text' },
+                value: args.rowData.actionType || 'Review',
+                placeholder: 'Выберите действие',
+                floatLabelType: 'Always'
+            });
+            actionTypeDropdown.appendTo(args.element);
+        }
     };
 
-    // ─── Create Syncfusion Grid ───
+    const roleEditParams = {
+        create: function() { return document.createElement('input'); },
+        read: function() { return roleDropdown ? roleDropdown.value : ''; },
+        destroy: function() { if (roleDropdown) roleDropdown.destroy(); },
+        write: function(args) {
+            roleDropdown = new ej.dropdowns.DropDownList({
+                dataSource: rolesData,
+                fields: { value: 'id', text: 'name' },
+                value: args.rowData.roleId || (rolesData.length > 0 ? rolesData[0].id : ''),
+                placeholder: 'Выберите роль',
+                floatLabelType: 'Always'
+            });
+            roleDropdown.appendTo(args.element);
+        }
+    };
+
+    // ─── Create Grid ───
     function createWorkflowGrid(elementId, data, type) {
         const grid = new ej.grids.Grid({
             dataSource: data,
-            allowRowDragAndDrop: true,
             editSettings: {
                 allowEditing: true,
                 allowAdding: true,
@@ -186,224 +173,126 @@
                 mode: 'Dialog',
                 showDeleteConfirmDialog: true
             },
-            toolbar: [
-                { text: 'Добавить шаг', tooltipText: 'Добавить', prefixIcon: 'e-icons e-add', id: type + '_add' },
-                { text: 'Удалить', tooltipText: 'Удалить выбранный', prefixIcon: 'e-icons e-delete', id: type + '_delete' }
-            ],
-            toolbarClick: function(args) {
-                if (args.item.id === type + '_add') {
-                    const src = grid.dataSource;
-                    const nextOrder = src.length > 0 ? Math.max(...src.map(s => s.stepOrder)) + 1 : 1;
-                    grid.addRecord({
-                        stepOrder: nextOrder,
-                        stepName: '',
-                        actionType: 'Review',
-                        roleId: rolesData.length > 0 ? rolesData[0].id : '',
-                        roleName: rolesData.length > 0 ? rolesData[0].name : '',
-                        canReject: true,
-                        rejectToStepOrder: null,
-                        isActive: true
-                    });
-                } else if (args.item.id === type + '_delete') {
-                    const selected = grid.getSelectedRecords();
-                    if (selected.length > 0) {
-                        const idx = grid.getSelectedRowIndexes()[0];
-                        grid.deleteRecord('stepOrder', selected[0]);
-                        // Renumber
-                        setTimeout(() => renumberGrid(grid, type), 100);
-                    }
-                }
-            },
             columns: [
                 {
-                    field: 'stepOrder',
-                    headerText: '№',
-                    width: 60,
-                    textAlign: 'Center',
-                    isPrimaryKey: true,
-                    allowEditing: false,
+                    field: 'stepOrder', headerText: '№', width: 60, textAlign: 'Center',
+                    isPrimaryKey: true, allowEditing: false,
                     template: '<span class="badge bg-primary rounded-pill">${stepOrder}</span>'
                 },
                 {
-                    field: 'stepName',
-                    headerText: 'Название шага',
-                    width: 200,
+                    field: 'stepName', headerText: 'Название шага', width: 200,
                     validationRules: { required: true }
                 },
                 {
-                    field: 'actionType',
-                    headerText: 'Тип действия',
-                    width: 170,
-                    editType: 'dropdownedit',
-                    edit: {
-                        params: {
-                            dataSource: actionTypes,
-                            fields: { value: 'value', text: 'text' },
-                            placeholder: 'Выберите действие'
-                        }
-                    },
-                    template: function(data) {
-                        return (actionIcons[data.actionType] || '📋') + ' ' + (actionLabels[data.actionType] || data.actionType);
+                    field: 'actionType', headerText: 'Тип действия', width: 160,
+                    edit: actionTypeEditParams,
+                    template: function(d) {
+                        return (actionIcons[d.actionType] || '📋') + ' ' + (actionLabels[d.actionType] || d.actionType);
                     }
                 },
                 {
-                    field: 'roleId',
-                    headerText: 'Роль',
-                    width: 180,
-                    editType: 'dropdownedit',
-                    edit: {
-                        params: {
-                            dataSource: rolesData,
-                            fields: { value: 'id', text: 'name' },
-                            placeholder: 'Выберите роль'
-                        }
-                    },
-                    template: function(data) {
-                        const role = rolesData.find(r => r.id === data.roleId);
-                        return '<i class="bi bi-person-badge me-1"></i>' + (role ? role.name : data.roleName || '—');
+                    field: 'roleId', headerText: 'Роль', width: 180,
+                    edit: roleEditParams,
+                    template: function(d) {
+                        const r = rolesData.find(x => x.id === d.roleId);
+                        return '<i class="bi bi-person-badge me-1"></i>' + (r ? r.name : d.roleName || '—');
                     }
                 },
                 {
-                    field: 'canReject',
-                    headerText: 'Может отклонить',
-                    width: 130,
-                    textAlign: 'Center',
-                    displayAsCheckBox: true,
-                    editType: 'booleanedit',
-                    type: 'boolean'
+                    field: 'canReject', headerText: 'Может отклонить', width: 130, textAlign: 'Center',
+                    displayAsCheckBox: true, editType: 'booleanedit', type: 'boolean'
                 },
                 {
-                    field: 'rejectToStepOrder',
-                    headerText: 'Откл. → шаг №',
-                    width: 130,
-                    textAlign: 'Center',
+                    field: 'rejectToStepOrder', headerText: 'Откл. → шаг №', width: 130, textAlign: 'Center',
                     editType: 'numericedit',
-                    edit: {
-                        params: {
-                            min: 1,
-                            step: 1,
-                            decimals: 0,
-                            format: 'n0',
-                            placeholder: 'к 1-му'
-                        }
-                    },
-                    template: function(data) {
-                        if (!data.canReject) return '<span class="text-muted">—</span>';
-                        const target = data.rejectToStepOrder || 1;
-                        return '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle">↩ шаг ' + target + '</span>';
+                    edit: { params: { min: 1, step: 1, decimals: 0, format: 'n0', placeholder: '1' } },
+                    template: function(d) {
+                        if (!d.canReject) return '<span class="text-muted">—</span>';
+                        return '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle">↩ шаг ' + (d.rejectToStepOrder || 1) + '</span>';
                     }
                 }
             ],
-            rowDrop: function(args) {
-                // After drag-drop, renumber
-                setTimeout(() => {
-                    renumberGrid(grid, type);
-                }, 100);
-            },
             actionComplete: function(args) {
                 if (args.requestType === 'save' || args.requestType === 'delete') {
-                    setTimeout(() => {
-                        renumberGrid(grid, type);
-                        updateFlow(type);
-                    }, 100);
+                    setTimeout(() => { renumberGrid(grid, type); updateFlow(type); }, 50);
                 }
             },
-            rowSelected: function() { updateFlow(type); },
             dataBound: function() { updateFlow(type); },
             height: 'auto',
             gridLines: 'Horizontal',
             allowSelection: true,
-            selectionSettings: { type: 'Single' },
-            locale: 'ru'
+            selectionSettings: { type: 'Single' }
         });
         grid.appendTo('#' + elementId);
         return grid;
     }
 
-    // ─── Renumber Steps ───
+    // ─── Add Step (manual) ───
+    function addStep(type) {
+        const grid = type === 'AVR' ? avrGrid : paymentGrid;
+        const src = grid.dataSource || [];
+        const next = src.length > 0 ? Math.max(...src.map(s => s.stepOrder)) + 1 : 1;
+        grid.addRecord({
+            stepOrder: next,
+            stepName: '',
+            actionType: 'Review',
+            roleId: rolesData.length > 0 ? rolesData[0].id : '',
+            roleName: rolesData.length > 0 ? rolesData[0].name : '',
+            canReject: true,
+            rejectToStepOrder: null,
+            isActive: true
+        });
+    }
+
+    // ─── Renumber ───
     function renumberGrid(grid, type) {
         const data = grid.dataSource;
-        for (let i = 0; i < data.length; i++) {
-            data[i].stepOrder = i + 1;
-        }
+        if (!data) return;
+        for (let i = 0; i < data.length; i++) data[i].stepOrder = i + 1;
         grid.refresh();
-        updateFlow(type);
     }
 
-    // ─── Visual Flow Diagram ───
+    // ─── Visual Flow ───
     function updateFlow(type) {
-        const flowEl = document.getElementById(type.toLowerCase() === 'avr' ? 'avr-flow' : 'payment-flow');
+        const el = document.getElementById(type.toLowerCase() === 'avr' ? 'avr-flow' : 'payment-flow');
         const grid = type === 'AVR' ? avrGrid : paymentGrid;
         const data = grid ? grid.dataSource : [];
-
         if (!data || data.length === 0) {
-            flowEl.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox fs-3 d-block mb-1"></i>Нет шагов</div>';
+            el.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox fs-3 d-block mb-1"></i>Нет шагов — нажмите «Добавить шаг»</div>';
             return;
         }
-
         let html = '<div class="flow-container">';
-        data.forEach((step, i) => {
-            const role = rolesData.find(r => r.id === step.roleId);
-            const roleName = role ? role.name : step.roleName || '—';
-            const icon = actionIcons[step.actionType] || '📋';
-            const rejectTarget = step.canReject ? (step.rejectToStepOrder || 1) : null;
-
-            html += `
-                <div class="flow-step">
-                    <span class="step-num">${step.stepOrder}</span>
-                    <span class="step-icon">${icon}</span>
-                    <div class="step-title">${step.stepName || 'Шаг ' + step.stepOrder}</div>
-                    <div class="step-role">${roleName}</div>
-                    ${rejectTarget !== null ? `
-                        <div class="flow-reject">
-                            <span class="flow-reject-badge">
-                                <i class="bi bi-x-circle"></i> 
-                                Отказ → шаг ${rejectTarget}
-                            </span>
-                        </div>
-                    ` : ''}
-                </div>`;
-
-            if (i < data.length - 1) {
-                html += `
-                    <div class="flow-arrow">
-                        <span class="arrow-label">✓</span>
-                        <i class="bi bi-arrow-right"></i>
-                    </div>`;
-            }
+        data.forEach((s, i) => {
+            const role = rolesData.find(r => r.id === s.roleId);
+            const icon = actionIcons[s.actionType] || '📋';
+            const reject = s.canReject ? (s.rejectToStepOrder || 1) : null;
+            html += `<div class="flow-step">
+                <span class="step-num">${s.stepOrder}</span>
+                <span class="step-icon">${icon}</span>
+                <div class="step-title">${s.stepName || 'Шаг ' + s.stepOrder}</div>
+                <div class="step-role">${role ? role.name : s.roleName || '—'}</div>
+                ${reject !== null ? `<span class="flow-reject-badge"><i class="bi bi-x-circle"></i> Отказ → шаг ${reject}</span>` : ''}
+            </div>`;
+            if (i < data.length - 1) html += `<div class="flow-arrow"><i class="bi bi-arrow-right"></i></div>`;
         });
         html += '</div>';
-        flowEl.innerHTML = html;
+        el.innerHTML = html;
     }
 
-    // ─── Save Workflow ───
+    // ─── Save ───
     async function saveWorkflow(type) {
         const grid = type === 'AVR' ? avrGrid : paymentGrid;
         const data = grid.dataSource;
+        if (!data || data.length === 0) { showToast('Добавьте хотя бы один шаг', 'warning'); return; }
 
-        if (!data || data.length === 0) {
-            showToast('Добавьте хотя бы один шаг', 'warning');
-            return;
+        for (const s of data) {
+            if (!s.stepName || !s.stepName.trim()) { showToast('Заполните названия всех шагов', 'warning'); return; }
+            if (!s.roleId) { showToast('Выберите роль для каждого шага', 'warning'); return; }
         }
 
-        // Validate
-        for (const step of data) {
-            if (!step.stepName || step.stepName.trim() === '') {
-                showToast('Заполните название для всех шагов', 'warning');
-                return;
-            }
-            if (!step.roleId) {
-                showToast('Выберите роль для всех шагов', 'warning');
-                return;
-            }
-        }
-
-        const steps = data.map((s, i) => ({
-            StepName: s.stepName,
-            ActionType: s.actionType,
-            RoleId: s.roleId,
-            CanReject: s.canReject,
-            RejectToStepOrder: s.rejectToStepOrder
+        const steps = data.map(s => ({
+            StepName: s.stepName, ActionType: s.actionType, RoleId: s.roleId,
+            CanReject: s.canReject, RejectToStepOrder: s.rejectToStepOrder
         }));
 
         try {
@@ -413,42 +302,27 @@
                 body: JSON.stringify({ WorkflowType: type, Steps: steps })
             });
             const result = await resp.json();
-            if (result.success) {
-                showToast(result.message, 'success');
-            } else {
-                showToast('Ошибка: ' + (result.message || ''), 'danger');
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('Ошибка сети', 'danger');
-        }
+            showToast(result.success ? result.message : ('Ошибка: ' + (result.message || '')), result.success ? 'success' : 'danger');
+        } catch (e) { console.error(e); showToast('Ошибка сети', 'danger'); }
     }
 
     // ─── Toast ───
-    function showToast(message, type) {
-        const existing = document.querySelector('.wf-toast');
-        if (existing) existing.remove();
-
-        const colors = { success: '#22c55e', warning: '#f59e0b', danger: '#ef4444' };
+    function showToast(msg, type) {
+        document.querySelector('.wf-toast')?.remove();
         const icons = { success: 'check-circle', warning: 'exclamation-triangle', danger: 'x-circle' };
-        
-        const toast = document.createElement('div');
-        toast.className = 'wf-toast alert alert-' + type + ' alert-dismissible fade show position-fixed shadow-lg';
-        toast.style.cssText = 'top: 20px; right: 20px; z-index: 99999; min-width: 300px; border-left: 4px solid ' + (colors[type] || '#6366f1') + ';';
-        toast.innerHTML = `<i class="bi bi-${icons[type] || 'info-circle'} me-2"></i><strong>${message}</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
+        const t = document.createElement('div');
+        t.className = 'wf-toast alert alert-' + type + ' alert-dismissible fade show position-fixed shadow-lg';
+        t.style.cssText = 'top:20px;right:20px;z-index:99999;min-width:300px;';
+        t.innerHTML = `<i class="bi bi-${icons[type]||'info-circle'} me-2"></i><strong>${msg}</strong><button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 4000);
     }
 
-    // ─── Init Grids ───
+    // ─── Init ───
     let avrGrid, paymentGrid;
-
     document.addEventListener('DOMContentLoaded', function() {
         avrGrid = createWorkflowGrid('avr-grid', avrData, 'AVR');
         paymentGrid = createWorkflowGrid('payment-grid', paymentData, 'Payment');
-
-        // Re-render payment grid when tab is shown (Syncfusion needs visible container)
         document.querySelector('[data-bs-target="#tab-payment"]').addEventListener('shown.bs.tab', function() {
             if (paymentGrid) paymentGrid.refresh();
         });
