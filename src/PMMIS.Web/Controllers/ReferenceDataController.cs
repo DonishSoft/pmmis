@@ -3,13 +3,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMMIS.Domain.Entities;
 using PMMIS.Infrastructure.Data;
+using PMMIS.Web.Authorization;
 
 namespace PMMIS.Web.Controllers;
 
 /// <summary>
 /// Управление справочниками системы
 /// </summary>
-[Authorize(Roles = $"{UserRoles.PmuAdmin},{UserRoles.PmuStaff}")]
+[Authorize]
+[RequirePermission(MenuKeys.ReferenceData, PermissionType.View)]
 public class ReferenceDataController : Controller
 {
     private readonly ApplicationDbContext _context;

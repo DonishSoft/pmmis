@@ -204,7 +204,7 @@ public class ProcurementController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = UserRoles.PmuAdmin)]
+    [RequirePermission(MenuKeys.Procurement, PermissionType.Delete)]
     public async Task<IActionResult> Delete(int id)
     {
         var plan = await _context.ProcurementPlans.FindAsync(id);

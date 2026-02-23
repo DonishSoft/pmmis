@@ -460,7 +460,7 @@ public class WorkProgressController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = UserRoles.PmuAdmin)]
+    [RequirePermission(MenuKeys.WorkProgress, PermissionType.Delete)]
     public async Task<IActionResult> DirectorApprove(int id, string? comment)
     {
         var progress = await _context.WorkProgresses

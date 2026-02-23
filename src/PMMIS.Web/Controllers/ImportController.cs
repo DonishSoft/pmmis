@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PMMIS.Domain.Entities;
 using PMMIS.Infrastructure.Data;
+using PMMIS.Web.Authorization;
 
 namespace PMMIS.Web.Controllers;
 
 /// <summary>
 /// Импорт данных из Excel
 /// </summary>
-[Authorize(Roles = UserRoles.PmuAdmin)]
+[Authorize]
+[RequirePermission(MenuKeys.Import, PermissionType.View)]
 public class ImportController : Controller
 {
     private readonly ApplicationDbContext _context;

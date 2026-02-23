@@ -35,6 +35,9 @@ public static class MenuKeys
     public const string ReferenceData = "ReferenceData";
     public const string Import = "Import";
     public const string Reports = "Reports";
+    public const string ReportsPayments = "ReportsPayments";
+    public const string ReportsIndicators = "ReportsIndicators";
+    public const string ReportsEmployeeKpi = "ReportsEmployeeKpi";
     public const string Documents = "Documents";
     public const string Users = "Users";
     public const string Roles = "Roles";
@@ -44,6 +47,7 @@ public static class MenuKeys
     public const string WorkProgressReports = "WorkProgressReports";
     public const string CurrencyRates = "CurrencyRates";
     public const string ContractAmendments = "ContractAmendments";
+    public const string Workflow = "Workflow";
     
     public static readonly Dictionary<string, string> Names = new()
     {
@@ -58,7 +62,10 @@ public static class MenuKeys
         { Indicators, "Индикаторы" },
         { ReferenceData, "Справочники" },
         { Import, "Импорт" },
-        { Reports, "Отчёты" },
+        { Reports, "Отчёты (все)" },
+        { ReportsPayments, "Отчёт: Платежи" },
+        { ReportsIndicators, "Отчёт: Индикаторы" },
+        { ReportsEmployeeKpi, "Отчёт: KPI Сотрудников" },
         { Documents, "Документы" },
         { Users, "Пользователи" },
         { Roles, "Роли" },
@@ -67,9 +74,10 @@ public static class MenuKeys
         { Notifications, "Уведомления" },
         { WorkProgressReports, "АВР" },
         { CurrencyRates, "Курсы валют" },
-        { ContractAmendments, "Поправки к контракту" }
+        { ContractAmendments, "Поправки к контракту" },
+        { Workflow, "Цепочка утверждений" }
     };
     
-    public static readonly string[] All = { Home, Contracts, Contractors, Projects, Procurement, Payments, WorkProgress, WorkProgressReports, Geography, Indicators, ReferenceData, Import, Reports, Documents, Users, Roles, Settings, Tasks, Notifications, CurrencyRates, ContractAmendments };
+    public static readonly string[] All = { Home, Contracts, Contractors, Projects, Procurement, Payments, WorkProgress, WorkProgressReports, Geography, Indicators, ReferenceData, Import, Reports, ReportsPayments, ReportsIndicators, ReportsEmployeeKpi, Documents, Users, Roles, Settings, Tasks, Notifications, CurrencyRates, ContractAmendments, Workflow };
 }
 

@@ -3,6 +3,8 @@
 @{
     ViewData["Title"] = "Редактирование отчёта";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "WorkProgress", "delete");
 }
 
 <div class="container-fluid">
@@ -225,7 +227,7 @@
                     </button>
                     <a asp-action="Index" asp-route-contractId="@Model.WorkProgress.ContractId" class="btn btn-outline-secondary">Назад</a>
                     
-                    @if (User.IsInRole("PMU_ADMIN"))
+                    @if (canDelete)
                     {
                         <form asp-action="Delete" asp-route-id="@Model.WorkProgress.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить отчёт?')">
                             <button type="submit" class="btn btn-outline-danger">

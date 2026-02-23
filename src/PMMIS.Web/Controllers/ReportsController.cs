@@ -12,7 +12,6 @@ namespace PMMIS.Web.Controllers;
 /// Отчёты
 /// </summary>
 [Authorize]
-[RequirePermission(MenuKeys.Reports, PermissionType.View)]
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _context;
@@ -25,6 +24,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Отчёт по платежам (каркас + затем AJAX)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsPayments, PermissionType.View)]
     public IActionResult Payments()
     {
         return View();
@@ -33,6 +33,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Данные отчёта по платежам (AJAX partial)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsPayments, PermissionType.View)]
     public async Task<IActionResult> PaymentsData()
     {
         var contracts = await _context.Contracts
@@ -118,6 +119,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Отчёт по индикаторам (каркас + затем AJAX)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsIndicators, PermissionType.View)]
     public IActionResult Indicators()
     {
         return View();
@@ -126,6 +128,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Данные отчёта по индикаторам (AJAX partial)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsIndicators, PermissionType.View)]
     public async Task<IActionResult> IndicatorsData()
     {
         var indicators = await _context.Indicators
@@ -173,6 +176,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Отчёт по KPI сотрудников (каркас + затем AJAX)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsEmployeeKpi, PermissionType.View)]
     public IActionResult EmployeeKpi()
     {
         return View();
@@ -181,6 +185,7 @@ public class ReportsController : Controller
     /// <summary>
     /// Данные отчёта по KPI сотрудников (AJAX partial)
     /// </summary>
+    [RequirePermission(MenuKeys.ReportsEmployeeKpi, PermissionType.View)]
     public async Task<IActionResult> EmployeeKpiData()
     {
         var users = await _context.Users

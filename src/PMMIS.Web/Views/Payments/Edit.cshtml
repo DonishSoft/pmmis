@@ -4,6 +4,8 @@
     ViewData["Title"] = "Редактирование платежа";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var payment = Model.Payment;
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "Payments", "delete");
 }
 
 <div class="container-fluid">
@@ -128,7 +130,7 @@
                         <i class="bi bi-check-lg me-1"></i> Сохранить
                     </button>
                     
-                    @if (payment.Status != PaymentStatus.Paid && User.IsInRole("PMU_ADMIN"))
+                    @if (payment.Status != PaymentStatus.Paid && canDelete)
                     {
                         <form asp-action="MarkAsPaid" asp-route-id="@payment.Id" method="post" class="d-inline">
                             <button type="submit" class="btn btn-success">
@@ -139,7 +141,7 @@
                     
                     <a asp-action="Index" asp-route-contractId="@payment.ContractId" class="btn btn-outline-secondary">Назад</a>
                     
-                    @if (User.IsInRole("PMU_ADMIN"))
+                    @if (canDelete)
                     {
                         <form asp-action="Delete" asp-route-id="@payment.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить платёж?')">
                             <button type="submit" class="btn btn-outline-danger">

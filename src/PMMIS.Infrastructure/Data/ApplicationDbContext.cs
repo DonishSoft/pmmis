@@ -112,6 +112,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Contract Amendments
     public DbSet<ContractAmendment> ContractAmendments => Set<ContractAmendment>();
 
+    // Workflow Steps
+    public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -426,6 +429,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
                 .WithMany()
                 .HasForeignKey(ca => ca.CreatedByUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+        // Workflow Steps
+        builder.Entity<WorkflowStep>(e =>
+        {
+            e.HasOne(ws => ws.Role)
+                .WithMany()
+                .HasForeignKey(ws => ws.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            e.HasIndex(ws => new { ws.WorkflowType, ws.StepOrder }).IsUnique();
         });
     }
 }

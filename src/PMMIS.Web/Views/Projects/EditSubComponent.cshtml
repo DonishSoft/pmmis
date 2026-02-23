@@ -4,6 +4,8 @@
     ViewData["Title"] = "Редактирование подкомпонента";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var component = ViewBag.Component as Component;
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "Projects", "delete");
 }
 
 <div class="container-fluid">
@@ -73,7 +75,7 @@
                     </button>
                     <a asp-action="SubComponents" asp-route-componentId="@component?.Id" class="btn btn-outline-secondary">Отмена</a>
                     
-                    @if (User.IsInRole("PMU_ADMIN") && Model.Contracts.Count == 0)
+                    @if (canDelete && Model.Contracts.Count == 0)
                     {
                         <form asp-action="DeleteSubComponent" asp-route-id="@Model.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить подкомпонент @Model.Code?')">
                             <button type="submit" class="btn btn-outline-danger">

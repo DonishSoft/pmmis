@@ -5,6 +5,8 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     var contracts = ViewBag.Contracts as List<Contract> ?? new List<Contract>();
     var selectedContractId = ViewBag.SelectedContractId as int?;
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "WorkProgress", "delete");
 }
 
 <div class="container-fluid">
@@ -175,7 +177,7 @@
                                     <i class="bi bi-x-lg me-1"></i>Отклонить
                                 </button>
                             }
-                            @if (item.ApprovalStatus == AvrApprovalStatus.ManagerApproved && User.IsInRole("PMU_ADMIN"))
+                            @if (item.ApprovalStatus == AvrApprovalStatus.ManagerApproved && canDelete)
                             {
                                 <button type="button" class="btn btn-sm btn-success" 
                                         data-bs-toggle="modal" data-bs-target="#directorApproveModal-@item.Id">
@@ -187,7 +189,7 @@
                                 </button>
                             }
 
-                            @if (User.IsInRole("PMU_ADMIN"))
+                            @if (canDelete)
                             {
                                 <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline ms-auto" onsubmit="return confirm('Удалить отчёт?')">
                                     <button type="submit" class="btn btn-sm btn-outline-danger">

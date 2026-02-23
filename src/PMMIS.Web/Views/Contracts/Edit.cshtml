@@ -4,6 +4,8 @@
     ViewData["Title"] = "Редактирование контракта";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var contract = Model.Contract;
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "Contracts", "delete");
 }
 
 <style>
@@ -471,7 +473,7 @@
                     </button>
                     <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
                     
-                    @if (User.IsInRole("PMU_ADMIN"))
+                    @if (canDelete)
                     {
                         <form asp-action="Delete" asp-route-id="@contract.Id" method="post" class="ms-auto" onsubmit="return confirm('Удалить контракт?')">
                             <button type="submit" class="btn btn-outline-danger">

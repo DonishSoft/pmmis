@@ -3,6 +3,8 @@
 @{
     ViewData["Title"] = "Платежи";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canDelete = await permissionService.HasPermissionAsync(User, "Payments", "delete");
 }
 
 <div class="container-fluid">
@@ -201,7 +203,7 @@
                                 <a asp-action="Edit" asp-route-id="@payment.Id" class="btn btn-sm btn-outline-primary" title="Редактировать">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                @if (User.IsInRole("PMU_ADMIN"))
+                                @if (canDelete)
                                 {
                                     <form asp-action="Delete" asp-route-id="@payment.Id" method="post" class="d-inline" onsubmit="return confirm('Удалить платёж?')">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">

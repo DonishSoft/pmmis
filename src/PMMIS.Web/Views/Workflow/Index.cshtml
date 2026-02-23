@@ -1,0 +1,487 @@
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Цепочка утверждений";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var roles = (List<ApplicationRole>)ViewBag.Roles;
+    var avrSteps = (List<WorkflowStep>)ViewBag.AvrSteps;
+    var paymentSteps = (List<WorkflowStep>)ViewBag.PaymentSteps;
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-arrow-repeat me-2"></i>Цепочка утверждений</h2>
+            <p class="text-muted mb-0">Настройка процесса утверждения АВР и платежей по ролям</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-0" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-avr" type="button">
+                <i class="bi bi-file-earmark-check me-1"></i> АВР (Акт выполненных работ)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payment" type="button">
+                <i class="bi bi-credit-card me-1"></i> Платежи
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- ═══ AVR Tab ═══ -->
+        <div class="tab-pane fade show active" id="tab-avr" role="tabpanel">
+            <div class="card border-0 shadow-sm border-top-0 rounded-0 rounded-bottom">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Маршрут утверждения АВР</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="addStep('AVR')">
+                        <i class="bi bi-plus-lg me-1"></i> Добавить шаг
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="alert alert-info border-0 py-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Определите последовательность действий: кто создаёт АВР → кому отправляется на проверку → кто утверждает
+                        </div>
+                    </div>
+                    <div id="avr-steps" class="workflow-steps">
+                        @foreach (var step in avrSteps)
+                        {
+                            <div class="workflow-step card border shadow-sm mb-2" data-step-id="@step.Id">
+                                <div class="card-body py-2 px-3">
+                                    <div class="row align-items-center g-2">
+                                        <div class="col-auto">
+                                            <i class="bi bi-grip-vertical text-muted drag-handle" style="cursor: grab;"></i>
+                                        </div>
+                                        <div class="col-auto">
+                                            <span class="badge bg-primary rounded-pill step-number">@step.StepOrder</span>
+                                        </div>
+                                        <div class="col">
+                                            <input type="text" class="form-control form-control-sm step-name" 
+                                                   value="@step.StepName" placeholder="Название шага" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm step-action">
+                                                @{
+                                                    var avrActions = new[] { ("Create", "📝 Создание"), ("Review", "👁️ Проверка"), ("Approve", "✅ Утверждение"), ("FinalApprove", "🏆 Финальное утверждение") };
+                                                }
+                                                @foreach (var (val, label) in avrActions)
+                                                {
+                                                    if (step.ActionType == val)
+                                                    {
+                                                        <option value="@val" selected>@label</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@val">@label</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm step-role">
+                                                @foreach (var role in roles)
+                                                {
+                                                    if (step.RoleId == role.Id)
+                                                    {
+                                                        <option value="@role.Id" selected>@role.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@role.Id">@role.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeStep(this)" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (!avrSteps.Any())
+                    {
+                        <div id="avr-empty" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Шаги не настроены. Нажмите «Добавить шаг».
+                        </div>
+                    }
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-primary" onclick="saveWorkflow('AVR')">
+                            <i class="bi bi-check-lg me-1"></i> Сохранить маршрут АВР
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Payment Tab ═══ -->
+        <div class="tab-pane fade" id="tab-payment" role="tabpanel">
+            <div class="card border-0 shadow-sm border-top-0 rounded-0 rounded-bottom">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Маршрут утверждения платежей</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="addStep('Payment')">
+                        <i class="bi bi-plus-lg me-1"></i> Добавить шаг
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="alert alert-info border-0 py-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Определите последовательность: кто создаёт платёжку → кто подтверждает → кто утверждает оплату
+                        </div>
+                    </div>
+                    <div id="payment-steps" class="workflow-steps">
+                        @foreach (var step in paymentSteps)
+                        {
+                            <div class="workflow-step card border shadow-sm mb-2" data-step-id="@step.Id">
+                                <div class="card-body py-2 px-3">
+                                    <div class="row align-items-center g-2">
+                                        <div class="col-auto">
+                                            <i class="bi bi-grip-vertical text-muted drag-handle" style="cursor: grab;"></i>
+                                        </div>
+                                        <div class="col-auto">
+                                            <span class="badge bg-success rounded-pill step-number">@step.StepOrder</span>
+                                        </div>
+                                        <div class="col">
+                                            <input type="text" class="form-control form-control-sm step-name" 
+                                                   value="@step.StepName" placeholder="Название шага" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm step-action">
+                                                @{
+                                                    var payActions = new[] { ("Create", "📝 Создание"), ("Review", "👁️ Проверка"), ("Approve", "✅ Утверждение"), ("FinalApprove", "🏆 Финальное утверждение") };
+                                                }
+                                                @foreach (var (val, label) in payActions)
+                                                {
+                                                    if (step.ActionType == val)
+                                                    {
+                                                        <option value="@val" selected>@label</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@val">@label</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm step-role">
+                                                @foreach (var role in roles)
+                                                {
+                                                    if (step.RoleId == role.Id)
+                                                    {
+                                                        <option value="@role.Id" selected>@role.Name</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="@role.Id">@role.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-sm btn-outline-danger" onclick="removeStep(this)" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    @if (!paymentSteps.Any())
+                    {
+                        <div id="payment-empty" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            Шаги не настроены. Нажмите «Добавить шаг».
+                        </div>
+                    }
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-primary" onclick="saveWorkflow('Payment')">
+                            <i class="bi bi-check-lg me-1"></i> Сохранить маршрут платежей
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Visual representation -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-file-earmark-check me-1"></i> АВР
+                    </h6>
+                    <div id="avr-visual" class="d-flex flex-wrap align-items-center gap-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                        <i class="bi bi-credit-card me-1"></i> Платежи
+                    </h6>
+                    <div id="payment-visual" class="d-flex flex-wrap align-items-center gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .workflow-step {
+        transition: all 0.2s ease;
+    }
+    .workflow-step:hover {
+        border-color: #3b82f6 !important;
+    }
+    .workflow-step.dragging {
+        opacity: 0.5;
+        border-style: dashed !important;
+    }
+    .drag-handle:hover {
+        color: #3b82f6 !important;
+    }
+</style>
+
+@section Scripts {
+<script>
+    // Roles data for dynamic rows
+    const rolesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(roles.Select(r => new { r.Id, r.Name })));
+
+    // ─── Add Step ───
+    function addStep(type) {
+        const container = document.getElementById(type.toLowerCase() === 'avr' ? 'avr-steps' : 'payment-steps');
+        const emptyMsg = document.getElementById(type.toLowerCase() === 'avr' ? 'avr-empty' : 'payment-empty');
+        if (emptyMsg) emptyMsg.remove();
+
+        const stepCount = container.querySelectorAll('.workflow-step').length + 1;
+        const badgeClass = type === 'AVR' ? 'bg-primary' : 'bg-success';
+
+        const roleOptions = rolesData.map(r => `<option value="${r.Id}">${r.Name}</option>`).join('');
+        
+        const html = `
+        <div class="workflow-step card border shadow-sm mb-2">
+            <div class="card-body py-2 px-3">
+                <div class="row align-items-center g-2">
+                    <div class="col-auto">
+                        <i class="bi bi-grip-vertical text-muted drag-handle" style="cursor: grab;"></i>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge ${badgeClass} rounded-pill step-number">${stepCount}</span>
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control form-control-sm step-name" placeholder="Название шага" />
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm step-action">
+                            <option value="Create">📝 Создание</option>
+                            <option value="Review">👁️ Проверка</option>
+                            <option value="Approve">✅ Утверждение</option>
+                            <option value="FinalApprove">🏆 Финальное утверждение</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm step-role">
+                            ${roleOptions}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeStep(this)" title="Удалить">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+        container.insertAdjacentHTML('beforeend', html);
+        renumberSteps(container);
+        updateVisual();
+    }
+
+    // ─── Remove Step ───
+    function removeStep(btn) {
+        const step = btn.closest('.workflow-step');
+        const container = step.parentElement;
+        step.remove();
+        renumberSteps(container);
+        updateVisual();
+    }
+
+    // ─── Renumber Steps ───
+    function renumberSteps(container) {
+        container.querySelectorAll('.workflow-step').forEach((el, i) => {
+            el.querySelector('.step-number').textContent = i + 1;
+        });
+    }
+
+    // ─── Save Workflow ───
+    async function saveWorkflow(type) {
+        const containerId = type.toLowerCase() === 'avr' ? 'avr-steps' : 'payment-steps';
+        const container = document.getElementById(containerId);
+        const stepEls = container.querySelectorAll('.workflow-step');
+
+        const steps = [];
+        stepEls.forEach(el => {
+            const name = el.querySelector('.step-name').value.trim();
+            const action = el.querySelector('.step-action').value;
+            const role = el.querySelector('.step-role').value;
+            if (name) {
+                steps.push({ StepName: name, ActionType: action, RoleId: role });
+            }
+        });
+
+        if (steps.length === 0) {
+            alert('Добавьте хотя бы один шаг');
+            return;
+        }
+
+        try {
+            const response = await fetch('@Url.Action("Save")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                },
+                body: JSON.stringify({ WorkflowType: type, Steps: steps })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                // Show toast
+                const toastHtml = `<div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+                    <i class="bi bi-check-circle me-2"></i>${result.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', toastHtml);
+                setTimeout(() => document.querySelector('.alert.position-fixed')?.remove(), 3000);
+            } else {
+                alert('Ошибка при сохранении');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка сети');
+        }
+    }
+
+    // ─── Visual Diagram ───
+    function updateVisual() {
+        ['avr', 'payment'].forEach(type => {
+            const container = document.getElementById(type + '-steps');
+            const visual = document.getElementById(type + '-visual');
+            const steps = container.querySelectorAll('.workflow-step');
+            
+            visual.innerHTML = '';
+            if (steps.length === 0) {
+                visual.innerHTML = '<span class="text-muted">Нет шагов</span>';
+                return;
+            }
+            
+            const actionIcons = {
+                'Create': '📝', 'Review': '👁️', 'Approve': '✅', 'FinalApprove': '🏆'
+            };
+            
+            steps.forEach((step, i) => {
+                const name = step.querySelector('.step-name').value || 'Шаг ' + (i + 1);
+                const action = step.querySelector('.step-action').value;
+                const roleSelect = step.querySelector('.step-role');
+                const roleName = roleSelect.options[roleSelect.selectedIndex]?.text || '';
+                const icon = actionIcons[action] || '📋';
+                
+                const badge = document.createElement('div');
+                badge.className = 'badge bg-light text-dark border px-3 py-2';
+                badge.innerHTML = `${icon} <strong>${name}</strong><br><small class="text-muted">${roleName}</small>`;
+                visual.appendChild(badge);
+                
+                if (i < steps.length - 1) {
+                    const arrow = document.createElement('span');
+                    arrow.innerHTML = '<i class="bi bi-arrow-right text-primary fs-5"></i>';
+                    visual.appendChild(arrow);
+                }
+            });
+        });
+    }
+
+    // ─── Drag & Drop ───
+    function initDragDrop() {
+        ['avr-steps', 'payment-steps'].forEach(containerId => {
+            const container = document.getElementById(containerId);
+            let dragEl = null;
+
+            container.addEventListener('dragstart', e => {
+                const step = e.target.closest('.workflow-step');
+                if (!step) return;
+                dragEl = step;
+                step.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            container.addEventListener('dragend', e => {
+                if (dragEl) {
+                    dragEl.classList.remove('dragging');
+                    renumberSteps(container);
+                    updateVisual();
+                    dragEl = null;
+                }
+            });
+
+            container.addEventListener('dragover', e => {
+                e.preventDefault();
+                const afterEl = getDragAfterElement(container, e.clientY);
+                if (dragEl) {
+                    if (!afterEl) container.appendChild(dragEl);
+                    else container.insertBefore(dragEl, afterEl);
+                }
+            });
+
+            // Make steps draggable
+            container.querySelectorAll('.workflow-step').forEach(s => s.setAttribute('draggable', 'true'));
+
+            // Observe for new steps
+            new MutationObserver(() => {
+                container.querySelectorAll('.workflow-step').forEach(s => s.setAttribute('draggable', 'true'));
+            }).observe(container, { childList: true });
+        });
+    }
+
+    function getDragAfterElement(container, y) {
+        const els = [...container.querySelectorAll('.workflow-step:not(.dragging)')];
+        return els.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) return { offset, element: child };
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // ─── Init ───
+    document.addEventListener('DOMContentLoaded', () => {
+        initDragDrop();
+        updateVisual();
+
+        // Update visual on input changes
+        document.querySelectorAll('.workflow-steps').forEach(container => {
+            container.addEventListener('change', () => updateVisual());
+            container.addEventListener('input', () => updateVisual());
+        });
+    });
+</script>
+}

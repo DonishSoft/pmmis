@@ -176,12 +176,12 @@
                     </a>
                 }
                 
-                @if (CanView(MenuKeys.Reports) || CanView(MenuKeys.Documents))
+                @if (CanView(MenuKeys.ReportsPayments) || CanView(MenuKeys.ReportsIndicators) || CanView(MenuKeys.ReportsEmployeeKpi) || CanView(MenuKeys.Documents))
                 {
                     <small class="text-muted px-3 mt-3 mb-1 sidebar-text">ОТЧЁТНОСТЬ</small>
                 }
                 
-                @if (CanView(MenuKeys.Reports))
+                @if (CanView(MenuKeys.ReportsPayments) || CanView(MenuKeys.ReportsIndicators) || CanView(MenuKeys.ReportsEmployeeKpi))
                 {
                     <a class="nav-link text-white sidebar-submenu-toggle @(currentController == "Reports" ? "menu-active" : "")" 
                        href="#submenu-reports" data-bs-toggle="collapse" role="button" 
@@ -192,21 +192,30 @@
                     </a>
                     <div class="collapse @(currentController == "Reports" ? "show" : "")" id="submenu-reports">
                         <nav class="nav flex-column sidebar-submenu">
-                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Payments" && currentController == "Reports" ? "submenu-active" : "")" 
-                               asp-controller="Reports" asp-action="Payments">
-                                <i class="bi bi-cash-coin me-2"></i>
-                                <span class="sidebar-text">Платежи</span>
-                            </a>
-                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Indicators" && currentController == "Reports" ? "submenu-active" : "")" 
-                               asp-controller="Reports" asp-action="Indicators">
-                                <i class="bi bi-graph-up-arrow me-2"></i>
-                                <span class="sidebar-text">Индикаторы</span>
-                            </a>
-                            <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "EmployeeKpi" && currentController == "Reports" ? "submenu-active" : "")" 
-                               asp-controller="Reports" asp-action="EmployeeKpi">
-                                <i class="bi bi-person-lines-fill me-2"></i>
-                                <span class="sidebar-text">KPI сотрудников</span>
-                            </a>
+                            @if (CanView(MenuKeys.ReportsPayments))
+                            {
+                                <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Payments" && currentController == "Reports" ? "submenu-active" : "")" 
+                                   asp-controller="Reports" asp-action="Payments">
+                                    <i class="bi bi-cash-coin me-2"></i>
+                                    <span class="sidebar-text">Платежи</span>
+                                </a>
+                            }
+                            @if (CanView(MenuKeys.ReportsIndicators))
+                            {
+                                <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "Indicators" && currentController == "Reports" ? "submenu-active" : "")" 
+                                   asp-controller="Reports" asp-action="Indicators">
+                                    <i class="bi bi-graph-up-arrow me-2"></i>
+                                    <span class="sidebar-text">Индикаторы</span>
+                                </a>
+                            }
+                            @if (CanView(MenuKeys.ReportsEmployeeKpi))
+                            {
+                                <a class="nav-link text-white @(ViewContext.RouteData.Values["action"]?.ToString() == "EmployeeKpi" && currentController == "Reports" ? "submenu-active" : "")" 
+                                   asp-controller="Reports" asp-action="EmployeeKpi">
+                                    <i class="bi bi-person-lines-fill me-2"></i>
+                                    <span class="sidebar-text">KPI сотрудников</span>
+                                </a>
+                            }
                         </nav>
                     </div>
                 }
@@ -218,7 +227,7 @@
                     </a>
                 }
                 
-                @if (CanView(MenuKeys.Users) || CanView(MenuKeys.Roles) || CanView(MenuKeys.Settings))
+                @if (CanView(MenuKeys.Users) || CanView(MenuKeys.Roles) || CanView(MenuKeys.Settings) || CanView(MenuKeys.Workflow))
                 {
                     <small class="text-muted px-3 mt-3 mb-1 sidebar-text">АДМИНИСТРИРОВАНИЕ</small>
                     
@@ -245,6 +254,13 @@
                         <a class="nav-link text-white @(currentController == "Settings" ? "menu-active" : "")" asp-controller="Settings" asp-action="Index">
                             <i class="bi bi-gear me-2"></i>
                             <span class="sidebar-text">Настройки</span>
+                        </a>
+                    }
+                    @if (CanView(MenuKeys.Workflow))
+                    {
+                        <a class="nav-link text-white @(currentController == "Workflow" ? "menu-active" : "")" asp-controller="Workflow" asp-action="Index">
+                            <i class="bi bi-arrow-repeat me-2"></i>
+                            <span class="sidebar-text">Цепочка утверждений</span>
                         </a>
                     }
                 }

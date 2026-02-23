@@ -7,7 +7,8 @@
     var totalVillages = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Count));
     var totalSchools = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Sum(v => v.Schools.Count)));
     var totalHealth = Model.Sum(d => d.Jamoats.Sum(j => j.Villages.Sum(v => v.HealthFacilities.Count)));
-    var canEdit = User.IsInRole("PMU_ADMIN") || User.IsInRole("PMU_STAFF");
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canEdit = await permissionService.HasPermissionAsync(User, "Geography", "edit");
 }
 
 <div class="container-fluid">

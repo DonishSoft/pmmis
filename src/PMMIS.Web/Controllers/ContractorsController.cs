@@ -190,7 +190,7 @@ public class ContractorsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = UserRoles.PmuAdmin)]
+    [RequirePermission(MenuKeys.Contractors, PermissionType.Delete)]
     public async Task<IActionResult> Delete(int id)
     {
         var contractor = await _context.Contractors
