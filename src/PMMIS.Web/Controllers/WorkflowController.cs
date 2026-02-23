@@ -39,9 +39,36 @@ public class WorkflowController : Controller
             .OrderBy(r => r.Name)
             .ToListAsync();
 
-        ViewBag.Roles = roles;
-        ViewBag.AvrSteps = steps.Where(s => s.WorkflowType == "AVR").ToList();
-        ViewBag.PaymentSteps = steps.Where(s => s.WorkflowType == "Payment").ToList();
+        // JSON data for Syncfusion components
+        var rolesJson = roles.Select(r => new { id = r.Id, name = r.Name }).ToList();
+        var avrStepsJson = steps.Where(s => s.WorkflowType == "AVR").Select(s => new
+        {
+            id = s.Id,
+            stepOrder = s.StepOrder,
+            stepName = s.StepName,
+            actionType = s.ActionType,
+            roleId = s.RoleId,
+            roleName = s.Role?.Name ?? "",
+            canReject = s.CanReject,
+            rejectToStepOrder = s.RejectToStepOrder,
+            isActive = s.IsActive
+        }).ToList();
+        var paymentStepsJson = steps.Where(s => s.WorkflowType == "Payment").Select(s => new
+        {
+            id = s.Id,
+            stepOrder = s.StepOrder,
+            stepName = s.StepName,
+            actionType = s.ActionType,
+            roleId = s.RoleId,
+            roleName = s.Role?.Name ?? "",
+            canReject = s.CanReject,
+            rejectToStepOrder = s.RejectToStepOrder,
+            isActive = s.IsActive
+        }).ToList();
+
+        ViewBag.RolesJson = System.Text.Json.JsonSerializer.Serialize(rolesJson);
+        ViewBag.AvrStepsJson = System.Text.Json.JsonSerializer.Serialize(avrStepsJson);
+        ViewBag.PaymentStepsJson = System.Text.Json.JsonSerializer.Serialize(paymentStepsJson);
 
         return View();
     }
@@ -54,7 +81,7 @@ public class WorkflowController : Controller
     public async Task<IActionResult> Save([FromBody] WorkflowSaveModel model)
     {
         if (model?.Steps == null)
-            return BadRequest("Нет данных");
+            return BadRequest(new { success = false, message = "Нет данных" });
 
         // Remove existing steps for this workflow type
         var existing = await _context.WorkflowSteps
@@ -73,6 +100,8 @@ public class WorkflowController : Controller
                 StepName = step.StepName,
                 ActionType = step.ActionType,
                 RoleId = step.RoleId,
+                CanReject = step.CanReject,
+                RejectToStepOrder = step.RejectToStepOrder,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             });
@@ -80,21 +109,6 @@ public class WorkflowController : Controller
 
         await _context.SaveChangesAsync();
         return Json(new { success = true, message = "Цепочка сохранена" });
-    }
-
-    /// <summary>
-    /// Удаление шага (AJAX)
-    /// </summary>
-    [HttpPost]
-    [RequirePermission(MenuKeys.Workflow, PermissionType.Delete)]
-    public async Task<IActionResult> DeleteStep(int id)
-    {
-        var step = await _context.WorkflowSteps.FindAsync(id);
-        if (step == null) return NotFound();
-
-        _context.WorkflowSteps.Remove(step);
-        await _context.SaveChangesAsync();
-        return Json(new { success = true });
     }
 }
 
@@ -110,4 +124,6 @@ public class WorkflowStepInput
     public string StepName { get; set; } = string.Empty;
     public string ActionType { get; set; } = string.Empty;
     public string RoleId { get; set; } = string.Empty;
+    public bool CanReject { get; set; } = true;
+    public int? RejectToStepOrder { get; set; }
 }

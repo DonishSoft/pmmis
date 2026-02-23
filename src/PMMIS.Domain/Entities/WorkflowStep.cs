@@ -33,6 +33,16 @@ public class WorkflowStep : BaseEntity
     public ApplicationRole? Role { get; set; }
     
     /// <summary>
+    /// Может ли этот шаг отклонить документ
+    /// </summary>
+    public bool CanReject { get; set; } = true;
+    
+    /// <summary>
+    /// На какой шаг вернуть при отказе (null = вернуть на первый шаг)
+    /// </summary>
+    public int? RejectToStepOrder { get; set; }
+    
+    /// <summary>
     /// Активен ли шаг
     /// </summary>
     public bool IsActive { get; set; } = true;
