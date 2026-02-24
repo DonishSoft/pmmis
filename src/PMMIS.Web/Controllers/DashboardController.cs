@@ -5,6 +5,9 @@ using PMMIS.Domain.Entities;
 using PMMIS.Infrastructure.Data;
 using PMMIS.Web.Services;
 
+using PMMIS.Web.Authorization;
+using Microsoft.AspNetCore.Identity;
+
 namespace PMMIS.Web.Controllers;
 
 [Authorize]
@@ -12,15 +15,34 @@ public class DashboardController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly IManagementAlertService _alertService;
+    private readonly IMenuPermissionService _menuPermissionService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public DashboardController(ApplicationDbContext context, IManagementAlertService alertService)
+    public DashboardController(
+        ApplicationDbContext context, 
+        IManagementAlertService alertService,
+        IMenuPermissionService menuPermissionService,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _alertService = alertService;
+        _menuPermissionService = menuPermissionService;
+        _userManager = userManager;
     }
 
     public async Task<IActionResult> Index(int? projectId)
     {
+        // Check if user has Home permission — if not, redirect to first available menu
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser != null)
+        {
+            var allowedKeys = await _menuPermissionService.GetAllowedMenuKeysForUserAsync(currentUser.Id);
+            if (!allowedKeys.Contains(MenuKeys.Home))
+            {
+                return RedirectToFirstAvailableMenu(allowedKeys);
+            }
+        }
+
         // All projects for selector
         var allProjects = await _context.Projects.OrderBy(p => p.Code).ToListAsync();
         ViewBag.AllProjects = allProjects;
@@ -137,6 +159,42 @@ public class DashboardController : Controller
         ViewBag.ProcurementCount = procurements.Count;
 
         return View();
+    }
+
+    /// <summary>
+    /// Redirect to the first menu item the user has access to (in sidebar order)
+    /// </summary>
+    private IActionResult RedirectToFirstAvailableMenu(HashSet<string> allowedKeys)
+    {
+        // Menu items in the same order as the sidebar
+        var menuRoutes = new (string Key, string Controller, string Action)[]
+        {
+            (MenuKeys.Home, "Dashboard", "Index"),
+            (MenuKeys.Contracts, "Contracts", "Index"),
+            (MenuKeys.Contractors, "Contractors", "Index"),
+            (MenuKeys.Projects, "Projects", "Index"),
+            (MenuKeys.Procurement, "Procurement", "Index"),
+            (MenuKeys.Payments, "Payments", "Index"),
+            (MenuKeys.WorkProgress, "WorkProgress", "Index"),
+            (MenuKeys.WorkProgressReports, "WorkProgressReports", "Index"),
+            (MenuKeys.Tasks, "ProjectTasks", "Index"),
+            (MenuKeys.Notifications, "Notifications", "Index"),
+            (MenuKeys.Geography, "Geography", "Index"),
+            (MenuKeys.Indicators, "Indicators", "Index"),
+            (MenuKeys.ReferenceData, "ReferenceData", "Index"),
+            (MenuKeys.CurrencyRates, "CurrencyRates", "Index"),
+        };
+
+        foreach (var route in menuRoutes)
+        {
+            if (allowedKeys.Contains(route.Key))
+            {
+                return RedirectToAction(route.Action, route.Controller);
+            }
+        }
+
+        // Fallback — if nothing is allowed, show access denied view
+        return View("AccessDenied");
     }
 }
 

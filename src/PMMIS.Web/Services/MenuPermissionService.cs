@@ -58,9 +58,6 @@ public class MenuPermissionService : IMenuPermissionService
             result.Add(key);
         }
 
-        // Always allow Home
-        result.Add(MenuKeys.Home);
-
         return result;
     }
 
