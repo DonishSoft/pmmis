@@ -679,29 +679,33 @@ public class WorkProgressReportsController : Controller
         }
         
         // Load work items (Объём работ)
-        var workItems = await _context.ContractWorkItems
-            .Include(w => w.Progresses)
-            .Where(w => w.ContractId == contractId.Value)
-            .OrderBy(w => w.SortOrder)
-            .ToListAsync();
-        
-        viewModel.WorkItems = workItems.Select(w => new WorkItemInput
+        if (contractId.HasValue && contractId.Value > 0)
         {
-            ContractWorkItemId = w.Id,
-            Name = w.Name,
-            Unit = w.Unit,
-            TargetQuantity = w.TargetQuantity,
-            PreviousAchieved = w.Progresses
-                .Where(p => viewModel.WorkProgress.Id == 0 || p.WorkProgressId != viewModel.WorkProgress.Id)
-                .Sum(p => p.Value),
-            Value = viewModel.WorkProgress.Id > 0 
-                ? w.Progresses.Where(p => p.WorkProgressId == viewModel.WorkProgress.Id).Sum(p => p.Value) 
-                : 0,
-            Notes = viewModel.WorkProgress.Id > 0 
-                ? w.Progresses.FirstOrDefault(p => p.WorkProgressId == viewModel.WorkProgress.Id)?.Notes 
-                : null
-        }).ToList();
+            var workItems = await _context.ContractWorkItems
+                .Include(w => w.Progresses)
+                .Where(w => w.ContractId == contractId.Value)
+                .OrderBy(w => w.SortOrder)
+                .ToListAsync();
+            
+            viewModel.WorkItems = workItems.Select(w => new WorkItemInput
+            {
+                ContractWorkItemId = w.Id,
+                Name = w.Name,
+                Unit = w.Unit,
+                TargetQuantity = w.TargetQuantity,
+                PreviousAchieved = w.Progresses
+                    .Where(p => viewModel.WorkProgress.Id == 0 || p.WorkProgressId != viewModel.WorkProgress.Id)
+                    .Sum(p => p.Value),
+                Value = viewModel.WorkProgress.Id > 0 
+                    ? w.Progresses.Where(p => p.WorkProgressId == viewModel.WorkProgress.Id).Sum(p => p.Value) 
+                    : 0,
+                Notes = viewModel.WorkProgress.Id > 0 
+                    ? w.Progresses.FirstOrDefault(p => p.WorkProgressId == viewModel.WorkProgress.Id)?.Notes 
+                    : null
+            }).ToList();
+        }
     }
+
     private async Task UpdateContractProgress(int contractId)
     {
         var contract = await _context.Contracts

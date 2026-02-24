@@ -332,6 +332,42 @@
                     </div>
                 </div>
 
+                <!-- Объём работ (Work Items) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ</h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-secondary" id="wiCount">0 позиций</span>
+                            <button type="button" class="btn btn-sm btn-success" id="addWiBtn">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary d-none" id="saveWiBtn">
+                                <i class="bi bi-check-lg me-1"></i>Сохранить
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0 align-middle" id="wiTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px">#</th>
+                                    <th>Наименование</th>
+                                    <th style="width:120px">Ед. изм.</th>
+                                    <th style="width:120px" class="text-end">Объём (план)</th>
+                                    <th style="width:120px" class="text-end">Выполнено</th>
+                                    <th style="width:160px">Прогресс</th>
+                                    <th style="width:50px"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="wiBody"></tbody>
+                        </table>
+                        <div class="text-center text-muted py-3 d-none" id="wiEmpty">
+                            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                            Нет позиций. Нажмите «Добавить» чтобы создать.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Промежуточные этапы (Milestones) -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -1081,5 +1117,70 @@
         statusSelect.addEventListener('change', toggleCompletionFields);
         toggleCompletionFields();
     }
+
+    // ===== Work Items (Объём работ) =====
+    const editContractId = @Model.Contract.Id;
+    let wiItems = [];
+    let wiDirty = false;
+
+    document.addEventListener('DOMContentLoaded', loadWi);
+    document.getElementById('addWiBtn')?.addEventListener('click', () => {
+        wiItems.push({ id: 0, name: '', unit: 'куб.м', targetQuantity: 0, achievedQuantity: 0 });
+        wiDirty = true;
+        document.getElementById('saveWiBtn')?.classList.remove('d-none');
+        renderWi();
+    });
+    document.getElementById('saveWiBtn')?.addEventListener('click', saveWi);
+
+    async function loadWi() {
+        const resp = await fetch(`/Contracts/GetWorkItems?contractId=${editContractId}`);
+        wiItems = await resp.json();
+        renderWi();
+    }
+
+    function renderWi() {
+        const tbody = document.getElementById('wiBody');
+        const empty = document.getElementById('wiEmpty');
+        const count = document.getElementById('wiCount');
+        count.textContent = wiItems.length + ' позиц' + (wiItems.length === 1 ? 'ия' : wiItems.length < 5 ? 'ии' : 'ий');
+        if (wiItems.length === 0) { tbody.innerHTML = ''; empty.classList.remove('d-none'); return; }
+        empty.classList.add('d-none');
+        const units = ['куб.м','тонна','м²','км','м','шт','комплект','Да/Нет'];
+        tbody.innerHTML = wiItems.map((item, idx) => {
+            const pct = item.targetQuantity > 0 ? Math.min(100, (item.achievedQuantity / item.targetQuantity) * 100) : 0;
+            const bc = pct >= 80 ? 'bg-success' : pct >= 50 ? 'bg-info' : pct >= 25 ? 'bg-warning' : 'bg-danger';
+            const opts = units.map(u => `<option value="${u}" ${u === item.unit ? 'selected' : ''}>${u}</option>`).join('');
+            return `<tr>
+                <td class="text-center text-muted">${idx + 1}</td>
+                <td><input type="text" class="form-control form-control-sm" value="${escWi(item.name)}"
+                     onchange="wiUpd(${idx},'name',this.value)" placeholder="Наименование..." /></td>
+                <td><select class="form-select form-select-sm" onchange="wiUpd(${idx},'unit',this.value)">${opts}</select></td>
+                <td><input type="number" class="form-control form-control-sm text-end" value="${item.targetQuantity}"
+                     min="0" step="0.01" onchange="wiUpd(${idx},'targetQuantity',parseFloat(this.value)||0)" /></td>
+                <td class="text-end">${item.achievedQuantity}</td>
+                <td><div class="progress" style="height:18px"><div class="progress-bar ${bc}" style="width:${pct.toFixed(0)}%">${pct.toFixed(1)}%</div></div></td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="wiDel(${idx})"><i class="bi bi-x-lg"></i></button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    window.wiUpd = function(idx, f, v) { wiItems[idx][f] = v; wiDirty = true; document.getElementById('saveWiBtn')?.classList.remove('d-none'); };
+    window.wiDel = function(idx) {
+        if (!confirm('Удалить "' + (wiItems[idx].name || '—') + '"?')) return;
+        wiItems.splice(idx, 1); wiDirty = true; document.getElementById('saveWiBtn')?.classList.remove('d-none'); renderWi();
+    };
+
+    async function saveWi() {
+        const btn = document.getElementById('saveWiBtn');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...';
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        const resp = await fetch(`/Contracts/SaveWorkItems?contractId=${editContractId}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify(wiItems.map(i => ({ id: i.id||0, name: i.name, unit: i.unit, targetQuantity: i.targetQuantity })))
+        });
+        if (resp.ok) { wiDirty = false; btn.classList.add('d-none'); await loadWi(); } else { alert('Ошибка сохранения'); }
+        btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Сохранить';
+    }
+    function escWi(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 </script>
 }
