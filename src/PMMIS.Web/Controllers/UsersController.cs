@@ -336,6 +336,9 @@ public class UsersController : Controller
         }
         ViewBag.UserRoles = userRoles;
 
+        // Pass all roles for the role change dropdown
+        ViewBag.AllRoles = await _roleManager.Roles.OrderBy(r => r.SortOrder).ToListAsync();
+
         return View(users);
     }
 
@@ -396,6 +399,33 @@ public class UsersController : Controller
         user.Position = request.Position;
         await _context.SaveChangesAsync();
         return Ok(new { success = true });
+    }
+
+    /// <summary>
+    /// Изменить роль пользователя (AJAX)
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ChangeRoleJson([FromBody] ChangeRoleRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null) return NotFound();
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        if (currentRoles.Any())
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+        if (!string.IsNullOrEmpty(request.RoleName))
+        {
+            var roleExists = await _roleManager.RoleExistsAsync(request.RoleName);
+            if (!roleExists)
+                return BadRequest($"Роль «{request.RoleName}» не найдена");
+
+            var result = await _userManager.AddToRoleAsync(user, request.RoleName);
+            if (!result.Succeeded)
+                return BadRequest(string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+
+        return Ok(new { success = true, newRole = request.RoleName ?? "" });
     }
 
     /// <summary>
@@ -518,4 +548,4 @@ public class UsersController : Controller
 public record SetSupervisorRequest(string UserId, string? SupervisorId);
 public record RemoveFromHierarchyRequest(string UserId);
 public record UpdatePositionRequest(string UserId, string? Position);
-
+public record ChangeRoleRequest(string UserId, string? RoleName);

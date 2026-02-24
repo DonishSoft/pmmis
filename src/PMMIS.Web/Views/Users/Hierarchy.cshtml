@@ -4,6 +4,7 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     
     var userRoles = ViewBag.UserRoles as Dictionary<string, string> ?? new();
+    var allRolesList = ViewBag.AllRoles as List<PMMIS.Domain.Entities.ApplicationRole> ?? new();
     
     // Root users: no supervisor
     var rootUsers = Model.Where(u => string.IsNullOrEmpty(u.SupervisorId)).ToList();
@@ -63,6 +64,9 @@
                     </button>
                     <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); openEditPositionModal('@user.Id', '@(user.Position?.Replace("'", "\\'") ?? "")')" title="Изменить должность">
                         <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); changeRole('@user.Id', '@(role?.Replace("'", "\\'") ?? "")')" title="Изменить роль">
+                        <i class="bi bi-shield-check"></i>
                     </button>
                     @if (depth > 0)
                     {
@@ -256,11 +260,14 @@
 @section Scripts {
 <script>
     let editMode = false;
-    let modalMode = ''; // 'addSub', 'changeSup', 'addToTree', 'editPosition'
+    let modalMode = ''; // 'addSub', 'changeSup', 'addToTree', 'editPosition', 'changeRole'
     let modalUserId = '';
 
     // All users data for selects
     const allUsers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(u => new { u.Id, Name = u.FullName, u.Position, u.SupervisorId }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+    // All roles for role change dropdown
+    const allRoles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allRolesList.Select(r => new { r.Name }), new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
     function toggleEditMode() {
         editMode = !editMode;
@@ -363,6 +370,27 @@
         new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
     }
 
+    // Change role modal
+    function changeRole(userId, currentRole) {
+        modalMode = 'changeRole';
+        modalUserId = userId;
+        const user = allUsers.find(u => u.id === userId);
+        const options = allRoles.map(r =>
+            `<option value="${r.name}" ${r.name === currentRole ? 'selected' : ''}>${r.name}</option>`
+        ).join('');
+
+        document.getElementById('hierarchyModalTitle').textContent = `Изменить роль: ${user?.name || ''}`;
+        document.getElementById('hierarchyModalBody').innerHTML = `
+            <label class="form-label">Роль в системе</label>
+            <select id="modalSelect" class="form-select">
+                <option value="">— Без роли —</option>
+                ${options}
+            </select>
+            <div class="form-text mt-2">Роль определяет доступ к модулям и участие в цепочке утверждения.</div>
+        `;
+        new bootstrap.Modal(document.getElementById('hierarchyModal')).show();
+    }
+
     // Save modal action
     async function saveModal() {
         try {
@@ -371,6 +399,10 @@
                 const position = document.getElementById('modalPosition').value;
                 url = '/Users/UpdatePositionJson';
                 body = { userId: modalUserId, position: position || null };
+            } else if (modalMode === 'changeRole') {
+                const select = document.getElementById('modalSelect');
+                url = '/Users/ChangeRoleJson';
+                body = { userId: modalUserId, roleName: select.value || null };
             } else {
                 const select = document.getElementById('modalSelect');
                 const selectedId = select.value;
