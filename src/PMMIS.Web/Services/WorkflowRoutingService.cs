@@ -557,11 +557,21 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         if (step.AssigneeType == "ContractPM")
             return contract.ProjectManagerId == userId;
 
-        // Role-based
+        // Role-based: resolve role name from RoleId (which can be either name or GUID)
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null) return false;
         var userRoles = await _userManager.GetRolesAsync(user);
-        return userRoles.Any(r => r.Equals(step.RoleId, StringComparison.OrdinalIgnoreCase));
+        
+        // Direct match by name
+        if (userRoles.Any(r => r.Equals(step.RoleId, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        
+        // Try resolving RoleId as a GUID to get the actual role name
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId);
+        if (role?.Name != null && userRoles.Any(r => r.Equals(role.Name, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        
+        return false;
     }
 
     private static string GetStepAssigneeLabel(WorkflowStep step)
