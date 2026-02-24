@@ -406,6 +406,63 @@ public class PaymentsController : Controller
         return Json(avrs);
     }
 
+    /// <summary>
+    /// API: Returns contract payment summary — amount, paid, remaining, previous payments, approved AVR count
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetContractPaymentInfo(int contractId)
+    {
+        var contract = await _context.Contracts
+            .Include(c => c.Contractor)
+            .FirstOrDefaultAsync(c => c.Id == contractId);
+        if (contract == null) return NotFound();
+
+        var payments = await _context.Payments
+            .Where(p => p.ContractId == contractId)
+            .OrderByDescending(p => p.PaymentDate)
+            .Select(p => new {
+                p.Id,
+                p.PaymentDate,
+                p.Amount,
+                p.AmountTjs,
+                Type = (int)p.Type,
+                TypeName = p.Type == PaymentType.Advance ? "Аванс"
+                         : p.Type == PaymentType.Interim ? "Промежуточный"
+                         : p.Type == PaymentType.Final ? "Окончательный"
+                         : "Удержание",
+                Status = (int)p.Status,
+                StatusName = p.Status == PaymentStatus.Pending ? "Ожидает"
+                           : p.Status == PaymentStatus.Approved ? "Одобрен"
+                           : p.Status == PaymentStatus.Paid ? "Оплачен"
+                           : "Отклонён",
+                p.InvoiceNumber
+            })
+            .ToListAsync();
+
+        var totalPaid = payments
+            .Where(p => p.Status != (int)PaymentStatus.Rejected)
+            .Sum(p => p.Amount);
+
+        var approvedAvrCount = await _context.WorkProgresses
+            .CountAsync(wp => wp.ContractId == contractId
+                           && wp.ApprovalStatus == AvrApprovalStatus.DirectorApproved);
+
+        var totalAvrCount = await _context.WorkProgresses
+            .CountAsync(wp => wp.ContractId == contractId);
+
+        return Json(new {
+            contractNumber = contract.ContractNumber,
+            contractorName = contract.Contractor?.Name ?? "",
+            contractAmount = contract.FinalAmount,
+            currency = (int)contract.Currency,
+            totalPaid,
+            remaining = contract.FinalAmount - totalPaid,
+            approvedAvrCount,
+            totalAvrCount,
+            payments
+        });
+    }
+
     #region Helpers
 
     private async Task PopulateDropdowns(PaymentFormViewModel viewModel)

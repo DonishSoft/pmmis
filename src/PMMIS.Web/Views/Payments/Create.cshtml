@@ -120,12 +120,50 @@
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
                         <i class="bi bi-check-lg me-1"></i> Создать
                     </button>
                     <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
                 </div>
             </form>
+
+            <!-- Contract Info & Validation Panel -->
+            <div id="contractInfoPanel" class="mt-4" style="display: none;">
+                <!-- Financial Summary -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="bi bi-bank me-2"></i>Финансы контракта</h6>
+                    </div>
+                    <div class="card-body" id="contractFinanceBody"></div>
+                </div>
+
+                <!-- Warnings -->
+                <div id="validationWarnings"></div>
+
+                <!-- Previous Payments -->
+                <div class="card border-0 shadow-sm" id="paymentHistoryCard" style="display: none;">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Предыдущие платежи</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Тип</th>
+                                        <th>Счёт</th>
+                                        <th class="text-end">Сумма USD</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentHistoryBody"></tbody>
+                                <tfoot class="table-light" id="paymentHistoryFoot"></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -201,12 +239,14 @@
     contractSelect.addEventListener('change', () => {
         onContractChange();
         loadApprovedAvrs();
+        loadContractPaymentInfo();
     });
     paymentDate.addEventListener('change', () => {
         const info = contractCurrencies[contractSelect.value];
         if (info && info.currency === 1) fetchPaymentRate();
     });
     if (paymentAmountTjs) paymentAmountTjs.addEventListener('input', calculateUsdFromTjs);
+    paymentAmountUsd.addEventListener('input', checkAmountLimit);
 
     // === AVR Selection Logic ===
     const avrSelectionGroup = document.getElementById('avrSelectionGroup');
@@ -256,10 +296,160 @@
         }
     }
 
+    // === Contract Payment Info ===
+    let contractData = null;
+
+    function fmtUsd(n) { return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); }
+
+    async function loadContractPaymentInfo() {
+        const contractId = contractSelect.value;
+        const panel = document.getElementById('contractInfoPanel');
+        if (!contractId) {
+            panel.style.display = 'none';
+            contractData = null;
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/Payments/GetContractPaymentInfo?contractId=${contractId}`);
+            contractData = await resp.json();
+            renderContractInfo();
+            renderPaymentHistory();
+            renderWarnings();
+            checkAmountLimit();
+            panel.style.display = '';
+        } catch (e) {
+            panel.style.display = 'none';
+            console.error('Error loading contract info:', e);
+        }
+    }
+
+    function renderContractInfo() {
+        if (!contractData) return;
+        const paidPercent = contractData.contractAmount > 0
+            ? Math.min((contractData.totalPaid / contractData.contractAmount * 100), 100).toFixed(1)
+            : 0;
+        const remainPercent = (100 - paidPercent).toFixed(1);
+        const barColor = paidPercent > 90 ? 'bg-danger' : paidPercent > 70 ? 'bg-warning' : 'bg-success';
+
+        document.getElementById('contractFinanceBody').innerHTML = `
+            <div class="row g-3 text-center">
+                <div class="col-md-4">
+                    <div class="border rounded p-3">
+                        <div class="text-muted small">Сумма контракта</div>
+                        <div class="fs-5 fw-bold text-primary">${fmtUsd(contractData.contractAmount)}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3">
+                        <div class="text-muted small">Оплачено</div>
+                        <div class="fs-5 fw-bold text-success">${fmtUsd(contractData.totalPaid)}</div>
+                        <div class="text-muted small">${paidPercent}%</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded p-3">
+                        <div class="text-muted small">Остаток</div>
+                        <div class="fs-5 fw-bold ${contractData.remaining < 0 ? 'text-danger' : 'text-dark'}">${fmtUsd(contractData.remaining)}</div>
+                        <div class="text-muted small">${remainPercent}%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="progress mt-3" style="height: 8px;">
+                <div class="progress-bar ${barColor}" style="width: ${paidPercent}%"></div>
+            </div>
+        `;
+    }
+
+    function renderWarnings() {
+        if (!contractData) return;
+        const container = document.getElementById('validationWarnings');
+        let html = '';
+
+        // Warning: No approved AVRs
+        if (contractData.approvedAvrCount === 0) {
+            if (contractData.totalAvrCount === 0) {
+                html += `<div class="alert alert-warning py-2 mb-2">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Нет АВР!</strong> По данному контракту не создан ни один Акт выполненных работ. 
+                    Рекомендуется сначала создать и утвердить АВР.
+                </div>`;
+            } else {
+                html += `<div class="alert alert-warning py-2 mb-2">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Нет утверждённых АВР!</strong> Все ${contractData.totalAvrCount} АВР ещё не утверждены директором.
+                    Платёж рекомендуется создавать после утверждения АВР.
+                </div>`;
+            }
+        } else {
+            html += `<div class="alert alert-success py-2 mb-2">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                Утверждённых АВР: <strong>${contractData.approvedAvrCount}</strong> из ${contractData.totalAvrCount}
+            </div>`;
+        }
+
+        container.innerHTML = html;
+    }
+
+    function checkAmountLimit() {
+        if (!contractData) return;
+        const container = document.getElementById('validationWarnings');
+        const amount = parseFloat(paymentAmountUsd.value) || 0;
+        // Remove old limit warning
+        const old = document.getElementById('limitWarning');
+        if (old) old.remove();
+
+        if (amount > 0 && amount > contractData.remaining) {
+            const over = amount - contractData.remaining;
+            const warn = document.createElement('div');
+            warn.id = 'limitWarning';
+            warn.className = 'alert alert-danger py-2 mb-2';
+            warn.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-2"></i>
+                <strong>Превышен лимит контракта!</strong> Сумма платежа (${fmtUsd(amount)}) 
+                превышает остаток (${fmtUsd(contractData.remaining)}) на <strong>${fmtUsd(over)}</strong>`;
+            container.appendChild(warn);
+        }
+    }
+
+    function renderPaymentHistory() {
+        if (!contractData) return;
+        const card = document.getElementById('paymentHistoryCard');
+        const body = document.getElementById('paymentHistoryBody');
+        const foot = document.getElementById('paymentHistoryFoot');
+
+        if (!contractData.payments || contractData.payments.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+
+        const typeIcons = { 0: '💵', 1: '📊', 2: '✅', 3: '🔒' };
+        const statusClasses = { 0: 'bg-warning text-dark', 1: 'bg-info text-dark', 2: 'bg-success', 3: 'bg-danger' };
+
+        body.innerHTML = contractData.payments.map(p => {
+            const dt = new Date(p.paymentDate).toLocaleDateString('ru-RU');
+            return `<tr>
+                <td>${dt}</td>
+                <td>${typeIcons[p.type] || ''} ${p.typeName}</td>
+                <td>${p.invoiceNumber || '—'}</td>
+                <td class="text-end fw-semibold">${fmtUsd(p.amount)}</td>
+                <td><span class="badge ${statusClasses[p.status] || 'bg-secondary'}">${p.statusName}</span></td>
+            </tr>`;
+        }).join('');
+
+        foot.innerHTML = `<tr>
+            <td colspan="3" class="fw-bold">Итого оплачено</td>
+            <td class="text-end fw-bold">${fmtUsd(contractData.totalPaid)}</td>
+            <td></td>
+        </tr>`;
+
+        card.style.display = '';
+    }
+
     // Init on load
     if (contractSelect.value) {
         onContractChange();
         loadApprovedAvrs();
+        loadContractPaymentInfo();
     }
     </script>
 }
