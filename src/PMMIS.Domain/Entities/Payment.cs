@@ -28,6 +28,10 @@ public class Payment : BaseEntity
     public string? RejectedById { get; set; }
     public ApplicationUser? RejectedBy { get; set; }
     
+    // Workflow tracking
+    public int? CurrentStepOrder { get; set; }
+    public string? CreatedByUserId { get; set; }
+    
     // Foreign Keys
     public int ContractId { get; set; }
     public Contract Contract { get; set; } = null!;

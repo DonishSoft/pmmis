@@ -24,17 +24,20 @@ public class PaymentsController : Controller
     private readonly ITaskService _taskService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDataAccessService _dataAccessService;
+    private readonly IWorkflowRoutingService _workflowRouting;
 
     public PaymentsController(
         ApplicationDbContext context, 
         ITaskService taskService,
         UserManager<ApplicationUser> userManager,
-        IDataAccessService dataAccessService)
+        IDataAccessService dataAccessService,
+        IWorkflowRoutingService workflowRouting)
     {
         _context = context;
         _taskService = taskService;
         _userManager = userManager;
         _dataAccessService = dataAccessService;
+        _workflowRouting = workflowRouting;
     }
 
     public async Task<IActionResult> Index(int? contractId, PaymentStatus? status)
@@ -169,29 +172,14 @@ public class PaymentsController : Controller
             _context.Payments.Add(viewModel.Payment);
             await _context.SaveChangesAsync();
             
-            // === АВТОСОЗДАНИЕ ЗАДАЧИ: Подготовить документы к оплате ===
+            // Start Payment workflow — creates tasks/notifications per step
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!string.IsNullOrEmpty(userId))
             {
-                await _taskService.CreateAsync(new ProjectTask
-                {
-                    Title = $"Подготовить документы к оплате #{viewModel.Payment.Id}",
-                    Description = $"Контракт: {contract.ContractNumber}\n" +
-                                  $"Подрядчик: {contract.Contractor.Name}\n" +
-                                  $"Сумма: {viewModel.Payment.Amount:N2} USD\n" +
-                                  $"Тип: {GetTypeName(viewModel.Payment.Type)}\n" +
-                                  $"Дата платежа: {viewModel.Payment.PaymentDate:dd.MM.yyyy}",
-                    Status = ProjectTaskStatus.New,
-                    Priority = viewModel.Payment.Type == PaymentType.Final ? TaskPriority.High : TaskPriority.Normal,
-                    DueDate = viewModel.Payment.PaymentDate.AddDays(-2), // 2 days before payment date
-                    AssigneeId = userId,
-                    AssignedById = userId,
-                    ContractId = contract.Id,
-                    ProjectId = contract.ProjectId
-                }, userId);
+                await _workflowRouting.StartPaymentWorkflowAsync(viewModel.Payment.Id, userId);
             }
             
-            var successMessage = "Платёж успешно создан. Задача на подготовку документов добавлена.";
+            var successMessage = "Платёж создан. Задачи по цепочке утверждения назначены.";
             if (TempData["Warning"] != null)
             {
                 TempData["Success"] = successMessage;
@@ -264,75 +252,61 @@ public class PaymentsController : Controller
     }
 
     /// <summary>
-    /// Одобрить платёж
+    /// Одобрить платёж (через workflow)
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePermission(MenuKeys.Payments, PermissionType.Edit)]
     public async Task<IActionResult> Approve(int id)
     {
-        var payment = await _context.Payments
-            .Include(p => p.Contract)
-                .ThenInclude(c => c.Contractor)
-            .FirstOrDefaultAsync(p => p.Id == id);
-            
+        var payment = await _context.Payments.FindAsync(id);
         if (payment == null) return NotFound();
-        
-        if (payment.Status != PaymentStatus.Pending)
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Challenge();
+
+        var canAct = await _workflowRouting.CanUserActOnPaymentStepAsync(id, userId);
+        if (!canAct)
         {
-            TempData["Error"] = "Можно одобрить только платежи в статусе 'Ожидает'";
+            TempData["Error"] = "У вас нет прав для утверждения на данном шаге.";
             return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
         }
-        
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
-        payment.Status = PaymentStatus.Approved;
-        payment.ApprovedAt = DateTime.UtcNow;
-        payment.ApprovedById = userId;
-        payment.UpdatedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync();
-        
-        TempData["Success"] = $"Платёж #{id} на сумму {payment.Amount:N2} USD одобрен";
+
+        await _workflowRouting.AdvancePaymentAsync(id, userId);
+
+        TempData["Success"] = $"Платёж #{id} утверждён. Задача передана на следующий шаг.";
         return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
     }
 
     /// <summary>
-    /// Отклонить платёж с указанием причины
+    /// Отклонить платёж (через workflow)
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequirePermission(MenuKeys.Payments, PermissionType.Edit)]
     public async Task<IActionResult> Reject(int id, string rejectionReason)
     {
-        var payment = await _context.Payments
-            .Include(p => p.Contract)
-            .FirstOrDefaultAsync(p => p.Id == id);
-            
+        var payment = await _context.Payments.FindAsync(id);
         if (payment == null) return NotFound();
-        
-        if (payment.Status == PaymentStatus.Paid)
-        {
-            TempData["Error"] = "Нельзя отклонить уже оплаченный платёж";
-            return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
-        }
-        
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Challenge();
+
         if (string.IsNullOrWhiteSpace(rejectionReason))
         {
-            TempData["Error"] = "Необходимо указать причину отклонения";
+            TempData["Error"] = "Укажите причину отклонения.";
             return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
         }
-        
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
-        payment.Status = PaymentStatus.Rejected;
-        payment.RejectionReason = rejectionReason;
-        payment.RejectedAt = DateTime.UtcNow;
-        payment.RejectedById = userId;
-        payment.UpdatedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync();
-        
+
+        var canAct = await _workflowRouting.CanUserActOnPaymentStepAsync(id, userId);
+        if (!canAct)
+        {
+            TempData["Error"] = "У вас нет прав для отклонения на данном шаге.";
+            return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
+        }
+
+        await _workflowRouting.RejectPaymentAsync(id, userId, rejectionReason);
+
         TempData["Success"] = $"Платёж #{id} отклонён. Причина: {rejectionReason}";
         return RedirectToAction(nameof(Index), new { contractId = payment.ContractId });
     }

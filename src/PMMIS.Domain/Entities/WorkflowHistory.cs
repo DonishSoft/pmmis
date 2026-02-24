@@ -6,10 +6,16 @@ namespace PMMIS.Domain.Entities;
 public class WorkflowHistory : BaseEntity
 {
     /// <summary>
-    /// АВР, к которому относится запись
+    /// АВР, к которому относится запись (0 если для платежа)
     /// </summary>
     public int WorkProgressId { get; set; }
     public WorkProgress? WorkProgress { get; set; }
+
+    /// <summary>
+    /// Платёж, к которому относится запись (null если для АВР)
+    /// </summary>
+    public int? PaymentId { get; set; }
+    public Payment? Payment { get; set; }
 
     /// <summary>
     /// Номер шага Workflow (StepOrder)
