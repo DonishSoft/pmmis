@@ -32,7 +32,12 @@ public class WorkflowStep : BaseEntity
     public string ActionType { get; set; } = string.Empty;
     
     /// <summary>
-    /// Роль, которая выполняет этот шаг
+    /// Тип назначения: "Role" (по роли), "ContractCurator" (куратор контракта), "ContractPM" (менеджер проекта)
+    /// </summary>
+    public string AssigneeType { get; set; } = "Role";
+    
+    /// <summary>
+    /// Роль, которая выполняет этот шаг (используется когда AssigneeType = "Role")
     /// </summary>
     public string RoleId { get; set; } = string.Empty;
     public ApplicationRole? Role { get; set; }

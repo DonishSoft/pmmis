@@ -151,6 +151,14 @@
         { value: 'FinalApprove', text: '🏆 Финальное утверждение' }
     ];
 
+    const assigneeTypesList = [
+        { value: 'Role', text: '👥 По роли' },
+        { value: 'ContractCurator', text: '🎯 Куратор контракта' },
+        { value: 'ContractPM', text: '📋 Менеджер проекта' }
+    ];
+
+    const assigneeLabels = { 'Role': '👥 По роли', 'ContractCurator': '🎯 Куратор', 'ContractPM': '📋 Менеджер проекта' };
+
     const actionIcons = { 'Create': '📝', 'Review': '👁️', 'Approve': '✅', 'FinalApprove': '🏆' };
     const actionLabels = { 'Create': 'Создание', 'Review': 'Проверка', 'Approve': 'Утверждение', 'FinalApprove': 'Финал' };
 
@@ -158,7 +166,7 @@
     const grids = {};
 
     // ─── Custom edit templates ───
-    let actionTypeDropdown, roleDropdown;
+    let actionTypeDropdown, roleDropdown, assigneeTypeDropdown;
 
     const actionTypeEditParams = {
         create: function() { return document.createElement('input'); },
@@ -186,9 +194,32 @@
                 fields: { value: 'id', text: 'name' },
                 value: args.rowData.roleId || (rolesData.length > 0 ? rolesData[0].id : ''),
                 placeholder: 'Выберите роль',
-                floatLabelType: 'Always'
+                floatLabelType: 'Always',
+                enabled: (args.rowData.assigneeType || 'Role') === 'Role'
             });
             roleDropdown.appendTo(args.element);
+        }
+    };
+
+    const assigneeTypeEditParams = {
+        create: function() { return document.createElement('input'); },
+        read: function() { return assigneeTypeDropdown ? assigneeTypeDropdown.value : 'Role'; },
+        destroy: function() { if (assigneeTypeDropdown) assigneeTypeDropdown.destroy(); },
+        write: function(args) {
+            assigneeTypeDropdown = new ej.dropdowns.DropDownList({
+                dataSource: assigneeTypesList,
+                fields: { value: 'value', text: 'text' },
+                value: args.rowData.assigneeType || 'Role',
+                placeholder: 'Тип назначения',
+                floatLabelType: 'Always',
+                change: function(e) {
+                    // Enable/disable role dropdown based on assignee type
+                    if (roleDropdown) {
+                        roleDropdown.enabled = (e.value === 'Role');
+                    }
+                }
+            });
+            assigneeTypeDropdown.appendTo(args.element);
         }
     };
 
@@ -222,9 +253,18 @@
                     }
                 },
                 {
+                    field: 'assigneeType', headerText: 'Назначение', width: 160,
+                    edit: assigneeTypeEditParams,
+                    template: function(d) {
+                        return assigneeLabels[d.assigneeType] || assigneeLabels['Role'];
+                    }
+                },
+                {
                     field: 'roleId', headerText: 'Роль', width: 180,
                     edit: roleEditParams,
                     template: function(d) {
+                        if (d.assigneeType === 'ContractCurator') return '<span class="badge bg-info text-dark"><i class="bi bi-person-check me-1"></i>Куратор контракта</span>';
+                        if (d.assigneeType === 'ContractPM') return '<span class="badge bg-warning text-dark"><i class="bi bi-person-gear me-1"></i>Менеджер проекта</span>';
                         const r = rolesData.find(x => x.id === d.roleId);
                         return '<i class="bi bi-person-badge me-1"></i>' + (r ? r.name : d.roleName || '—');
                     }
@@ -286,7 +326,7 @@
         const src = grid.dataSource || [];
         const next = src.length > 0 ? Math.max(...src.map(s => s.stepOrder)) + 1 : 1;
         src.push({
-            stepOrder: next, stepName: '', actionType: 'Review',
+            stepOrder: next, stepName: '', actionType: 'Review', assigneeType: 'Role',
             roleId: rolesData.length > 0 ? rolesData[0].id : '',
             roleName: rolesData.length > 0 ? rolesData[0].name : '',
             canReject: true, rejectToStepOrder: null, isActive: true
@@ -319,11 +359,15 @@
             const role = rolesData.find(r => r.id === s.roleId);
             const icon = actionIcons[s.actionType] || '📋';
             const reject = s.canReject ? (s.rejectToStepOrder || 1) : null;
+            let roleLine;
+            if (s.assigneeType === 'ContractCurator') roleLine = '🎯 Куратор контракта';
+            else if (s.assigneeType === 'ContractPM') roleLine = '📋 Менеджер проекта';
+            else roleLine = role ? role.name : s.roleName || '—';
             html += `<div class="flow-step">
                 <span class="step-num">${s.stepOrder}</span>
                 <span class="step-icon">${icon}</span>
                 <div class="step-title">${s.stepName || 'Шаг ' + s.stepOrder}</div>
-                <div class="step-role">${role ? role.name : s.roleName || '—'}</div>
+                <div class="step-role">${roleLine}</div>
                 ${reject !== null ? `<span class="flow-reject-badge"><i class="bi bi-x-circle"></i> Отказ → шаг ${reject}</span>` : ''}
             </div>`;
             if (i < data.length - 1) html += `<div class="flow-arrow"><i class="bi bi-arrow-right"></i></div>`;
@@ -345,7 +389,8 @@
         }
 
         const steps = data.map(s => ({
-            StepName: s.stepName, ActionType: s.actionType, RoleId: s.roleId,
+            StepName: s.stepName, ActionType: s.actionType, AssigneeType: s.assigneeType || 'Role',
+            RoleId: s.assigneeType === 'Role' ? s.roleId : '',
             CanReject: s.canReject, RejectToStepOrder: s.rejectToStepOrder
         }));
 

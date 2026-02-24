@@ -336,12 +336,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
                                    && s.IsActive);
         if (step == null) return false;
 
-        // Check if user has the required role
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return false;
-
-        var userRoles = await _userManager.GetRolesAsync(user);
-        return userRoles.Any(r => r.Equals(step.RoleId, StringComparison.OrdinalIgnoreCase));
+        return await IsUserMatchingStepAsync(step, userId, wp.Contract);
     }
 
     public async Task<WorkflowStepInfo?> GetCurrentStepInfoAsync(int workProgressId)
@@ -377,18 +372,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
     private async Task CreateTaskForStepAsync(WorkProgress wp, WorkflowStep step, string creatorUserId, string? customDescription = null)
     {
-        // Find users with the required role
-        var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == step.RoleId || r.Id == step.RoleId);
-        if (role == null)
+        var users = await ResolveUsersForStepAsync(step, wp.Contract);
+        if (!users.Any())
         {
-            _logger.LogWarning("Role '{Role}' not found for workflow step {StepName}", step.RoleId, step.StepName);
-            return;
-        }
-
-        var usersInRole = await _userManager.GetUsersInRoleAsync(role.Name ?? step.RoleId);
-        if (!usersInRole.Any())
-        {
-            _logger.LogWarning("No users in role '{Role}' for workflow step {StepName}", step.RoleId, step.StepName);
+            _logger.LogWarning("No users found for workflow step {StepName} (AssigneeType={AssigneeType})", step.StepName, step.AssigneeType);
             return;
         }
 
@@ -406,8 +393,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
             $"Дата отчёта: {wp.ReportDate:dd.MM.yyyy}\n" +
             $"Шаг: {step.StepName} (этап {step.StepOrder})";
 
-        // Create task for each user in the role
-        foreach (var user in usersInRole)
+        foreach (var user in users)
         {
             try
             {
@@ -444,16 +430,37 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
         try
         {
-            var roleName = step.RoleId;
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId);
-            if (role?.Name != null) roleName = role.Name;
+            if (step.AssigneeType == "ContractCurator" || step.AssigneeType == "ContractPM")
+            {
+                // Send directly to the contract person
+                var userId = step.AssigneeType == "ContractCurator" ? wp.Contract.CuratorId : wp.Contract.ProjectManagerId;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var label = step.AssigneeType == "ContractCurator" ? "Куратор" : "Менеджер проекта";
+                    await _notificationService.SendToUserAsync(
+                        userId,
+                        $"📋 {actionLabel}: АВР {wp.Contract.ContractNumber}",
+                        $"АВР по контракту {wp.Contract.ContractNumber} ({wp.Contract.Contractor.Name}) ожидает действия ({label}) на шаге «{step.StepName}»",
+                        NotificationType.NewWorkAct,
+                        NotificationPriority.High,
+                        NotificationChannel.InApp,
+                        "WorkProgress", wp.Id,
+                        $"/WorkProgressReports/Details/{wp.Id}");
+                }
+            }
+            else
+            {
+                var roleName = step.RoleId;
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId);
+                if (role?.Name != null) roleName = role.Name;
 
-            await _notificationService.SendToRoleAsync(
-                roleName,
-                $"📋 {actionLabel}: АВР {wp.Contract.ContractNumber}",
-                $"АВР по контракту {wp.Contract.ContractNumber} ({wp.Contract.Contractor.Name}) ожидает действия на шаге «{step.StepName}»",
-                NotificationType.NewWorkAct,
-                NotificationPriority.High);
+                await _notificationService.SendToRoleAsync(
+                    roleName,
+                    $"📋 {actionLabel}: АВР {wp.Contract.ContractNumber}",
+                    $"АВР по контракту {wp.Contract.ContractNumber} ({wp.Contract.Contractor.Name}) ожидает действия на шаге «{step.StepName}»",
+                    NotificationType.NewWorkAct,
+                    NotificationPriority.High);
+            }
         }
         catch (Exception ex)
         {
@@ -469,9 +476,12 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         try
         {
             var user = await _userManager.FindByIdAsync(userId);
-            var roleName = step.RoleId;
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId || r.Name == step.RoleId);
-            if (role?.Name != null) roleName = role.Name;
+            var roleName = GetStepAssigneeLabel(step);
+            if (step.AssigneeType == "Role")
+            {
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId || r.Name == step.RoleId);
+                if (role?.Name != null) roleName = role.Name;
+            }
 
             var history = new WorkflowHistory
             {
@@ -496,6 +506,64 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         {
             _logger.LogError(ex, "Failed to log workflow history for WP#{WpId}/Payment#{PaymentId}, action: {Action}", workProgressId, paymentId, action);
         }
+    }
+
+    /// <summary>
+    /// Resolve users for a workflow step based on AssigneeType
+    /// </summary>
+    private async Task<IList<ApplicationUser>> ResolveUsersForStepAsync(WorkflowStep step, Contract contract)
+    {
+        if (step.AssigneeType == "ContractCurator")
+        {
+            if (!string.IsNullOrEmpty(contract.CuratorId))
+            {
+                var curator = await _userManager.FindByIdAsync(contract.CuratorId);
+                return curator != null ? new List<ApplicationUser> { curator } : new List<ApplicationUser>();
+            }
+            return new List<ApplicationUser>();
+        }
+        
+        if (step.AssigneeType == "ContractPM")
+        {
+            if (!string.IsNullOrEmpty(contract.ProjectManagerId))
+            {
+                var pm = await _userManager.FindByIdAsync(contract.ProjectManagerId);
+                return pm != null ? new List<ApplicationUser> { pm } : new List<ApplicationUser>();
+            }
+            return new List<ApplicationUser>();
+        }
+
+        // Default: Role-based
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == step.RoleId || r.Id == step.RoleId);
+        if (role?.Name == null) return new List<ApplicationUser>();
+        return (await _userManager.GetUsersInRoleAsync(role.Name)).ToList();
+    }
+
+    /// <summary>
+    /// Check if a user matches the step's assignee (by role or contract person)
+    /// </summary>
+    private async Task<bool> IsUserMatchingStepAsync(WorkflowStep step, string userId, Contract contract)
+    {
+        if (step.AssigneeType == "ContractCurator")
+            return contract.CuratorId == userId;
+        if (step.AssigneeType == "ContractPM")
+            return contract.ProjectManagerId == userId;
+
+        // Role-based
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return false;
+        var userRoles = await _userManager.GetRolesAsync(user);
+        return userRoles.Any(r => r.Equals(step.RoleId, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetStepAssigneeLabel(WorkflowStep step)
+    {
+        return step.AssigneeType switch
+        {
+            "ContractCurator" => "Куратор контракта",
+            "ContractPM" => "Менеджер проекта",
+            _ => step.RoleId
+        };
     }
 
     #endregion
@@ -705,11 +773,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
                                    && s.IsActive);
         if (step == null) return false;
 
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return false;
-
-        var userRoles = await _userManager.GetRolesAsync(user);
-        return userRoles.Any(r => r.Equals(step.RoleId, StringComparison.OrdinalIgnoreCase));
+        return await IsUserMatchingStepAsync(step, userId, payment.Contract);
     }
 
     public async Task<WorkflowStepInfo?> GetPaymentStepInfoAsync(int paymentId)

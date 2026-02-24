@@ -49,6 +49,7 @@ public class WorkflowController : Controller
             stepOrder = s.StepOrder,
             stepName = s.StepName,
             actionType = s.ActionType,
+            assigneeType = s.AssigneeType,
             roleId = s.RoleId,
             roleName = s.Role?.Name ?? "",
             canReject = s.CanReject,
@@ -112,7 +113,8 @@ public class WorkflowController : Controller
                 StepOrder = order++,
                 StepName = step.StepName,
                 ActionType = step.ActionType,
-                RoleId = step.RoleId,
+                AssigneeType = step.AssigneeType ?? "Role",
+                RoleId = step.RoleId ?? "",
                 CanReject = step.CanReject,
                 RejectToStepOrder = step.RejectToStepOrder,
                 IsActive = true,
@@ -137,7 +139,8 @@ public class WorkflowStepInput
 {
     public string StepName { get; set; } = string.Empty;
     public string ActionType { get; set; } = string.Empty;
-    public string RoleId { get; set; } = string.Empty;
+    public string? AssigneeType { get; set; } = "Role";
+    public string? RoleId { get; set; } = string.Empty;
     public bool CanReject { get; set; } = true;
     public int? RejectToStepOrder { get; set; }
 }
