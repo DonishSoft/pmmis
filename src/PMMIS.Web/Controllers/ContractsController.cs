@@ -778,6 +778,21 @@ public class ContractsController : Controller
                     procPlan.ContractId = viewModel.Contract.Id;
                     procPlan.Status = ProcurementStatus.Awarded;
                     await _context.SaveChangesAsync();
+                    
+                    // Auto-complete procurement deadline tasks for this plan
+                    var procTasks = await _context.ProjectTasks
+                        .Where(t => t.ProcurementPlanId == procPlan.Id
+                                 && t.Status != ProjectTaskStatus.Completed
+                                 && t.Status != ProjectTaskStatus.Cancelled)
+                        .ToListAsync();
+                    foreach (var pt in procTasks)
+                    {
+                        pt.Status = ProjectTaskStatus.Completed;
+                        pt.CompletedAt = DateTime.UtcNow;
+                        pt.CompletionPercent = 100;
+                        pt.UpdatedAt = DateTime.UtcNow;
+                    }
+                    if (procTasks.Any()) await _context.SaveChangesAsync();
                 }
             }
             

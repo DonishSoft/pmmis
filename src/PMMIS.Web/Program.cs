@@ -71,6 +71,7 @@ builder.Services.AddScoped<PMMIS.Web.Services.IFileService, PMMIS.Web.Services.F
 // Background Services
 builder.Services.AddHostedService<PMMIS.Web.Services.DeadlineNotificationService>();
 builder.Services.AddHostedService<PMMIS.Web.Services.NotificationQueueService>();
+builder.Services.AddHostedService<PMMIS.Web.Services.ProcurementDeadlineService>();
 
 // Export Service
 builder.Services.AddScoped<PMMIS.Web.Services.IExportService, PMMIS.Web.Services.ExportService>();
