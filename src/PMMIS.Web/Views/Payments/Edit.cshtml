@@ -74,12 +74,20 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Статус</label>
-                                <select asp-for="Payment.Status" class="form-select">
-                                    <option value="@((int)PaymentStatus.Pending)">⏳ Ожидает</option>
-                                    <option value="@((int)PaymentStatus.Approved)">✓ Одобрен</option>
-                                    <option value="@((int)PaymentStatus.Paid)">✅ Оплачен</option>
-                                    <option value="@((int)PaymentStatus.Rejected)">❌ Отклонён</option>
-                                </select>
+                                <input type="hidden" asp-for="Payment.Status" />
+                                <div class="form-control-plaintext">
+                                    @{
+                                        var statusBadge = Model.Payment.Status switch {
+                                            PaymentStatus.Pending => "<span class='badge bg-warning text-dark fs-6'><i class='bi bi-hourglass-split me-1'></i>Ожидает</span>",
+                                            PaymentStatus.Approved => "<span class='badge bg-info text-dark fs-6'><i class='bi bi-check-circle me-1'></i>Одобрен</span>",
+                                            PaymentStatus.Paid => "<span class='badge bg-success fs-6'><i class='bi bi-check2-all me-1'></i>Оплачен</span>",
+                                            PaymentStatus.Rejected => "<span class='badge bg-danger fs-6'><i class='bi bi-x-circle me-1'></i>Отклонён</span>",
+                                            _ => "<span class='badge bg-secondary fs-6'>—</span>"
+                                        };
+                                    }
+                                    @Html.Raw(statusBadge)
+                                    <div class="text-muted small mt-1">Статус определяется цепочкой утверждений</div>
+                                </div>
                             </div>
                         </div>
 
