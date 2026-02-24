@@ -317,6 +317,25 @@ public class WorkProgressReportsController : Controller
                 await UpdateIndicatorAchievedValues(progress.ContractId);
             }
 
+            // Save work item progress
+            if (viewModel.WorkItems?.Any() == true)
+            {
+                foreach (var wi in viewModel.WorkItems)
+                {
+                    if (wi.Value <= 0) continue;
+                    _context.WorkItemProgresses.Add(new WorkItemProgress
+                    {
+                        ContractWorkItemId = wi.ContractWorkItemId,
+                        WorkProgressId = progress.Id,
+                        Value = wi.Value,
+                        Notes = wi.Notes,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                await _context.SaveChangesAsync();
+                await UpdateWorkItemAchievedValues(progress.ContractId);
+            }
+
             // Save uploaded files
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var allFiles = new List<(IFormFile file, DocumentType type)>();
@@ -434,6 +453,29 @@ public class WorkProgressReportsController : Controller
                 }
                 await _context.SaveChangesAsync();
                 await UpdateIndicatorAchievedValues(progress.ContractId);
+            }
+
+            // Update work item progress
+            var existingWiProgress = await _context.WorkItemProgresses
+                .Where(p => p.WorkProgressId == progress.Id)
+                .ToListAsync();
+            _context.WorkItemProgresses.RemoveRange(existingWiProgress);
+
+            if (viewModel.WorkItems != null)
+            {
+                foreach (var wi in viewModel.WorkItems.Where(i => i.Value > 0))
+                {
+                    _context.WorkItemProgresses.Add(new WorkItemProgress
+                    {
+                        ContractWorkItemId = wi.ContractWorkItemId,
+                        WorkProgressId = progress.Id,
+                        Value = wi.Value,
+                        Notes = wi.Notes,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                await _context.SaveChangesAsync();
+                await UpdateWorkItemAchievedValues(progress.ContractId);
             }
 
             await UpdateContractProgress(progress.ContractId);
@@ -635,8 +677,31 @@ public class WorkProgressReportsController : Controller
                 return input;
             }).ToList();
         }
+        
+        // Load work items (Объём работ)
+        var workItems = await _context.ContractWorkItems
+            .Include(w => w.Progresses)
+            .Where(w => w.ContractId == contractId.Value)
+            .OrderBy(w => w.SortOrder)
+            .ToListAsync();
+        
+        viewModel.WorkItems = workItems.Select(w => new WorkItemInput
+        {
+            ContractWorkItemId = w.Id,
+            Name = w.Name,
+            Unit = w.Unit,
+            TargetQuantity = w.TargetQuantity,
+            PreviousAchieved = w.Progresses
+                .Where(p => viewModel.WorkProgress.Id == 0 || p.WorkProgressId != viewModel.WorkProgress.Id)
+                .Sum(p => p.Value),
+            Value = viewModel.WorkProgress.Id > 0 
+                ? w.Progresses.Where(p => p.WorkProgressId == viewModel.WorkProgress.Id).Sum(p => p.Value) 
+                : 0,
+            Notes = viewModel.WorkProgress.Id > 0 
+                ? w.Progresses.FirstOrDefault(p => p.WorkProgressId == viewModel.WorkProgress.Id)?.Notes 
+                : null
+        }).ToList();
     }
-
     private async Task UpdateContractProgress(int contractId)
     {
         var contract = await _context.Contracts
@@ -666,6 +731,22 @@ public class WorkProgressReportsController : Controller
         {
             ci.AchievedValue = ci.Progresses.Sum(p => p.Value);
             ci.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task UpdateWorkItemAchievedValues(int contractId)
+    {
+        var workItems = await _context.ContractWorkItems
+            .Include(w => w.Progresses)
+            .Where(w => w.ContractId == contractId)
+            .ToListAsync();
+
+        foreach (var wi in workItems)
+        {
+            wi.AchievedQuantity = wi.Progresses.Sum(p => p.Value);
+            wi.UpdatedAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();

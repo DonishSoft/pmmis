@@ -1337,6 +1337,84 @@ public class ContractsController : Controller
         return Json(plan);
     }
     
+    // ===== Work Items (Объём работ) =====
+    
+    /// <summary>
+    /// API: Get all work items for a contract
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetWorkItems(int contractId)
+    {
+        var items = await _context.ContractWorkItems
+            .Where(w => w.ContractId == contractId)
+            .OrderBy(w => w.SortOrder)
+            .Select(w => new {
+                w.Id, w.Name, w.Unit, w.TargetQuantity, w.AchievedQuantity, w.SortOrder,
+                ProgressPercent = w.TargetQuantity > 0 ? Math.Round(w.AchievedQuantity / w.TargetQuantity * 100, 1) : 0
+            })
+            .ToListAsync();
+        return Json(items);
+    }
+    
+    /// <summary>
+    /// API: Save work items for a contract (batch create/update)
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveWorkItems(int contractId, [FromBody] List<WorkItemInput> items)
+    {
+        if (items == null) return BadRequest();
+        
+        var existing = await _context.ContractWorkItems
+            .Where(w => w.ContractId == contractId)
+            .ToListAsync();
+        
+        var incomingIds = items.Where(i => i.Id > 0).Select(i => i.Id).ToHashSet();
+        
+        // Delete removed items
+        var toDelete = existing.Where(e => !incomingIds.Contains(e.Id)).ToList();
+        _context.ContractWorkItems.RemoveRange(toDelete);
+
+        // Update existing + add new
+        for (int i = 0; i < items.Count; i++)
+        {
+            var input = items[i];
+            if (input.Id > 0)
+            {
+                var item = existing.FirstOrDefault(e => e.Id == input.Id);
+                if (item != null)
+                {
+                    item.Name = input.Name;
+                    item.Unit = input.Unit;
+                    item.TargetQuantity = input.TargetQuantity;
+                    item.SortOrder = i;
+                }
+            }
+            else
+            {
+                _context.ContractWorkItems.Add(new ContractWorkItem
+                {
+                    ContractId = contractId,
+                    Name = input.Name,
+                    Unit = input.Unit,
+                    TargetQuantity = input.TargetQuantity,
+                    SortOrder = i
+                });
+            }
+        }
+        
+        await _context.SaveChangesAsync();
+        return Json(new { success = true });
+    }
+    
+    public class WorkItemInput
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Unit { get; set; } = "";
+        public decimal TargetQuantity { get; set; }
+    }
+    
     /// <summary>
     /// Удалить документ контракта
     /// </summary>

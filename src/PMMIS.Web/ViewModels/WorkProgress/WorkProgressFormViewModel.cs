@@ -21,6 +21,11 @@ public class WorkProgressFormViewModel
     public List<ContractIndicatorInput> ContractIndicators { get; set; } = new();
     
     /// <summary>
+    /// Work items (Объём работ) for the selected contract
+    /// </summary>
+    public List<WorkItemInput> WorkItems { get; set; } = new();
+    
+    /// <summary>
     /// PDF report files to upload
     /// </summary>
     public List<IFormFile>? ReportFiles { get; set; }
@@ -34,6 +39,23 @@ public class WorkProgressFormViewModel
     /// Existing documents (for Edit view)
     /// </summary>
     public List<Document>? ExistingDocuments { get; set; }
+}
+
+/// <summary>
+/// Input model for work item progress in AVR
+/// </summary>
+public class WorkItemInput
+{
+    public int ContractWorkItemId { get; set; }
+    public string Name { get; set; } = "";
+    public string? Unit { get; set; }
+    public decimal TargetQuantity { get; set; }
+    public decimal PreviousAchieved { get; set; }
+    public decimal Value { get; set; }
+    public string? Notes { get; set; }
+    
+    public decimal NewTotal => PreviousAchieved + Value;
+    public decimal ProgressPercent => TargetQuantity > 0 ? Math.Min(100, (NewTotal / TargetQuantity) * 100) : 0;
 }
 
 /// <summary>

@@ -281,6 +281,51 @@
                 </div>
             }
 
+            <!-- Work Items (Объём работ) -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ</h5>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="badge bg-secondary" id="workItemsCount">0 позиций</span>
+                        @if (canEdit)
+                        {
+                            <button type="button" class="btn btn-sm btn-success" id="addWorkItemBtn">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary d-none" id="saveWorkItemsBtn">
+                                <i class="bi bi-check-lg me-1"></i>Сохранить
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle" id="workItemsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px">#</th>
+                                    <th>Наименование работы</th>
+                                    <th style="width:120px">Ед. изм.</th>
+                                    <th style="width:120px" class="text-end">Объём (план)</th>
+                                    <th style="width:120px" class="text-end">Выполнено</th>
+                                    <th style="width:180px">Прогресс</th>
+                                    @if (canEdit)
+                                    {
+                                        <th style="width:50px"></th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody id="workItemsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center text-muted py-3 d-none" id="workItemsEmpty">
+                        <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                        Нет позиций. Нажмите «Добавить» чтобы создать.
+                    </div>
+                </div>
+            </div>
+
             <!-- Payments -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -892,3 +937,141 @@
     }
 </script>
 }
+
+<script>
+    // ===== Work Items (Объём работ) =====
+    const contractId = @Model.Id;
+    const canEditItems = @(canEdit ? "true" : "false");
+    let workItems = [];
+    let workItemsDirty = false;
+
+    document.addEventListener('DOMContentLoaded', loadWorkItems);
+    
+    if (canEditItems) {
+        document.getElementById('addWorkItemBtn')?.addEventListener('click', addWorkItem);
+        document.getElementById('saveWorkItemsBtn')?.addEventListener('click', saveWorkItems);
+    }
+
+    async function loadWorkItems() {
+        const resp = await fetch(`/Contracts/GetWorkItems?contractId=${contractId}`);
+        workItems = await resp.json();
+        renderWorkItems();
+    }
+
+    function renderWorkItems() {
+        const tbody = document.getElementById('workItemsBody');
+        const empty = document.getElementById('workItemsEmpty');
+        const count = document.getElementById('workItemsCount');
+        
+        count.textContent = workItems.length + ' позиц' + (workItems.length === 1 ? 'ия' : workItems.length < 5 ? 'ии' : 'ий');
+        
+        if (workItems.length === 0) {
+            tbody.innerHTML = '';
+            empty.classList.remove('d-none');
+            return;
+        }
+        empty.classList.add('d-none');
+        
+        tbody.innerHTML = workItems.map((item, idx) => {
+            const pct = item.targetQuantity > 0 ? Math.min(100, (item.achievedQuantity / item.targetQuantity) * 100) : 0;
+            const barClass = pct >= 80 ? 'bg-success' : pct >= 50 ? 'bg-info' : pct >= 25 ? 'bg-warning' : 'bg-danger';
+            const isNew = !item.id || item.id === 0;
+            
+            if (isNew || workItemsDirty) {
+                // Editable row
+                return `<tr>
+                    <td class="text-center text-muted">${idx + 1}</td>
+                    <td><input type="text" class="form-control form-control-sm" value="${escHtml(item.name)}" 
+                         onchange="updateItem(${idx}, 'name', this.value)" placeholder="Наименование работы..." /></td>
+                    <td><select class="form-select form-select-sm" onchange="updateItem(${idx}, 'unit', this.value)">
+                        ${unitOptions(item.unit)}
+                    </select></td>
+                    <td><input type="number" class="form-control form-control-sm text-end" value="${item.targetQuantity}" 
+                         min="0" step="0.01" onchange="updateItem(${idx}, 'targetQuantity', parseFloat(this.value)||0)" /></td>
+                    <td class="text-end">${item.achievedQuantity}</td>
+                    <td><div class="progress" style="height:18px">
+                        <div class="progress-bar ${barClass}" style="width:${pct.toFixed(0)}%">${pct.toFixed(1)}%</div>
+                    </div></td>
+                    ${canEditItems ? `<td><button class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})" title="Удалить"><i class="bi bi-x-lg"></i></button></td>` : ''}
+                </tr>`;
+            }
+            // Readonly row
+            return `<tr>
+                <td class="text-center text-muted">${idx + 1}</td>
+                <td><strong>${escHtml(item.name)}</strong></td>
+                <td>${escHtml(item.unit)}</td>
+                <td class="text-end">${item.targetQuantity}</td>
+                <td class="text-end">${item.achievedQuantity}</td>
+                <td><div class="progress" style="height:18px">
+                    <div class="progress-bar ${barClass}" style="width:${pct.toFixed(0)}%">${pct.toFixed(1)}%</div>
+                </div></td>
+                ${canEditItems ? `<td><button class="btn btn-sm btn-outline-danger" onclick="removeItem(${idx})" title="Удалить"><i class="bi bi-x-lg"></i></button></td>` : ''}
+            </tr>`;
+        }).join('');
+    }
+
+    function unitOptions(selected) {
+        const units = ['куб.м', 'тонна', 'м²', 'км', 'м', 'шт', 'комплект', 'Да/Нет'];
+        return units.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
+    }
+
+    function addWorkItem() {
+        workItems.push({ id: 0, name: '', unit: 'куб.м', targetQuantity: 0, achievedQuantity: 0 });
+        workItemsDirty = true;
+        document.getElementById('saveWorkItemsBtn')?.classList.remove('d-none');
+        renderWorkItems();
+    }
+
+    function updateItem(idx, field, value) {
+        workItems[idx][field] = value;
+        workItemsDirty = true;
+        document.getElementById('saveWorkItemsBtn')?.classList.remove('d-none');
+    }
+
+    function removeItem(idx) {
+        if (!confirm('Удалить позицию "' + (workItems[idx].name || '—') + '"?')) return;
+        workItems.splice(idx, 1);
+        workItemsDirty = true;
+        document.getElementById('saveWorkItemsBtn')?.classList.remove('d-none');
+        renderWorkItems();
+    }
+
+    async function saveWorkItems() {
+        const btn = document.getElementById('saveWorkItemsBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Сохранение...';
+        
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value 
+                    || document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        const resp = await fetch(`/Contracts/SaveWorkItems?contractId=${contractId}`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify(workItems.map(i => ({
+                id: i.id || 0,
+                name: i.name,
+                unit: i.unit,
+                targetQuantity: i.targetQuantity
+            })))
+        });
+        
+        if (resp.ok) {
+            workItemsDirty = false;
+            btn.classList.add('d-none');
+            await loadWorkItems();
+        } else {
+            alert('Ошибка сохранения');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Сохранить';
+    }
+
+    function escHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+    }
+</script>

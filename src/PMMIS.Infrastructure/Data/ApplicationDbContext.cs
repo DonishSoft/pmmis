@@ -103,6 +103,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ContractIndicatorVillage> ContractIndicatorVillages => Set<ContractIndicatorVillage>();
     public DbSet<IndicatorProgressItem> IndicatorProgressItems => Set<IndicatorProgressItem>();
     
+    // Contract Work Items (Объём работ)
+    public DbSet<ContractWorkItem> ContractWorkItems => Set<ContractWorkItem>();
+    public DbSet<WorkItemProgress> WorkItemProgresses => Set<WorkItemProgress>();
+    
     // Contract Milestones
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
 
