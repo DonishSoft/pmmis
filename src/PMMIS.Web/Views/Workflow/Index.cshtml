@@ -211,6 +211,13 @@
                         if (!d.canReject) return '<span class="text-muted">—</span>';
                         return '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle">↩ шаг ' + (d.rejectToStepOrder || 1) + '</span>';
                     }
+                },
+                {
+                    headerText: '', width: 100, textAlign: 'Center',
+                    commands: [
+                        { type: 'Edit', buttonOption: { cssClass: 'e-flat', iconCss: 'e-edit e-icons' } },
+                        { type: 'Delete', buttonOption: { cssClass: 'e-flat', iconCss: 'e-delete e-icons' } }
+                    ]
                 }
             ],
             actionComplete: function(args) {
