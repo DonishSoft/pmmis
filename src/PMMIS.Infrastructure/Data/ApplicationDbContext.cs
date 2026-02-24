@@ -114,6 +114,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     // Workflow Steps
     public DbSet<WorkflowStep> WorkflowSteps => Set<WorkflowStep>();
+    public DbSet<WorkflowHistory> WorkflowHistories => Set<WorkflowHistory>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -128,8 +128,15 @@ public class WorkProgressReportsController : Controller
         var currentUser = await _userManager.GetUserAsync(User);
         var canApprove = currentUser != null && await _workflowRouting.CanUserActOnCurrentStepAsync(id, currentUser.Id);
 
+        // Workflow history
+        var history = await _context.WorkflowHistories
+            .Where(h => h.WorkProgressId == id)
+            .OrderBy(h => h.ActionDate)
+            .ToListAsync();
+
         ViewBag.WorkflowStep = stepInfo;
         ViewBag.CanApprove = canApprove;
+        ViewBag.WorkflowHistory = history;
 
         return View(progress);
     }
@@ -430,6 +437,24 @@ public class WorkProgressReportsController : Controller
             }
 
             await UpdateContractProgress(progress.ContractId);
+
+            // Log edit history
+            var editUser = await _userManager.GetUserAsync(User);
+            var editUserId = editUser?.Id ?? "";
+            var currentStep = progress.CurrentStepOrder ?? 0;
+            _context.WorkflowHistories.Add(new WorkflowHistory
+            {
+                WorkProgressId = progress.Id,
+                StepOrder = currentStep,
+                StepName = "Редактирование",
+                Action = WorkflowAction.Edited,
+                UserId = editUserId,
+                UserName = editUser != null ? $"{editUser.LastName} {editUser.FirstName}" : "—",
+                ActionDate = DateTime.UtcNow,
+                Notes = "АВР отредактирован",
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
 
             TempData["Success"] = "АВР обновлён";
             return RedirectToAction(nameof(Index));

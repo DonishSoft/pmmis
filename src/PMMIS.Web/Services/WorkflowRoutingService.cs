@@ -97,6 +97,9 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         var firstStep = steps.First();
         _logger.LogInformation("Starting AVR workflow for WP#{WorkProgressId}, step 1: {StepName}", workProgressId, firstStep.StepName);
 
+        // Log history: AVR created
+        await LogHistoryAsync(wp.Id, firstStep, WorkflowAction.Created, creatorUserId, "АВР создан");
+
         // Find the next step (step 2 = usually Review)
         var nextStep = steps.FirstOrDefault(s => s.StepOrder > firstStep.StepOrder);
 
@@ -108,6 +111,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
             wp.SubmittedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // Log history: submitted for next step
+            await LogHistoryAsync(wp.Id, nextStep, WorkflowAction.Submitted, creatorUserId,
+                $"Передан на шаг «{nextStep.StepName}»");
+
             await CreateTaskForStepAsync(wp, nextStep, creatorUserId);
             await SendNotificationForStepAsync(wp, nextStep);
         }
@@ -117,6 +124,8 @@ public class WorkflowRoutingService : IWorkflowRoutingService
             wp.CurrentStepOrder = firstStep.StepOrder;
             wp.ApprovalStatus = AvrApprovalStatus.DirectorApproved;
             await _context.SaveChangesAsync();
+
+            await LogHistoryAsync(wp.Id, firstStep, WorkflowAction.FinalApproved, creatorUserId, "Автоматически утверждён (единственный шаг)");
         }
     }
 
@@ -148,6 +157,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
         if (nextStep != null)
         {
+            // Log history: current step approved
+            await LogHistoryAsync(wp.Id, currentStep, WorkflowAction.Approved, approverUserId,
+                $"Утверждён на шаге «{currentStep.StepName}»");
+
             // Move to next step
             wp.CurrentStepOrder = nextStep.StepOrder;
 
@@ -156,6 +169,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
                 wp.ApprovalStatus = AvrApprovalStatus.ManagerApproved;
 
             await _context.SaveChangesAsync();
+
+            // Log: submitted to next step
+            await LogHistoryAsync(wp.Id, nextStep, WorkflowAction.Submitted, approverUserId,
+                $"Передан на шаг «{nextStep.StepName}»");
 
             await CreateTaskForStepAsync(wp, nextStep, approverUserId);
             await SendNotificationForStepAsync(wp, nextStep);
@@ -182,6 +199,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
             wp.DirectorApprovedAt = DateTime.UtcNow;
             wp.DirectorApprovedById = approverUserId;
             await _context.SaveChangesAsync();
+
+            // Log history: final approval
+            await LogHistoryAsync(wp.Id, currentStep, WorkflowAction.FinalApproved, approverUserId,
+                "АВР полностью утверждён");
 
             _logger.LogInformation("AVR workflow completed for WP#{Id}. Final approval.", workProgressId);
 
@@ -232,6 +253,10 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         wp.CurrentStepOrder = rejectToStep.StepOrder;
         wp.RejectionReason = reason;
         await _context.SaveChangesAsync();
+
+        // Log history: rejected
+        await LogHistoryAsync(wp.Id, currentStep, WorkflowAction.Rejected, rejectorUserId,
+            $"Отклонён на шаге «{currentStep.StepName}». Причина: {reason}. Возвращён на шаг «{rejectToStep.StepName}»");
 
         // Create task for the rejection target role
         await CreateTaskForStepAsync(wp, rejectToStep, rejectorUserId, 
@@ -383,6 +408,42 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send notification for step {StepName}", step.StepName);
+        }
+    }
+
+    /// <summary>
+    /// Записать событие в историю Workflow
+    /// </summary>
+    private async Task LogHistoryAsync(int workProgressId, WorkflowStep step, WorkflowAction action, string userId, string? notes = null)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            var roleName = step.RoleId;
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == step.RoleId || r.Name == step.RoleId);
+            if (role?.Name != null) roleName = role.Name;
+
+            var history = new WorkflowHistory
+            {
+                WorkProgressId = workProgressId,
+                StepOrder = step.StepOrder,
+                StepName = step.StepName,
+                Action = action,
+                UserId = userId,
+                UserName = user != null ? $"{user.LastName} {user.FirstName}" : "Системный пользователь",
+                RoleName = roleName,
+                DueDate = DateTime.UtcNow.AddDays(3), // стандартный дедлайн 3 дня
+                ActionDate = DateTime.UtcNow,
+                Notes = notes,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.WorkflowHistories.Add(history);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log workflow history for WP#{Id}, action: {Action}", workProgressId, action);
         }
     }
 

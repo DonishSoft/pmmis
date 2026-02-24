@@ -247,6 +247,96 @@
             </div>
         </div>
     </div>
+
+    @{
+        var historyList = ViewBag.WorkflowHistory as List<PMMIS.Domain.Entities.WorkflowHistory>;
+    }
+
+    @if (historyList != null && historyList.Any())
+    {
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>История утверждения</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40px"></th>
+                                <th>Шаг</th>
+                                <th>Действие</th>
+                                <th>Пользователь</th>
+                                <th>Роль</th>
+                                <th>Дата</th>
+                                <th>Дедлайн</th>
+                                <th>Примечание</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var h in historyList)
+                            {
+                                var actionIcon = h.Action switch
+                                {
+                                    PMMIS.Domain.Entities.WorkflowAction.Created => "bi-plus-circle text-primary",
+                                    PMMIS.Domain.Entities.WorkflowAction.Submitted => "bi-send text-info",
+                                    PMMIS.Domain.Entities.WorkflowAction.Approved => "bi-check-circle text-success",
+                                    PMMIS.Domain.Entities.WorkflowAction.FinalApproved => "bi-trophy text-success",
+                                    PMMIS.Domain.Entities.WorkflowAction.Rejected => "bi-x-circle text-danger",
+                                    PMMIS.Domain.Entities.WorkflowAction.Edited => "bi-pencil text-warning",
+                                    PMMIS.Domain.Entities.WorkflowAction.Resubmitted => "bi-arrow-repeat text-info",
+                                    _ => "bi-circle text-muted"
+                                };
+                                var actionLabel = h.Action switch
+                                {
+                                    PMMIS.Domain.Entities.WorkflowAction.Created => "Создан",
+                                    PMMIS.Domain.Entities.WorkflowAction.Submitted => "Отправлен",
+                                    PMMIS.Domain.Entities.WorkflowAction.Approved => "Утверждён",
+                                    PMMIS.Domain.Entities.WorkflowAction.FinalApproved => "Финально утверждён",
+                                    PMMIS.Domain.Entities.WorkflowAction.Rejected => "Отклонён",
+                                    PMMIS.Domain.Entities.WorkflowAction.Edited => "Отредактирован",
+                                    PMMIS.Domain.Entities.WorkflowAction.Resubmitted => "Повторно отправлен",
+                                    _ => "—"
+                                };
+                                var rowClass = h.IsOverdue ? "table-danger" : 
+                                              h.Action == PMMIS.Domain.Entities.WorkflowAction.Rejected ? "table-warning" : "";
+                                <tr class="@rowClass">
+                                    <td class="text-center"><i class="bi @actionIcon fs-5"></i></td>
+                                    <td>
+                                        <span class="badge bg-secondary">@h.StepOrder</span>
+                                        <span class="ms-1 small">@h.StepName</span>
+                                    </td>
+                                    <td><strong>@actionLabel</strong></td>
+                                    <td>@h.UserName</td>
+                                    <td><span class="badge bg-outline-secondary border">@h.RoleName</span></td>
+                                    <td>
+                                        <span class="@(h.IsOverdue ? "text-danger fw-bold" : "")">
+                                            @h.ActionDate.AddHours(5).ToString("dd.MM.yyyy HH:mm")
+                                        </span>
+                                        @if (h.IsOverdue)
+                                        {
+                                            <br/><small class="text-danger"><i class="bi bi-exclamation-triangle"></i> Просрочено</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (h.DueDate.HasValue)
+                                        {
+                                            @h.DueDate.Value.AddHours(5).ToString("dd.MM.yyyy HH:mm")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td><small class="text-muted">@h.Notes</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <!-- Reject Modal -->

@@ -109,6 +109,7 @@ public class WorkProgress : BaseEntity
     // Navigation
     public ICollection<Document> Documents { get; set; } = new List<Document>();
     public ICollection<ContractIndicatorProgress> IndicatorProgresses { get; set; } = new List<ContractIndicatorProgress>();
+    public ICollection<WorkflowHistory> WorkflowHistories { get; set; } = new List<WorkflowHistory>();
 }
 
 /// <summary>
