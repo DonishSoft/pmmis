@@ -271,6 +271,11 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Plan comparison panel -->
+                        <div id="planComparisonPanel" class="mt-3" style="display: none;">
+                            <div class="border rounded p-3" id="planComparisonContent"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -770,6 +775,11 @@
             if (scopeInput && data.description) {
                 scopeInput.value = data.description;
             }
+
+            // Store plan estimated amount and show comparison
+            planEstimatedAmount = data.estimatedAmount || 0;
+            planReferenceNo = data.referenceNo || '';
+            updatePlanComparison();
             
             // Auto-select project
             if (data.projectId) {
@@ -942,11 +952,73 @@
         const tjs = parseFloat(contractAmountTjs.value) || 0;
         const rate = parseFloat(contractExchangeRate.value) || 0;
         contractAmountUsd.value = rate > 0 ? (tjs / rate).toFixed(2) : '';
+        updatePlanComparison();
     }
 
-    currencySelect.addEventListener('change', toggleCurrencyFields);
+    currencySelect.addEventListener('change', () => { toggleCurrencyFields(); updatePlanComparison(); });
     if (signingDateInput) signingDateInput.addEventListener('change', () => { if (currencySelect.value === '1') fetchRate(); });
     contractAmountTjs.addEventListener('input', calculateUsdFromTjs);
+    contractAmountUsd.addEventListener('input', updatePlanComparison);
+
+    // === Plan comparison logic ===
+    let planEstimatedAmount = 0;
+    let planReferenceNo = '';
+
+    function fmtUsd(n) { return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n); }
+
+    function updatePlanComparison() {
+        const panel = document.getElementById('planComparisonPanel');
+        const content = document.getElementById('planComparisonContent');
+        if (!planEstimatedAmount || planEstimatedAmount <= 0) {
+            panel.style.display = 'none';
+            return;
+        }
+
+        const contractUsd = parseFloat(contractAmountUsd.value) || 0;
+        const isTjs = currencySelect.value === '1';
+        const rate = parseFloat(contractExchangeRate.value) || 0;
+
+        let html = `<div class="d-flex align-items-center gap-3 mb-2">
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 fs-6">
+                <i class="bi bi-clipboard-data me-1"></i>План: <strong>${fmtUsd(planEstimatedAmount)}</strong>
+            </span>`;
+
+        if (isTjs && rate > 0) {
+            const planTjs = planEstimatedAmount * rate;
+            html += `<span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2">
+                ≈ ${new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(planTjs)} TJS (курс: ${rate.toFixed(4)})
+            </span>`;
+        }
+        html += `</div>`;
+
+        if (contractUsd > 0) {
+            const diff = contractUsd - planEstimatedAmount;
+            const diffPercent = ((diff / planEstimatedAmount) * 100).toFixed(1);
+
+            if (diff > 0) {
+                html += `<div class="alert alert-danger mb-0 py-2">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Превышение плана!</strong> Сумма контракта превышает план на 
+                    <strong>${fmtUsd(Math.abs(diff))}</strong> (+${Math.abs(diffPercent)}%)
+                </div>`;
+            } else if (diff < 0) {
+                html += `<div class="alert alert-success mb-0 py-2">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Сумма ниже плана на <strong>${fmtUsd(Math.abs(diff))}</strong> (${Math.abs(diffPercent)}% экономия)
+                </div>`;
+            } else {
+                html += `<div class="alert alert-info mb-0 py-2">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Сумма контракта совпадает с планом
+                </div>`;
+            }
+        } else {
+            html += `<div class="text-muted small"><i class="bi bi-info-circle me-1"></i>Введите сумму контракта для сравнения</div>`;
+        }
+
+        content.innerHTML = html;
+        panel.style.display = '';
+    }
 
     // === Restore form state after validation failure ===
     // 1. Restore TJS fields visibility
