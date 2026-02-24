@@ -392,6 +392,30 @@ public class WorkProgressReportsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>
+    /// API: Получить финансовые данные контракта (для AJAX)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetContractFinancials(int contractId)
+    {
+        var contract = await _context.Contracts
+            .Include(c => c.Payments)
+            .FirstOrDefaultAsync(c => c.Id == contractId);
+
+        if (contract == null)
+            return Json(new { success = false });
+
+        return Json(new
+        {
+            success = true,
+            contractAmount = contract.FinalAmount,
+            paidAmount = contract.PaidAmount,
+            remainingAmount = contract.RemainingAmount,
+            currency = contract.Currency.ToString(),
+            paidPercent = contract.PaidPercent
+        });
+    }
+
     #region Helpers
 
     private async Task PopulateViewModel(WorkProgressFormViewModel viewModel, int? contractId)

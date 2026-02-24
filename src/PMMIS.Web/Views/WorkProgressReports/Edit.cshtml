@@ -67,6 +67,53 @@
                                 <textarea asp-for="WorkProgress.Issues" class="form-control" rows="2"></textarea>
                             </div>
                         </div>
+
+                        <!-- ═══ Финансы и примерная сумма к оплате ═══ -->
+                        <div id="financialSection" class="mt-3" style="display:none;">
+                            <hr class="my-3">
+                            <h6 class="mb-3"><i class="bi bi-currency-dollar me-2"></i>Финансовая информация</h6>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center bg-light">
+                                        <small class="text-muted d-block">Общая сумма контракта</small>
+                                        <strong class="fs-5 text-primary" id="contractAmountDisplay">—</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center bg-light">
+                                        <small class="text-muted d-block">Уже оплачено</small>
+                                        <strong class="fs-5 text-success" id="paidAmountDisplay">—</strong>
+                                        <div class="progress mt-1" style="height: 4px;">
+                                            <div class="progress-bar bg-success" id="paidProgressBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center" style="background: #ecfdf5;">
+                                        <small class="text-muted d-block">Остаток для оплаты</small>
+                                        <strong class="fs-5 text-dark" id="remainingAmountDisplay">—</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Примерная сумма к оплате</label>
+                                    <div class="input-group">
+                                        <input type="number" asp-for="WorkProgress.EstimatedPaymentAmount" 
+                                               class="form-control" id="estimatedAmount" 
+                                               step="0.01" min="0" placeholder="0.00" />
+                                        <span class="input-group-text" id="currencyLabel">USD</span>
+                                    </div>
+                                    <small class="text-muted">Сумма может быть изменена при создании платежа</small>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div id="amountWarning" class="alert alert-warning py-2 px-3 mb-0 w-100" style="display:none;">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        <span id="warningText"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -233,5 +280,58 @@
             }
         });
     });
+
+    // ========================
+    // Financial Data
+    // ========================
+    let contractFinancials = null;
+
+    async function loadFinancials(contractId) {
+        if (!contractId) return;
+        try {
+            const resp = await fetch(`@Url.Action("GetContractFinancials")?contractId=${contractId}`);
+            const data = await resp.json();
+            if (data.success) {
+                contractFinancials = data;
+                const fmt = (v) => parseFloat(v).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('contractAmountDisplay').textContent = fmt(data.contractAmount) + ' ' + data.currency;
+                document.getElementById('paidAmountDisplay').textContent = fmt(data.paidAmount) + ' ' + data.currency;
+                document.getElementById('remainingAmountDisplay').textContent = fmt(data.remainingAmount) + ' ' + data.currency;
+                document.getElementById('paidProgressBar').style.width = Math.min(100, data.paidPercent) + '%';
+                document.getElementById('currencyLabel').textContent = data.currency;
+                document.getElementById('financialSection').style.display = 'block';
+                validateAmount();
+            }
+        } catch (e) { console.error('Failed to load financials:', e); }
+    }
+
+    function validateAmount() {
+        const input = document.getElementById('estimatedAmount');
+        const warning = document.getElementById('amountWarning');
+        const val = parseFloat(input?.value) || 0;
+
+        if (!contractFinancials || val === 0) {
+            warning.style.display = 'none';
+            input?.classList.remove('is-invalid');
+            return;
+        }
+
+        const remaining = contractFinancials.remainingAmount;
+        if (val > remaining) {
+            const fmt = parseFloat(remaining).toLocaleString('ru-RU', { minimumFractionDigits: 2 });
+            document.getElementById('warningText').textContent = 
+                `Сумма превышает остаток (${fmt} ${contractFinancials.currency})`;
+            warning.style.display = 'block';
+            input.classList.add('is-invalid');
+        } else {
+            warning.style.display = 'none';
+            input.classList.remove('is-invalid');
+        }
+    }
+
+    document.getElementById('estimatedAmount')?.addEventListener('input', validateAmount);
+
+    // Load financials on page load
+    loadFinancials('@Model.WorkProgress.ContractId');
 </script>
 }

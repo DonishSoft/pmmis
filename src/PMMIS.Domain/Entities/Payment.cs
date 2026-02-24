@@ -64,6 +64,12 @@ public class WorkProgress : BaseEntity
 {
     public DateTime ReportDate { get; set; }
     public decimal CompletedPercent { get; set; }
+    
+    /// <summary>
+    /// Примерная сумма к оплате (может быть изменена позже)
+    /// </summary>
+    public decimal? EstimatedPaymentAmount { get; set; }
+    
     public string? Description { get; set; }
     public string? Issues { get; set; }
     
