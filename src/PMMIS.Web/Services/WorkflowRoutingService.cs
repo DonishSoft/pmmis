@@ -71,8 +71,9 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
         if (wp == null) return;
 
+        var ct = wp.Contract.Type;
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "AVR" && s.IsActive)
+            .Where(s => s.WorkflowType == "AVR" && s.ContractType == ct && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -127,8 +128,9 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
         if (wp == null || wp.CurrentStepOrder == null) return;
 
+        var ct = wp.Contract.Type;
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "AVR" && s.IsActive)
+            .Where(s => s.WorkflowType == "AVR" && s.ContractType == ct && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -212,7 +214,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
             // ──── CHAIN: AVR approved → trigger Payment workflow ────
             // Notify payment role to create a payment for this AVR
             var paymentSteps = await _context.WorkflowSteps
-                .Where(s => s.WorkflowType == "Payment" && s.IsActive)
+                .Where(s => s.WorkflowType == "Payment" && s.ContractType == ct && s.IsActive)
                 .OrderBy(s => s.StepOrder)
                 .ToListAsync();
 
@@ -273,8 +275,9 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
         if (wp == null || wp.CurrentStepOrder == null) return;
 
+        var ct = wp.Contract.Type;
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "AVR" && s.IsActive)
+            .Where(s => s.WorkflowType == "AVR" && s.ContractType == ct && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -321,11 +324,14 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
     public async Task<bool> CanUserActOnCurrentStepAsync(int workProgressId, string userId)
     {
-        var wp = await _context.WorkProgresses.FindAsync(workProgressId);
+        var wp = await _context.WorkProgresses
+            .Include(w => w.Contract)
+            .FirstOrDefaultAsync(w => w.Id == workProgressId);
         if (wp?.CurrentStepOrder == null) return false;
 
         var step = await _context.WorkflowSteps
             .FirstOrDefaultAsync(s => s.WorkflowType == "AVR" 
+                                   && s.ContractType == wp.Contract.Type
                                    && s.StepOrder == wp.CurrentStepOrder 
                                    && s.IsActive);
         if (step == null) return false;
@@ -340,11 +346,13 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
     public async Task<WorkflowStepInfo?> GetCurrentStepInfoAsync(int workProgressId)
     {
-        var wp = await _context.WorkProgresses.FindAsync(workProgressId);
+        var wp = await _context.WorkProgresses
+            .Include(w => w.Contract)
+            .FirstOrDefaultAsync(w => w.Id == workProgressId);
         if (wp == null) return null;
 
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "AVR" && s.IsActive)
+            .Where(s => s.WorkflowType == "AVR" && s.ContractType == wp.Contract.Type && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -504,7 +512,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         if (payment == null) return;
 
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "Payment" && s.IsActive)
+            .Where(s => s.WorkflowType == "Payment" && s.ContractType == payment.Contract.Type && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -559,7 +567,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         if (payment == null || payment.CurrentStepOrder == null) return;
 
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "Payment" && s.IsActive)
+            .Where(s => s.WorkflowType == "Payment" && s.ContractType == payment.Contract.Type && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -641,7 +649,7 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         if (payment == null || payment.CurrentStepOrder == null) return;
 
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "Payment" && s.IsActive)
+            .Where(s => s.WorkflowType == "Payment" && s.ContractType == payment.Contract.Type && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -685,11 +693,14 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
     public async Task<bool> CanUserActOnPaymentStepAsync(int paymentId, string userId)
     {
-        var payment = await _context.Payments.FindAsync(paymentId);
+        var payment = await _context.Payments
+            .Include(p => p.Contract)
+            .FirstOrDefaultAsync(p => p.Id == paymentId);
         if (payment?.CurrentStepOrder == null) return false;
 
         var step = await _context.WorkflowSteps
             .FirstOrDefaultAsync(s => s.WorkflowType == "Payment" 
+                                   && s.ContractType == payment.Contract.Type
                                    && s.StepOrder == payment.CurrentStepOrder 
                                    && s.IsActive);
         if (step == null) return false;
@@ -703,11 +714,13 @@ public class WorkflowRoutingService : IWorkflowRoutingService
 
     public async Task<WorkflowStepInfo?> GetPaymentStepInfoAsync(int paymentId)
     {
-        var payment = await _context.Payments.FindAsync(paymentId);
+        var payment = await _context.Payments
+            .Include(p => p.Contract)
+            .FirstOrDefaultAsync(p => p.Id == paymentId);
         if (payment == null) return null;
 
         var steps = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == "Payment" && s.IsActive)
+            .Where(s => s.WorkflowType == "Payment" && s.ContractType == payment.Contract.Type && s.IsActive)
             .OrderBy(s => s.StepOrder)
             .ToListAsync();
 

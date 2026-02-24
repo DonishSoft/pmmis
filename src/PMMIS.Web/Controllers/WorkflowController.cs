@@ -32,6 +32,7 @@ public class WorkflowController : Controller
         var steps = await _context.WorkflowSteps
             .Include(s => s.Role)
             .OrderBy(s => s.WorkflowType)
+            .ThenBy(s => s.ContractType)
             .ThenBy(s => s.StepOrder)
             .ToListAsync();
 
@@ -39,36 +40,44 @@ public class WorkflowController : Controller
             .OrderBy(r => r.Name)
             .ToListAsync();
 
-        // JSON data for Syncfusion components
         var rolesJson = roles.Select(r => new { id = r.Id, name = r.Name }).ToList();
-        var avrStepsJson = steps.Where(s => s.WorkflowType == "AVR").Select(s => new
-        {
-            id = s.Id,
-            stepOrder = s.StepOrder,
-            stepName = s.StepName,
-            actionType = s.ActionType,
-            roleId = s.RoleId,
-            roleName = s.Role?.Name ?? "",
-            canReject = s.CanReject,
-            rejectToStepOrder = s.RejectToStepOrder,
-            isActive = s.IsActive
-        }).ToList();
-        var paymentStepsJson = steps.Where(s => s.WorkflowType == "Payment").Select(s => new
-        {
-            id = s.Id,
-            stepOrder = s.StepOrder,
-            stepName = s.StepName,
-            actionType = s.ActionType,
-            roleId = s.RoleId,
-            roleName = s.Role?.Name ?? "",
-            canReject = s.CanReject,
-            rejectToStepOrder = s.RejectToStepOrder,
-            isActive = s.IsActive
-        }).ToList();
 
-        ViewBag.RolesJson = System.Text.Json.JsonSerializer.Serialize(rolesJson);
-        ViewBag.AvrStepsJson = System.Text.Json.JsonSerializer.Serialize(avrStepsJson);
-        ViewBag.PaymentStepsJson = System.Text.Json.JsonSerializer.Serialize(paymentStepsJson);
+        // Helper to build step JSON
+        object StepToJson(WorkflowStep s) => new
+        {
+            id = s.Id,
+            stepOrder = s.StepOrder,
+            stepName = s.StepName,
+            actionType = s.ActionType,
+            roleId = s.RoleId,
+            roleName = s.Role?.Name ?? "",
+            canReject = s.CanReject,
+            rejectToStepOrder = s.RejectToStepOrder,
+            isActive = s.IsActive
+        };
+
+        // 6 workflow sets: AVR×3 + Payment×3
+        var contractTypes = new[] { ContractType.Works, ContractType.Consulting, ContractType.Goods };
+        var workflowData = new Dictionary<string, object>();
+
+        foreach (var ct in contractTypes)
+        {
+            var ctName = ct.ToString();
+            workflowData[$"avr{ctName}"] = steps
+                .Where(s => s.WorkflowType == "AVR" && s.ContractType == ct)
+                .Select(StepToJson).ToList();
+            workflowData[$"payment{ctName}"] = steps
+                .Where(s => s.WorkflowType == "Payment" && s.ContractType == ct)
+                .Select(StepToJson).ToList();
+        }
+
+        var jsonOpts = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        };
+
+        ViewBag.RolesJson = System.Text.Json.JsonSerializer.Serialize(rolesJson, jsonOpts);
+        ViewBag.WorkflowDataJson = System.Text.Json.JsonSerializer.Serialize(workflowData, jsonOpts);
 
         return View();
     }
@@ -83,9 +92,12 @@ public class WorkflowController : Controller
         if (model?.Steps == null)
             return BadRequest(new { success = false, message = "Нет данных" });
 
-        // Remove existing steps for this workflow type
+        if (!Enum.TryParse<ContractType>(model.ContractTypeName, out var contractType))
+            return BadRequest(new { success = false, message = "Неизвестный тип контракта" });
+
+        // Remove existing steps for this workflow type + contract type
         var existing = await _context.WorkflowSteps
-            .Where(s => s.WorkflowType == model.WorkflowType)
+            .Where(s => s.WorkflowType == model.WorkflowType && s.ContractType == contractType)
             .ToListAsync();
         _context.WorkflowSteps.RemoveRange(existing);
 
@@ -96,6 +108,7 @@ public class WorkflowController : Controller
             _context.WorkflowSteps.Add(new WorkflowStep
             {
                 WorkflowType = model.WorkflowType,
+                ContractType = contractType,
                 StepOrder = order++,
                 StepName = step.StepName,
                 ActionType = step.ActionType,
@@ -116,6 +129,7 @@ public class WorkflowController : Controller
 public class WorkflowSaveModel
 {
     public string WorkflowType { get; set; } = string.Empty;
+    public string ContractTypeName { get; set; } = string.Empty;
     public List<WorkflowStepInput> Steps { get; set; } = new();
 }
 

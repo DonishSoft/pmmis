@@ -7,11 +7,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2><i class="bi bi-arrow-repeat me-2"></i>Цепочка утверждений</h2>
-            <p class="text-muted mb-0">Настройка маршрута утверждения АВР и платежей по ролям</p>
+            <p class="text-muted mb-0">Настройка маршрута утверждения АВР и платежей по видам контрактов</p>
         </div>
     </div>
 
-    <!-- Tabs -->
+    <!-- Top-level tabs: AVR | Payment -->
     <ul class="nav nav-tabs" role="tablist">
         <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-avr" type="button">
@@ -29,58 +29,84 @@
         <!-- ═══ AVR Tab ═══ -->
         <div class="tab-pane fade show active" id="tab-avr" role="tabpanel">
             <div class="card border-0 shadow-sm rounded-0 rounded-bottom">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                    <span class="text-muted small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        При отказе документ вернётся на указанный шаг (пусто = на 1-й)
-                    </span>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="addStep('AVR')">
-                            <i class="bi bi-plus-lg me-1"></i>Добавить шаг
-                        </button>
-                        <button class="btn btn-sm btn-primary" onclick="saveWorkflow('AVR')">
-                            <i class="bi bi-check-lg me-1"></i>Сохранить
-                        </button>
+                <div class="card-body p-0">
+                    <!-- Sub-tabs: contract types -->
+                    <ul class="nav nav-pills p-3 pb-0 gap-2" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active subtab-btn" data-bs-toggle="tab" data-bs-target="#avr-works" type="button" onclick="refreshGrid('avrWorks')">
+                                🏗️ Строительные
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link subtab-btn" data-bs-toggle="tab" data-bs-target="#avr-consulting" type="button" onclick="refreshGrid('avrConsulting')">
+                                💼 Консультации
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link subtab-btn" data-bs-toggle="tab" data-bs-target="#avr-goods" type="button" onclick="refreshGrid('avrGoods')">
+                                📦 Товары
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        @foreach (var ct in new[] { ("works", "Works", "Строительные"), ("consulting", "Consulting", "Консультации"), ("goods", "Goods", "Товары") })
+                        {
+                            var isFirst = ct.Item1 == "works";
+                            <div class="tab-pane fade @(isFirst ? "show active" : "")" id="avr-@ct.Item1" role="tabpanel">
+                                @await Html.PartialAsync("_WorkflowSubTab", new ViewDataDictionary(ViewData) {
+                                    { "GridId", $"avr{ct.Item2}-grid" },
+                                    { "FlowId", $"avr{ct.Item2}-flow" },
+                                    { "DataKey", $"avr{ct.Item2}" },
+                                    { "WorkflowType", "AVR" },
+                                    { "ContractType", ct.Item2 },
+                                    { "Label", ct.Item3 }
+                                })
+                            </div>
+                        }
                     </div>
                 </div>
-                <div class="card-body p-0">
-                    <div id="avr-grid"></div>
-                </div>
-            </div>
-            <div class="card border-0 shadow-sm mt-3">
-                <div class="card-header bg-white py-2">
-                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</strong>
-                </div>
-                <div class="card-body" id="avr-flow" style="min-height: 60px;"></div>
             </div>
         </div>
 
         <!-- ═══ Payment Tab ═══ -->
         <div class="tab-pane fade" id="tab-payment" role="tabpanel">
             <div class="card border-0 shadow-sm rounded-0 rounded-bottom">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                    <span class="text-muted small">
-                        <i class="bi bi-info-circle me-1"></i>
-                        При отказе документ вернётся на указанный шаг (пусто = на 1-й)
-                    </span>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="addStep('Payment')">
-                            <i class="bi bi-plus-lg me-1"></i>Добавить шаг
-                        </button>
-                        <button class="btn btn-sm btn-primary" onclick="saveWorkflow('Payment')">
-                            <i class="bi bi-check-lg me-1"></i>Сохранить
-                        </button>
+                <div class="card-body p-0">
+                    <!-- Sub-tabs: contract types -->
+                    <ul class="nav nav-pills p-3 pb-0 gap-2" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active subtab-btn" data-bs-toggle="tab" data-bs-target="#payment-works" type="button" onclick="refreshGrid('paymentWorks')">
+                                🏗️ Строительные
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link subtab-btn" data-bs-toggle="tab" data-bs-target="#payment-consulting" type="button" onclick="refreshGrid('paymentConsulting')">
+                                💼 Консультации
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link subtab-btn" data-bs-toggle="tab" data-bs-target="#payment-goods" type="button" onclick="refreshGrid('paymentGoods')">
+                                📦 Товары
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        @foreach (var ct in new[] { ("works", "Works", "Строительные"), ("consulting", "Consulting", "Консультации"), ("goods", "Goods", "Товары") })
+                        {
+                            var isFirst = ct.Item1 == "works";
+                            <div class="tab-pane fade @(isFirst ? "show active" : "")" id="payment-@ct.Item1" role="tabpanel">
+                                @await Html.PartialAsync("_WorkflowSubTab", new ViewDataDictionary(ViewData) {
+                                    { "GridId", $"payment{ct.Item2}-grid" },
+                                    { "FlowId", $"payment{ct.Item2}-flow" },
+                                    { "DataKey", $"payment{ct.Item2}" },
+                                    { "WorkflowType", "Payment" },
+                                    { "ContractType", ct.Item2 },
+                                    { "Label", ct.Item3 }
+                                })
+                            </div>
+                        }
                     </div>
                 </div>
-                <div class="card-body p-0">
-                    <div id="payment-grid"></div>
-                </div>
-            </div>
-            <div class="card border-0 shadow-sm mt-3">
-                <div class="card-header bg-white py-2">
-                    <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</strong>
-                </div>
-                <div class="card-body" id="payment-flow" style="min-height: 60px;"></div>
             </div>
         </div>
     </div>
@@ -108,14 +134,15 @@
         border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px;
     }
     .e-grid .e-headercell { background: #f1f5f9 !important; font-weight: 600 !important; }
+    .subtab-btn { font-size: 14px; }
+    .subtab-btn.active { background: #6366f1 !important; color: #fff !important; }
 </style>
 
 @section Scripts {
 <script>
     // ─── Data ───
     const rolesData = @Html.Raw(ViewBag.RolesJson);
-    let avrData = @Html.Raw(ViewBag.AvrStepsJson);
-    let paymentData = @Html.Raw(ViewBag.PaymentStepsJson);
+    const workflowData = @Html.Raw(ViewBag.WorkflowDataJson);
 
     const actionTypesList = [
         { value: 'Create', text: '📝 Создание' },
@@ -127,7 +154,10 @@
     const actionIcons = { 'Create': '📝', 'Review': '👁️', 'Approve': '✅', 'FinalApprove': '🏆' };
     const actionLabels = { 'Create': 'Создание', 'Review': 'Проверка', 'Approve': 'Утверждение', 'FinalApprove': 'Финал' };
 
-    // ─── Custom edit templates for DropDownList (fixes "No records found" bug) ───
+    // ─── Grid registry ───
+    const grids = {};
+
+    // ─── Custom edit templates ───
     let actionTypeDropdown, roleDropdown;
 
     const actionTypeEditParams = {
@@ -163,7 +193,7 @@
     };
 
     // ─── Create Grid ───
-    function createWorkflowGrid(elementId, data, type) {
+    function createWorkflowGrid(elementId, data, dataKey) {
         const grid = new ej.grids.Grid({
             dataSource: data,
             allowRowDragAndDrop: true,
@@ -222,63 +252,52 @@
             ],
             actionComplete: function(args) {
                 if (args.requestType === 'save' || args.requestType === 'delete') {
-                    setTimeout(() => { renumberGrid(grid, type); updateFlow(type); }, 50);
+                    setTimeout(() => { renumberGrid(grid, dataKey); updateFlow(dataKey); }, 50);
                 }
             },
             rowDrop: function(args) {
-                // After drag-and-drop, renumber all steps
-                args.cancel = true; // Cancel default to handle manually
+                args.cancel = true;
                 const data = grid.dataSource;
                 const fromIndex = args.fromIndex;
                 const dropIndex = args.dropIndex;
                 if (fromIndex === dropIndex) return;
-                // Move the dragged item
                 const moved = data.splice(fromIndex, 1)[0];
                 data.splice(dropIndex, 0, moved);
-                // Renumber
                 for (let i = 0; i < data.length; i++) data[i].stepOrder = i + 1;
                 grid.dataSource = [...data];
                 grid.refresh();
-                setTimeout(() => updateFlow(type), 100);
+                setTimeout(() => updateFlow(dataKey), 100);
             },
-            dataBound: function() { updateFlow(type); },
+            dataBound: function() { updateFlow(dataKey); },
             height: 'auto',
             gridLines: 'Horizontal',
             allowSelection: true,
             selectionSettings: { type: 'Single' }
         });
         grid.appendTo('#' + elementId);
+        grids[dataKey] = grid;
         return grid;
     }
 
-    // ─── Add Step (appends at end) ───
-    function addStep(type) {
-        const grid = type === 'AVR' ? avrGrid : paymentGrid;
+    // ─── Add Step ───
+    function addStep(dataKey) {
+        const grid = grids[dataKey];
+        if (!grid) return;
         const src = grid.dataSource || [];
         const next = src.length > 0 ? Math.max(...src.map(s => s.stepOrder)) + 1 : 1;
-        const newStep = {
-            stepOrder: next,
-            stepName: '',
-            actionType: 'Review',
+        src.push({
+            stepOrder: next, stepName: '', actionType: 'Review',
             roleId: rolesData.length > 0 ? rolesData[0].id : '',
             roleName: rolesData.length > 0 ? rolesData[0].name : '',
-            canReject: true,
-            rejectToStepOrder: null,
-            isActive: true
-        };
-        // Push to end of dataSource and refresh (addRecord inserts at index 0)
-        src.push(newStep);
+            canReject: true, rejectToStepOrder: null, isActive: true
+        });
         grid.dataSource = [...src];
         grid.refresh();
-        // Open edit dialog for the new row
-        setTimeout(() => {
-            grid.selectRow(src.length - 1);
-            grid.startEdit();
-        }, 200);
+        setTimeout(() => { grid.selectRow(src.length - 1); grid.startEdit(); }, 200);
     }
 
     // ─── Renumber ───
-    function renumberGrid(grid, type) {
+    function renumberGrid(grid, dataKey) {
         const data = grid.dataSource;
         if (!data) return;
         for (let i = 0; i < data.length; i++) data[i].stepOrder = i + 1;
@@ -286,11 +305,12 @@
     }
 
     // ─── Visual Flow ───
-    function updateFlow(type) {
-        const el = document.getElementById(type.toLowerCase() === 'avr' ? 'avr-flow' : 'payment-flow');
-        const grid = type === 'AVR' ? avrGrid : paymentGrid;
-        const data = grid ? grid.dataSource : [];
-        if (!data || data.length === 0) {
+    function updateFlow(dataKey) {
+        const el = document.getElementById(dataKey + '-flow');
+        const grid = grids[dataKey];
+        if (!el || !grid) return;
+        const data = grid.dataSource || [];
+        if (data.length === 0) {
             el.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox fs-3 d-block mb-1"></i>Нет шагов — нажмите «Добавить шаг»</div>';
             return;
         }
@@ -313,8 +333,9 @@
     }
 
     // ─── Save ───
-    async function saveWorkflow(type) {
-        const grid = type === 'AVR' ? avrGrid : paymentGrid;
+    async function saveWorkflow(workflowType, contractType, dataKey) {
+        const grid = grids[dataKey];
+        if (!grid) return;
         const data = grid.dataSource;
         if (!data || data.length === 0) { showToast('Добавьте хотя бы один шаг', 'warning'); return; }
 
@@ -332,11 +353,16 @@
             const resp = await fetch('@Url.Action("Save")', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ WorkflowType: type, Steps: steps })
+                body: JSON.stringify({ WorkflowType: workflowType, ContractTypeName: contractType, Steps: steps })
             });
             const result = await resp.json();
             showToast(result.success ? result.message : ('Ошибка: ' + (result.message || '')), result.success ? 'success' : 'danger');
         } catch (e) { console.error(e); showToast('Ошибка сети', 'danger'); }
+    }
+
+    // ─── Refresh on tab switch ───
+    function refreshGrid(dataKey) {
+        setTimeout(() => { if (grids[dataKey]) grids[dataKey].refresh(); }, 150);
     }
 
     // ─── Toast ───
@@ -351,13 +377,16 @@
         setTimeout(() => t.remove(), 4000);
     }
 
-    // ─── Init ───
-    let avrGrid, paymentGrid;
+    // ─── Init all 6 grids ───
     document.addEventListener('DOMContentLoaded', function() {
-        avrGrid = createWorkflowGrid('avr-grid', avrData, 'AVR');
-        paymentGrid = createWorkflowGrid('payment-grid', paymentData, 'Payment');
-        document.querySelector('[data-bs-target="#tab-payment"]').addEventListener('shown.bs.tab', function() {
-            if (paymentGrid) paymentGrid.refresh();
+        const keys = ['avrWorks', 'avrConsulting', 'avrGoods', 'paymentWorks', 'paymentConsulting', 'paymentGoods'];
+        keys.forEach(key => {
+            createWorkflowGrid(key + '-grid', workflowData[key] || [], key);
+        });
+
+        // Refresh grids on Payment top-tab switch
+        document.querySelector('[data-bs-target="#tab-payment"]')?.addEventListener('shown.bs.tab', function() {
+            refreshGrid('paymentWorks');
         });
     });
 </script>

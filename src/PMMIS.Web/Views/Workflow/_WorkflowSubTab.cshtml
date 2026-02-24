@@ -1,0 +1,32 @@
+@{
+    var gridId = ViewData["GridId"]?.ToString() ?? "";
+    var flowId = ViewData["FlowId"]?.ToString() ?? "";
+    var dataKey = ViewData["DataKey"]?.ToString() ?? "";
+    var workflowType = ViewData["WorkflowType"]?.ToString() ?? "";
+    var contractType = ViewData["ContractType"]?.ToString() ?? "";
+    var label = ViewData["Label"]?.ToString() ?? "";
+}
+
+<div class="p-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small">
+            <i class="bi bi-info-circle me-1"></i>
+            При отказе документ вернётся на указанный шаг (пусто = на 1-й)
+        </span>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" onclick="addStep('@dataKey')">
+                <i class="bi bi-plus-lg me-1"></i>Добавить шаг
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="saveWorkflow('@workflowType', '@contractType', '@dataKey')">
+                <i class="bi bi-check-lg me-1"></i>Сохранить
+            </button>
+        </div>
+    </div>
+    <div id="@gridId"></div>
+    <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white py-2">
+            <strong><i class="bi bi-signpost-2 me-2"></i>Визуальная схема</strong>
+        </div>
+        <div class="card-body" id="@flowId" style="min-height: 60px;"></div>
+    </div>
+</div>

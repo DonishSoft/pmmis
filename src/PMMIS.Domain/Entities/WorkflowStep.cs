@@ -12,6 +12,11 @@ public class WorkflowStep : BaseEntity
     public string WorkflowType { get; set; } = string.Empty;
     
     /// <summary>
+    /// Вид контракта: Works, Consulting, Goods
+    /// </summary>
+    public ContractType? ContractType { get; set; }
+    
+    /// <summary>
     /// Порядок шага (1, 2, 3...)
     /// </summary>
     public int StepOrder { get; set; }
