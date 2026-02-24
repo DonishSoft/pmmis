@@ -151,15 +151,36 @@
                                         <div class="row g-2 align-items-center">
                                             <div class="col-md-4">
                                                 <label class="form-label small text-muted mb-1">Значение в этом АВР</label>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" name="ContractIndicators[@i].Value" 
-                                                           value="@ci.Value" class="form-control indicator-value"
-                                                           min="0" step="0.01" 
-                                                           data-target="@ci.TargetValue" 
-                                                           data-previous="@ci.PreviousAchieved"
-                                                           data-index="@i" />
-                                                    <span class="input-group-text">@ci.Unit</span>
-                                                </div>
+                                                @if (ci.Unit != null && ci.Unit.Contains("Да", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    <!-- Yes/No Toggle -->
+                                                    <input type="hidden" name="ContractIndicators[@i].Value" 
+                                                           id="indicatorVal_@i" value="@ci.Value" />
+                                                    <div class="form-check form-switch fs-5">
+                                                        <input class="form-check-input" type="checkbox" role="switch"
+                                                               id="indicatorSwitch_@i"
+                                                               @(ci.Value >= 1 ? "checked" : "")
+                                                               data-index="@i"
+                                                               data-target="@ci.TargetValue"
+                                                               data-previous="@ci.PreviousAchieved"
+                                                               onchange="toggleYesNo(this)" />
+                                                        <label class="form-check-label" id="indicatorSwitchLabel_@i">
+                                                            @(ci.Value >= 1 ? "Да ✅" : "Нет ❌")
+                                                        </label>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="number" name="ContractIndicators[@i].Value" 
+                                                               value="@ci.Value" class="form-control indicator-value"
+                                                               min="0" step="0.01" 
+                                                               data-target="@ci.TargetValue" 
+                                                               data-previous="@ci.PreviousAchieved"
+                                                               data-index="@i" />
+                                                        <span class="input-group-text">@ci.Unit</span>
+                                                    </div>
+                                                }
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label small text-muted mb-1">Примечания</label>
@@ -257,6 +278,26 @@
         else if (value >= 25) progressBar.classList.add('bg-warning');
         else progressBar.classList.add('bg-danger');
     });
+
+    // Yes/No toggle handler for Да/Нет indicators
+    function toggleYesNo(checkbox) {
+        const idx = checkbox.dataset.index;
+        const val = checkbox.checked ? 1 : 0;
+        document.getElementById('indicatorVal_' + idx).value = val;
+        document.getElementById('indicatorSwitchLabel_' + idx).textContent = checkbox.checked ? 'Да ✅' : 'Нет ❌';
+        
+        const target = parseFloat(checkbox.dataset.target) || 0;
+        const previous = parseFloat(checkbox.dataset.previous) || 0;
+        const newTotal = previous + val;
+        const percent = target > 0 ? Math.min(100, (newTotal / target) * 100) : 0;
+        const bar = document.getElementById('indicatorBar_' + idx);
+        if (bar) {
+            bar.style.width = percent.toFixed(0) + '%';
+            bar.textContent = newTotal + ' / ' + target;
+            bar.classList.remove('bg-success', 'bg-info', 'bg-warning', 'bg-danger');
+            bar.classList.add(percent >= 80 ? 'bg-success' : percent >= 50 ? 'bg-info' : percent >= 25 ? 'bg-warning' : 'bg-danger');
+        }
+    }
 
     // Indicator progress bar live updates
     document.querySelectorAll('.indicator-value').forEach(input => {
