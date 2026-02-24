@@ -62,6 +62,9 @@ builder.Services.AddScoped<PMMIS.Web.Services.IPermissionService, PMMIS.Web.Serv
 builder.Services.AddScoped<PMMIS.Web.Services.IUserHierarchyService, PMMIS.Web.Services.UserHierarchyService>();
 builder.Services.AddScoped<PMMIS.Web.Services.IDataAccessService, PMMIS.Web.Services.DataAccessService>();
 
+// Workflow Routing Service (approval chain)
+builder.Services.AddScoped<PMMIS.Web.Services.IWorkflowRoutingService, PMMIS.Web.Services.WorkflowRoutingService>();
+
 // File Upload Service
 builder.Services.AddScoped<PMMIS.Web.Services.IFileService, PMMIS.Web.Services.FileService>();
 

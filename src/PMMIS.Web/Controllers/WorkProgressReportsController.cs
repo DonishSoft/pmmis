@@ -25,19 +25,22 @@ public class WorkProgressReportsController : Controller
     private readonly IFileService _fileService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDataAccessService _dataAccessService;
+    private readonly IWorkflowRoutingService _workflowRouting;
 
     public WorkProgressReportsController(
         ApplicationDbContext context, 
         ITaskService taskService, 
         IFileService fileService,
         UserManager<ApplicationUser> userManager,
-        IDataAccessService dataAccessService)
+        IDataAccessService dataAccessService,
+        IWorkflowRoutingService workflowRouting)
     {
         _context = context;
         _taskService = taskService;
         _fileService = fileService;
         _userManager = userManager;
         _dataAccessService = dataAccessService;
+        _workflowRouting = workflowRouting;
     }
 
     /// <summary>
@@ -120,13 +123,99 @@ public class WorkProgressReportsController : Controller
 
         if (progress == null) return NotFound();
 
+        // Workflow info for approval buttons
+        var stepInfo = await _workflowRouting.GetCurrentStepInfoAsync(id);
+        var currentUser = await _userManager.GetUserAsync(User);
+        var canApprove = currentUser != null && await _workflowRouting.CanUserActOnCurrentStepAsync(id, currentUser.Id);
+
+        ViewBag.WorkflowStep = stepInfo;
+        ViewBag.CanApprove = canApprove;
+
         return View(progress);
+    }
+
+    /// <summary>
+    /// Утвердить АВР (продвинуть workflow на следующий шаг)
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Approve(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Challenge();
+
+        var canAct = await _workflowRouting.CanUserActOnCurrentStepAsync(id, userId);
+        if (!canAct)
+        {
+            TempData["Error"] = "У вас нет прав для утверждения на данном шаге.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        await _workflowRouting.AdvanceAsync(id, userId);
+
+        TempData["Success"] = "АВР утверждён. Задача передана на следующий шаг.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>
+    /// Отклонить АВР (вернуть на указанный шаг)
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reject(int id, string reason)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Challenge();
+
+        var canAct = await _workflowRouting.CanUserActOnCurrentStepAsync(id, userId);
+        if (!canAct)
+        {
+            TempData["Error"] = "У вас нет прав для отклонения на данном шаге.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            TempData["Error"] = "Укажите причину отклонения.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        await _workflowRouting.RejectAsync(id, userId, reason);
+
+        TempData["Success"] = "АВР отклонён. Задача на исправление назначена.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    /// <summary>
+    /// API: Получить статус Workflow для АВР (AJAX)
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetWorkflowStatus(int id)
+    {
+        var stepInfo = await _workflowRouting.GetCurrentStepInfoAsync(id);
+        if (stepInfo == null)
+            return Json(new { hasWorkflow = false });
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        var canApprove = currentUser != null && await _workflowRouting.CanUserActOnCurrentStepAsync(id, currentUser.Id);
+
+        return Json(new
+        {
+            hasWorkflow = true,
+            stepOrder = stepInfo.StepOrder,
+            stepName = stepInfo.StepName,
+            actionType = stepInfo.ActionType,
+            roleName = stepInfo.RoleName,
+            totalSteps = stepInfo.TotalSteps,
+            isCompleted = stepInfo.IsCompleted,
+            canReject = stepInfo.CanReject,
+            canApprove
+        });
     }
 
     /// <summary>
     /// Форма создания АВР
     /// </summary>
-    [RequirePermission(MenuKeys.WorkProgressReports, PermissionType.Create)]
     public async Task<IActionResult> Create(int? contractId)
     {
         var user = await _userManager.GetUserAsync(User);
@@ -241,32 +330,12 @@ public class WorkProgressReportsController : Controller
             // Update contract's work completed percent
             await UpdateContractProgress(progress.ContractId);
 
-            // Auto-create task for АВР review
-            var contract = await _context.Contracts
-                .Include(c => c.Contractor)
-                .FirstOrDefaultAsync(c => c.Id == progress.ContractId);
+            // Start workflow — automatically creates tasks/notifications for the next step
+            progress.SubmittedByUserId = userId;
+            await _context.SaveChangesAsync();
+            await _workflowRouting.StartWorkflowAsync(progress.Id, userId ?? "");
 
-            if (!string.IsNullOrEmpty(userId) && contract != null)
-            {
-                await _taskService.CreateAsync(new ProjectTask
-                {
-                    Title = $"Проверить АВР по контракту {contract.ContractNumber}",
-                    Description = $"Подрядчик: {contract.Contractor.Name}\n" +
-                                  $"Дата отчёта: {progress.ReportDate:dd.MM.yyyy}\n" +
-                                  $"Прогресс: {progress.CompletedPercent}%\n" +
-                                  $"{progress.Description}",
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.High,
-                    DueDate = DateTime.UtcNow.AddDays(3),
-                    AssigneeId = userId,
-                    AssignedById = userId,
-                    ContractId = progress.ContractId,
-                    WorkProgressId = progress.Id,
-                    ProjectId = contract.ProjectId
-                }, userId);
-            }
-
-            TempData["Success"] = "АВР создан. Задача на проверку добавлена.";
+            TempData["Success"] = "АВР создан. Задачи по цепочке утверждения назначены.";
             return RedirectToAction(nameof(Index));
         }
 

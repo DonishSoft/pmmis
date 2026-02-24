@@ -96,6 +96,83 @@
                 </div>
             </div>
 
+            @{
+                var stepInfo = ViewBag.WorkflowStep as PMMIS.Web.Services.WorkflowStepInfo;
+                var canApprove = (bool)(ViewBag.CanApprove ?? false);
+            }
+
+            @if (stepInfo != null)
+            {
+                <!-- Workflow Status Bar -->
+                <div class="card border-0 shadow-sm mb-4 border-start border-4 @(stepInfo.IsCompleted ? "border-success" : "border-warning")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">
+                                <i class="bi bi-diagram-3 me-2"></i>Цепочка утверждения
+                            </h6>
+                            @if (stepInfo.IsCompleted)
+                            {
+                                <span class="badge bg-success fs-6">✅ Утверждён</span>
+                            }
+                            else if (Model.ApprovalStatus == AvrApprovalStatus.Rejected)
+                            {
+                                <span class="badge bg-danger fs-6">❌ Отклонён</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark fs-6">
+                                    Шаг @stepInfo.StepOrder из @stepInfo.TotalSteps — @stepInfo.StepName
+                                </span>
+                            }
+                        </div>
+
+                        <!-- Step progress pipeline -->
+                        <div class="d-flex align-items-center gap-1 mt-3">
+                            @for (int s = 1; s <= stepInfo.TotalSteps; s++)
+                            {
+                                var isActive = s == stepInfo.StepOrder && !stepInfo.IsCompleted;
+                                var isPast = s < stepInfo.StepOrder || stepInfo.IsCompleted;
+                                var bgClass = isPast ? "bg-success text-white" : isActive ? "bg-warning text-dark" : "bg-light text-muted";
+                                <div class="flex-fill text-center rounded py-1 @bgClass" style="font-size: 0.85rem;">
+                                    @s
+                                </div>
+                                if (s < stepInfo.TotalSteps)
+                                {
+                                    <i class="bi bi-arrow-right text-muted"></i>
+                                }
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Model.RejectionReason))
+                        {
+                            <div class="alert alert-danger mt-3 mb-0 py-2">
+                                <i class="bi bi-x-circle me-1"></i>
+                                <strong>Причина отклонения:</strong> @Model.RejectionReason
+                            </div>
+                        }
+
+                        @if (canApprove && !stepInfo.IsCompleted)
+                        {
+                            <div class="d-flex gap-2 mt-3">
+                                <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-success" 
+                                            onclick="return confirm('Утвердить АВР на этом шаге?');">
+                                        <i class="bi bi-check-lg me-1"></i> Утвердить
+                                    </button>
+                                </form>
+                                @if (stepInfo.CanReject)
+                                {
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                        <i class="bi bi-x-lg me-1"></i> Отклонить
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
             <div class="d-flex gap-2">
                 <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
                     <i class="bi bi-pencil me-1"></i> Редактировать
@@ -168,6 +245,32 @@
                     }
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Reject" asp-route-id="@Model.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-x-circle me-2 text-danger"></i>Отклонить АВР</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Причина отклонения <span class="text-danger">*</span></label>
+                    <textarea name="reason" class="form-control" rows="3" required
+                              placeholder="Укажите причину отклонения..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-lg me-1"></i> Отклонить
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

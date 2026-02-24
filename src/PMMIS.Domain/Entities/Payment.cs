@@ -83,6 +83,11 @@ public class WorkProgress : BaseEntity
     // Approval Workflow
     public AvrApprovalStatus ApprovalStatus { get; set; } = AvrApprovalStatus.Draft;
     
+    /// <summary>
+    /// Текущий шаг в цепочке утверждения (null = workflow не запущен)
+    /// </summary>
+    public int? CurrentStepOrder { get; set; }
+    
     // Curator submission
     public DateTime? SubmittedAt { get; set; }
     
