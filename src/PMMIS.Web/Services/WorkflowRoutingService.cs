@@ -356,12 +356,20 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         var isCompleted = wp.ApprovalStatus == AvrApprovalStatus.DirectorApproved;
         var currentStep = steps.FirstOrDefault(s => s.StepOrder == wp.CurrentStepOrder);
 
+        // Resolve display name for role
+        var roleName = currentStep != null ? GetStepAssigneeLabel(currentStep) : "";
+        if (currentStep?.AssigneeType == "Role" && !string.IsNullOrEmpty(currentStep.RoleId))
+        {
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == currentStep.RoleId || r.Name == currentStep.RoleId);
+            if (role?.Name != null) roleName = role.Name;
+        }
+
         return new WorkflowStepInfo
         {
             StepOrder = currentStep?.StepOrder ?? 0,
             StepName = currentStep?.StepName ?? (isCompleted ? "Завершён" : "Не начат"),
             ActionType = currentStep?.ActionType ?? "",
-            RoleName = currentStep?.RoleId ?? "",
+            RoleName = roleName,
             TotalSteps = steps.Count,
             IsCompleted = isCompleted,
             CanReject = currentStep?.CanReject ?? false
@@ -793,12 +801,20 @@ public class WorkflowRoutingService : IWorkflowRoutingService
         var isCompleted = payment.Status == PaymentStatus.Approved || payment.Status == PaymentStatus.Paid;
         var currentStep = steps.FirstOrDefault(s => s.StepOrder == payment.CurrentStepOrder);
 
+        // Resolve display name for role
+        var roleName = currentStep != null ? GetStepAssigneeLabel(currentStep) : "";
+        if (currentStep?.AssigneeType == "Role" && !string.IsNullOrEmpty(currentStep.RoleId))
+        {
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Id == currentStep.RoleId || r.Name == currentStep.RoleId);
+            if (role?.Name != null) roleName = role.Name;
+        }
+
         return new WorkflowStepInfo
         {
             StepOrder = currentStep?.StepOrder ?? 0,
             StepName = currentStep?.StepName ?? (isCompleted ? "Завершён" : "Не начат"),
             ActionType = currentStep?.ActionType ?? "",
-            RoleName = currentStep?.RoleId ?? "",
+            RoleName = roleName,
             TotalSteps = steps.Count,
             IsCompleted = isCompleted,
             CanReject = currentStep?.CanReject ?? false
