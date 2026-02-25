@@ -297,10 +297,13 @@
                 @if (Model.WorkItems?.Any() == true)
                 {
                     <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
-                        <div class="card-header bg-white">
-                            <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ</h5>
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ <span class="badge bg-secondary ms-2">@Model.WorkItems.Count позиций</span></h5>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control form-control-sm" id="workItemSearch" placeholder="Поиск..." style="width: 200px;" />
+                            </div>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" style="max-height: 500px; overflow-y: auto;" id="workItemsContainer">
                             @for (int w = 0; w < Model.WorkItems.Count; w++)
                             {
                                 var wi = Model.WorkItems[w];
@@ -534,6 +537,9 @@
     document.getElementById('contractSelect')?.addEventListener('change', function() {
         const contractId = this.value;
         if (contractId) {
+            // Reset form to prevent 'Leave site?' dialog
+            const form = document.querySelector('form');
+            form.reset();
             window.location.href = '@Url.Action("Create")' + '?contractId=' + contractId;
         }
     });
@@ -593,6 +599,15 @@
 
     // Load financials on page load if contract is selected
     const initialContract = document.getElementById('contractSelect')?.value;
+
+    // Work items search
+    document.getElementById('workItemSearch')?.addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#workItemsContainer > .card').forEach(card => {
+            const name = card.querySelector('strong')?.textContent?.toLowerCase() || '';
+            card.style.display = name.includes(q) ? '' : 'none';
+        });
+    });
     if (initialContract) loadFinancials(initialContract);
 
     // ========================
