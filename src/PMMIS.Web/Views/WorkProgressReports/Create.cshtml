@@ -300,87 +300,27 @@
                         <div class="card-header bg-white p-0">
                             <ul class="nav nav-tabs" role="tablist">
                                 <li class="nav-item">
-                                    <a class="nav-link active" data-bs-toggle="tab" href="#tabCurrentItems" role="tab">
-                                        <i class="bi bi-list-task me-1"></i>Текущие позиции
-                                        <span class="badge bg-secondary ms-1">@Model.WorkItems.Count</span>
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#tabImportExcel" role="tab">
+                                        <i class="bi bi-file-earmark-excel me-1"></i>Импорт из Excel
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link" data-bs-toggle="tab" href="#tabImportExcel" role="tab">
-                                        <i class="bi bi-file-earmark-excel me-1"></i>Импорт из Excel
+                                    <a class="nav-link" data-bs-toggle="tab" href="#tabCurrentItems" role="tab">
+                                        <i class="bi bi-list-task me-1"></i>Позиции
+                                        <span class="badge bg-secondary ms-1">@Model.WorkItems.Count</span>
                                     </a>
                                 </li>
                             </ul>
                         </div>
                         <div class="card-body p-0">
                             <div class="tab-content">
-                                <!-- Tab 1: Current Work Items -->
-                                <div class="tab-pane fade show active p-3" id="tabCurrentItems">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <small class="text-muted">Введите значения выполненных работ за текущий период</small>
-                                        <input type="text" class="form-control form-control-sm" id="workItemSearch"
-                                               placeholder="Поиск..." style="width: 200px;" />
-                                    </div>
-                                    <div style="max-height: 500px; overflow-y: auto;" id="workItemsContainer">
-                                        @for (int w = 0; w < Model.WorkItems.Count; w++)
-                                        {
-                                            var wi = Model.WorkItems[w];
-                                            <input type="hidden" name="WorkItems[@w].ContractWorkItemId" value="@wi.ContractWorkItemId" />
-                                            <input type="hidden" name="WorkItems[@w].Name" value="@wi.Name" />
-                                            <input type="hidden" name="WorkItems[@w].Unit" value="@wi.Unit" />
-                                            <input type="hidden" name="WorkItems[@w].TargetQuantity" value="@wi.TargetQuantity" />
-                                            <input type="hidden" name="WorkItems[@w].PreviousAchieved" value="@wi.PreviousAchieved" />
+                                <!-- Tab 1: Import from Excel (DEFAULT) -->
+                                <div class="tab-pane fade show active p-3" id="tabImportExcel">
 
-                                            <div class="card bg-light mb-2 work-item-card" data-name="@wi.Name.ToLower()" data-index="@w">
-                                                <div class="card-body py-2 px-3">
-                                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                                        <div>
-                                                            <strong class="small">@wi.Name</strong>
-                                                            <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">@wi.Unit</span>
-                                                        </div>
-                                                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">
-                                                            @wi.PreviousAchieved / @wi.TargetQuantity
-                                                        </span>
-                                                    </div>
-                                                    <div class="row g-2">
-                                                        <div class="col-md-4">
-                                                            @if (wi.Unit == "Да/Нет")
-                                                            {
-                                                                <input type="hidden" name="WorkItems[@w].Value" class="wi-value-hidden wi-value-input" data-index="@w" value="@(wi.Value > 0 ? "1" : "0")" />
-                                                                <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" role="switch"
-                                                                           @(wi.Value > 0 ? "checked" : "")
-                                                                           onchange="document.querySelector('.wi-value-hidden[data-index=\'@w\']').value = this.checked ? '1' : '0'" />
-                                                                    <label class="form-check-label small">Выполнено</label>
-                                                                </div>
-                                                            }
-                                                            else
-                                                            {
-                                                                <input type="number" name="WorkItems[@w].Value"
-                                                                       class="form-control form-control-sm wi-value-input" data-index="@w"
-                                                                       value="@wi.Value" min="0" step="0.01"
-                                                                       placeholder="0" />
-                                                            }
-                                                        </div>
-                                                        <div class="col-md-8">
-                                                            <input type="text" name="WorkItems[@w].Notes"
-                                                                   class="form-control form-control-sm"
-                                                                   value="@wi.Notes" placeholder="Комментарий..." />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-
-                                <!-- Tab 2: Import from Excel -->
-                                <div class="tab-pane fade p-3" id="tabImportExcel">
                                     <div class="alert alert-info mb-3">
                                         <i class="bi bi-info-circle me-1"></i>
-                                        Загрузите файл АВР (Excel), и значения «За этот период» будут автоматически заполнены для совпадающих позиций.
+                                        Загрузите файл АВР (Excel) — значения «За этот период» будут автоматически заполнены.
                                     </div>
-
                                     <div class="row g-3 align-items-end mb-3">
                                         <div class="col-md-6">
                                             <label class="form-label fw-semibold">Файл Excel (.xlsx)</label>
@@ -401,11 +341,10 @@
                                         </div>
                                         <div class="col-md-3">
                                             <button type="button" class="btn btn-success w-100" id="avrImportBtn">
-                                                <i class="bi bi-cloud-upload me-1"></i> Загрузить
+                                                <i class="bi bi-cloud-upload me-1"></i> Загрузить и проанализировать
                                             </button>
                                         </div>
                                     </div>
-
                                     <div class="progress d-none" id="avrImportProgress" style="height: 6px;">
                                         <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
                                     </div>
@@ -413,16 +352,70 @@
                                         <small id="avrImportStatusText">Обработка...</small>
                                         <small class="ms-2" id="avrImportTimer"></small>
                                     </div>
-
-                                    <!-- Import Results -->
+                                    <!-- Import Results with sub-tabs -->
                                     <div class="d-none mt-3" id="avrImportResults">
                                         <div class="row text-center g-3 mb-3">
-                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Найдено</small><strong id="avrFoundCount">0</strong></div></div>
-                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Совпало</small><strong class="text-success" id="avrMatchedCount">0</strong></div></div>
-                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Заполнено</small><strong class="text-primary" id="avrFilledCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Всего</small><strong id="avrTotalCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2 border-success"><small class="text-muted d-block">Совпадения</small><strong class="text-success" id="avrMatchedCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2 border-primary"><small class="text-muted d-block">Заполнено</small><strong class="text-primary" id="avrFilledCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2 border-info"><small class="text-muted d-block">Новые</small><strong class="text-info" id="avrNewCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2 border-warning"><small class="text-muted d-block">Изменения</small><strong class="text-warning" id="avrChangesCount">0</strong></div></div>
                                         </div>
-                                        <div class="alert alert-success d-none" id="avrImportSuccess"></div>
-                                        <div class="alert alert-warning d-none" id="avrImportErrors"></div>
+                                        <ul class="nav nav-pills nav-fill mb-3">
+                                            <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#avrResMatched"><i class="bi bi-check-circle me-1"></i>Совпадения</a></li>
+                                            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#avrResFilled"><i class="bi bi-pencil-square me-1"></i>Заполненные</a></li>
+                                            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#avrResNew"><i class="bi bi-plus-circle me-1"></i>Новые</a></li>
+                                            <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#avrResChanges"><i class="bi bi-arrow-left-right me-1"></i>Изменения</a></li>
+                                        </ul>
+                                        <div class="tab-content">
+                                            <div class="tab-pane fade show active" id="avrResMatched" style="max-height:300px;overflow-y:auto;"><table class="table table-sm table-striped" id="avrMatchedTable"><thead><tr><th>№</th><th>Наименование</th><th>Ед.</th><th>За период</th></tr></thead><tbody></tbody></table></div>
+                                            <div class="tab-pane fade" id="avrResFilled" style="max-height:300px;overflow-y:auto;"><table class="table table-sm table-striped" id="avrFilledTable"><thead><tr><th>№</th><th>Наименование</th><th>Значение</th></tr></thead><tbody></tbody></table></div>
+                                            <div class="tab-pane fade" id="avrResNew" style="max-height:300px;overflow-y:auto;"><table class="table table-sm table-striped" id="avrNewTable"><thead><tr><th>№</th><th>Наименование</th><th>Ед.</th><th>Кол-во</th></tr></thead><tbody></tbody></table></div>
+                                            <div class="tab-pane fade" id="avrResChanges" style="max-height:300px;overflow-y:auto;"><table class="table table-sm table-striped" id="avrChangesTable"><thead><tr><th>Наименование</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody></tbody></table></div>
+                                        </div>
+                                        <div class="alert alert-success d-none mt-2" id="avrImportSuccess"></div>
+                                        <div class="alert alert-warning d-none mt-2" id="avrImportErrors"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Tab 2: Work Items Table (lightweight) -->
+                                <div class="tab-pane fade p-2" id="tabCurrentItems">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                        <small class="text-muted">Введите значения за текущий период</small>
+                                        <input type="text" class="form-control form-control-sm" id="workItemSearch" placeholder="Поиск..." style="width:200px;" />
+                                    </div>
+                                    <div style="max-height:500px;overflow-y:auto;">
+                                        <table class="table table-sm table-hover mb-0" style="font-size:0.8rem;">
+                                            <thead class="table-light sticky-top"><tr><th style="width:40%">Наименование</th><th style="width:8%">Ед.</th><th style="width:12%">Выполн.</th><th style="width:15%">За период</th><th style="width:25%">Примечание</th></tr></thead>
+                                            <tbody id="workItemsContainer">
+                                                @for (int w = 0; w < Model.WorkItems.Count; w++)
+                                                {
+                                                    var wi = Model.WorkItems[w];
+                                                    <input type="hidden" name="WorkItems[@w].ContractWorkItemId" value="@wi.ContractWorkItemId" />
+                                                    <input type="hidden" name="WorkItems[@w].Name" value="@wi.Name" />
+                                                    <input type="hidden" name="WorkItems[@w].Unit" value="@wi.Unit" />
+                                                    <input type="hidden" name="WorkItems[@w].TargetQuantity" value="@wi.TargetQuantity" />
+                                                    <input type="hidden" name="WorkItems[@w].PreviousAchieved" value="@wi.PreviousAchieved" />
+                                                    <tr class="work-item-row" data-name="@wi.Name.ToLower()" data-index="@w">
+                                                        <td class="text-truncate" style="max-width:300px" title="@wi.Name">@wi.Name</td>
+                                                        <td><small class="text-muted">@wi.Unit</small></td>
+                                                        <td><small>@wi.PreviousAchieved / @wi.TargetQuantity</small></td>
+                                                        <td>
+                                                            @if (wi.Unit == "Да/Нет")
+                                                            {
+                                                                <input type="hidden" name="WorkItems[@w].Value" class="wi-value-hidden wi-value-input" data-index="@w" value="@(wi.Value > 0 ? "1" : "0")" />
+                                                                <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" @(wi.Value > 0 ? "checked" : "") onchange="document.querySelector('.wi-value-hidden[data-index=\'@w\']').value = this.checked ? '1' : '0'" /></div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="number" name="WorkItems[@w].Value" class="form-control form-control-sm wi-value-input" data-index="@w" value="@wi.Value" min="0" step="0.01" placeholder="0" />
+                                                            }
+                                                        </td>
+                                                        <td><input type="text" name="WorkItems[@w].Notes" class="form-control form-control-sm" value="@wi.Notes" placeholder="..." /></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -666,8 +659,8 @@
     // Work items search
     document.getElementById('workItemSearch')?.addEventListener('input', function() {
         const q = this.value.toLowerCase();
-        document.querySelectorAll('#workItemsContainer .work-item-card').forEach(card => {
-            card.style.display = card.dataset.name?.includes(q) ? '' : 'none';
+        document.querySelectorAll('#workItemsContainer .work-item-row').forEach(row => {
+            row.style.display = row.dataset.name?.includes(q) ? '' : 'none';
         });
     });
 
@@ -726,48 +719,67 @@
             // Match parsed items to form work items
             const items = data.items || [];
             resultsDiv.classList.remove('d-none');
-            document.getElementById('avrFoundCount').textContent = items.length;
+            document.getElementById('avrTotalCount').textContent = items.length;
 
             let matched = 0, filled = 0;
-            const workCards = document.querySelectorAll('#workItemsContainer .work-item-card');
+            const workRows = document.querySelectorAll('#workItemsContainer .work-item-row');
+            const matchedTbody = document.querySelector('#avrMatchedTable tbody');
+            const filledTbody = document.querySelector('#avrFilledTable tbody');
+            const newTbody = document.querySelector('#avrNewTable tbody');
+            const changesTbody = document.querySelector('#avrChangesTable tbody');
+            matchedTbody.innerHTML = ''; filledTbody.innerHTML = ''; newTbody.innerHTML = ''; changesTbody.innerHTML = '';
 
             function normalize(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/ё/g, 'е'); }
 
+            let rowNum = 0;
             items.forEach(item => {
+                rowNum++;
                 const itemName = normalize(item.name);
-                const itemNumber = item.itemNumber;
+                let found = false;
 
-                // Find matching card
-                for (const card of workCards) {
-                    const cardName = normalize(card.dataset.name);
-                    if (cardName === itemName || (itemNumber && cardName.includes(itemNumber + ' '))) {
+                for (const row of workRows) {
+                    const rowName = normalize(row.dataset.name);
+                    if (rowName === itemName || (item.itemNumber && rowName.includes(item.itemNumber + ' '))) {
                         matched++;
-                        const idx = card.dataset.index;
-                        const valueInput = card.querySelector('.wi-value-input');
-                        const thisPeriodQty = item.thisPeriodQuantity || item.thisPeriodQty || 0;
+                        found = true;
+                        const valueInput = row.querySelector('.wi-value-input');
+                        const qty = item.thisPeriodQuantity || 0;
 
-                        if (thisPeriodQty > 0 && valueInput) {
-                            valueInput.value = thisPeriodQty;
-                            card.style.background = '#d4edda'; // green highlight
+                        matchedTbody.innerHTML += `<tr><td>${rowNum}</td><td>${item.name}</td><td>${item.unit||''}</td><td>${qty}</td></tr>`;
+
+                        if (qty > 0 && valueInput) {
+                            valueInput.value = qty;
+                            row.style.background = '#d4edda';
                             filled++;
+                            filledTbody.innerHTML += `<tr class="table-success"><td>${rowNum}</td><td>${item.name}</td><td><strong>${qty}</strong></td></tr>`;
                         }
                         break;
                     }
                 }
+                if (!found) {
+                    newTbody.innerHTML += `<tr class="table-info"><td>${rowNum}</td><td>${item.name}</td><td>${item.unit||''}</td><td>${item.quantity||0}</td></tr>`;
+                }
+            });
+
+            // Populate changes from server
+            const changes = data.changesList || [];
+            changes.forEach(c => {
+                changesTbody.innerHTML += `<tr class="table-warning"><td>${c.name}</td><td>${c.field}</td><td>${c.oldValue}</td><td>${c.newValue}</td></tr>`;
             });
 
             document.getElementById('avrMatchedCount').textContent = matched;
             document.getElementById('avrFilledCount').textContent = filled;
+            document.getElementById('avrNewCount').textContent = items.length - matched;
+            document.getElementById('avrChangesCount').textContent = changes.length;
 
             const successDiv = document.getElementById('avrImportSuccess');
             successDiv.classList.remove('d-none');
-            successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Готово! Заполнено <strong>${filled}</strong> из <strong>${items.length}</strong> позиций. Перейдите во вкладку «Текущие позиции» для проверки.`;
+            successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Готово! Заполнено <strong>${filled}</strong> из <strong>${items.length}</strong> позиций. Перейдите во вкладку «Позиции» для проверки и сохранения.`;
 
             if (filled > 0) {
-                // Switch to first tab to show filled values
                 setTimeout(() => {
                     document.querySelector('a[href="#tabCurrentItems"]')?.click();
-                }, 2000);
+                }, 3000);
             }
         } catch(err) {
             if (err.name === 'AbortError') {
