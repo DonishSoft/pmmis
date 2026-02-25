@@ -65,6 +65,18 @@ public class AuditService : IAuditService
         ["CuratorId"] = "Куратор",
         ["ProjectManagerId"] = "Менеджер проекта",
         ["PerformanceRating"] = "Оценка исполнения",
+        
+        // Contractor
+        ["Name"] = "Название",
+        ["Country"] = "Страна",
+        ["Address"] = "Адрес",
+        ["ContactPerson"] = "Контактное лицо",
+        ["Phone"] = "Телефон",
+        ["Email"] = "E-mail",
+        ["TaxId"] = "ИНН",
+        ["BankName"] = "Банк",
+        ["BankAccount"] = "Расчётный счёт",
+        ["Notes"] = "Примечания",
     };
 
     // Поля, которые не нужно отслеживать
@@ -76,7 +88,8 @@ public class AuditService : IAuditService
         "Contractor", "ProcurementPlan", "Curator", "ProjectManager",
         "Payments", "Documents", "Amendments", "Milestones",
         "Contracts", "Indicators", "WorkItems", "Progresses",
-        "ContractIndicators", "ContractWorkItems"
+        "ContractIndicators", "ContractWorkItems",
+        "Users", "LinkedUser"
     };
 
     public AuditService(ApplicationDbContext context, UserManager<ApplicationUser> userManager)

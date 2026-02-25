@@ -21,17 +21,20 @@ public class ContractorsController : Controller
     private readonly IFileService _fileService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDataAccessService _dataAccessService;
+    private readonly IAuditService _auditService;
 
     public ContractorsController(
         ApplicationDbContext context, 
         IFileService fileService,
         UserManager<ApplicationUser> userManager,
-        IDataAccessService dataAccessService)
+        IDataAccessService dataAccessService,
+        IAuditService auditService)
     {
         _context = context;
         _fileService = fileService;
         _userManager = userManager;
         _dataAccessService = dataAccessService;
+        _auditService = auditService;
     }
 
     public async Task<IActionResult> Index()
@@ -73,6 +76,9 @@ public class ContractorsController : Controller
             contractor.CreatedAt = DateTime.UtcNow;
             _context.Contractors.Add(contractor);
             await _context.SaveChangesAsync();
+            
+            // Audit log
+            await _auditService.LogCreateAsync("Contractor", contractor.Id, User);
             
             // Upload contractor documents with per-file metadata
             if (DocFiles?.Any() == true)
@@ -124,10 +130,18 @@ public class ContractorsController : Controller
 
         if (ModelState.IsValid)
         {
+            // Load old values for audit
+            var oldContractor = await _context.Contractors.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+            
             contractor.CreatedAt = DateTime.SpecifyKind(contractor.CreatedAt, DateTimeKind.Utc);
             contractor.UpdatedAt = DateTime.UtcNow;
             _context.Update(contractor);
             await _context.SaveChangesAsync();
+            
+            // Audit log
+            if (oldContractor != null)
+                await _auditService.LogChangesAsync("Contractor", id, oldContractor, contractor, User);
+            
             TempData["Success"] = "Подрядчик успешно обновлён";
             return RedirectToAction(nameof(Index));
         }
@@ -207,8 +221,20 @@ public class ContractorsController : Controller
 
             _context.Contractors.Remove(contractor);
             await _context.SaveChangesAsync();
+            await _auditService.LogDeleteAsync("Contractor", id, User);
             TempData["Success"] = "Подрядчик удалён";
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetHistory(int id)
+    {
+        var logs = await _context.AuditLogs
+            .Where(a => a.EntityType == "Contractor" && a.EntityId == id)
+            .OrderByDescending(a => a.Timestamp)
+            .Select(a => new { a.Action, a.Changes, a.UserFullName, a.UserPosition, a.Timestamp })
+            .ToListAsync();
+        return Json(logs);
     }
 }
