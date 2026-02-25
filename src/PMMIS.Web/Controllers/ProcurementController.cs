@@ -211,6 +211,16 @@ public class ProcurementController : Controller
         if (plan != null)
         {
             var projectId = plan.ProjectId;
+            
+            // Unlink related contracts and tasks before deleting
+            var linkedContracts = await _context.Contracts
+                .Where(c => c.ProcurementPlanId == id).ToListAsync();
+            foreach (var c in linkedContracts) c.ProcurementPlanId = null;
+            
+            var linkedTasks = await _context.ProjectTasks
+                .Where(t => t.ProcurementPlanId == id).ToListAsync();
+            foreach (var t in linkedTasks) t.ProcurementPlanId = null;
+            
             _context.ProcurementPlans.Remove(plan);
             await _context.SaveChangesAsync();
             TempData["Success"] = "Позиция удалена";
