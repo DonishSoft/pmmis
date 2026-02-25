@@ -448,6 +448,50 @@
         });
     </script>
     
+    <!-- Global UX Scripts -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // === 1. Auto-filter: GET forms auto-submit on change ===
+        document.querySelectorAll('form[method="get"]').forEach(function(form) {
+            // Selects → instant submit
+            form.querySelectorAll('select').forEach(function(sel) {
+                sel.addEventListener('change', function() { form.submit(); });
+            });
+            // Text inputs → debounced submit
+            form.querySelectorAll('input[type="text"], input[type="search"]').forEach(function(inp) {
+                var timer;
+                inp.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(function() { form.submit(); }, 500);
+                });
+            });
+        });
+
+        // === 2. Block Enter key from submitting POST forms ===
+        document.querySelectorAll('form[method="post"]').forEach(function(form) {
+            form.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' 
+                    && !e.target.classList.contains('allow-enter-submit')
+                    && e.target.type !== 'submit') {
+                    e.preventDefault();
+                }
+            });
+        });
+
+        // === 3. Unsaved changes warning ===
+        var isDirty = false;
+        var postForms = document.querySelectorAll('form[method="post"]');
+        postForms.forEach(function(form) {
+            form.addEventListener('input', function() { isDirty = true; });
+            form.addEventListener('change', function() { isDirty = true; });
+            form.addEventListener('submit', function() { isDirty = false; });
+        });
+        window.addEventListener('beforeunload', function(e) {
+            if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+        });
+    });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -55,7 +55,7 @@ public class ContractorsController : Controller
             query = query.Where(c => contractorIds.Contains(c.Id));
         }
 
-        var contractors = await query.OrderBy(c => c.Name).ToListAsync();
+        var contractors = await query.OrderByDescending(c => c.UpdatedAt).ToListAsync();
         return View(contractors);
     }
 

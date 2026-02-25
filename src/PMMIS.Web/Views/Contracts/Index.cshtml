@@ -232,5 +232,15 @@
         document.getElementById('contractorSearch').value = '';
         grid.clearFiltering();
     }
+
+    // Auto-filter on change
+    document.getElementById('contractTypeFilter').addEventListener('change', applyFilters);
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    (function() {
+        let t;
+        document.getElementById('contractorSearch').addEventListener('input', function() {
+            clearTimeout(t); t = setTimeout(applyFilters, 400);
+        });
+    })();
 </script>
 }

@@ -67,7 +67,7 @@ public class ContractsController : Controller
             }
         }
 
-        var contracts = await query.OrderBy(c => c.ContractNumber).ToListAsync();
+        var contracts = await query.OrderByDescending(c => c.UpdatedAt).ToListAsync();
         return View(contracts);
     }
 
