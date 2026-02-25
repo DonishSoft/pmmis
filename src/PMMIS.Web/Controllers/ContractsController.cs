@@ -8,6 +8,7 @@ using PMMIS.Infrastructure.Data;
 using PMMIS.Web.Authorization;
 using PMMIS.Web.Extensions;
 using PMMIS.Web.Services;
+using Microsoft.Extensions.Caching.Memory;
 using PMMIS.Web.ViewModels.Contracts;
 using System.Security.Claims;
 using System.Text.Json;
@@ -25,6 +26,7 @@ public class ContractsController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDataAccessService _dataAccessService;
     private readonly IAuditService _auditService;
+    private readonly IMemoryCache _cache;
 
     public ContractsController(
         ApplicationDbContext context, 
@@ -32,7 +34,8 @@ public class ContractsController : Controller
         IFileService fileService,
         UserManager<ApplicationUser> userManager,
         IDataAccessService dataAccessService,
-        IAuditService auditService)
+        IAuditService auditService,
+        IMemoryCache cache)
     {
         _context = context;
         _taskService = taskService;
@@ -40,6 +43,7 @@ public class ContractsController : Controller
         _userManager = userManager;
         _dataAccessService = dataAccessService;
         _auditService = auditService;
+        _cache = cache;
     }
 
     public async Task<IActionResult> Index()
@@ -1427,8 +1431,8 @@ public class ContractsController : Controller
             }
 
             // Store result in TempData for confirmation step
-            var json = System.Text.Json.JsonSerializer.Serialize(result);
-            TempData["ImportResult"] = json;
+            var cacheKey = $"ImportResult_{contractId}_{User.FindFirstValue(ClaimTypes.NameIdentifier)}";
+            _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
 
             return Json(new
             {
@@ -1460,13 +1464,9 @@ public class ContractsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmImport(int contractId, bool addNewItems = true)
     {
-        var json = TempData["ImportResult"]?.ToString();
-        if (string.IsNullOrEmpty(json))
+        var cacheKey = $"ImportResult_{contractId}_{User.FindFirstValue(ClaimTypes.NameIdentifier)}";
+        if (!_cache.TryGetValue<ImportResult>(cacheKey, out var result) || result == null)
             return Json(new { success = false, error = "Данные импорта не найдены. Загрузите файл заново." });
-
-        var result = System.Text.Json.JsonSerializer.Deserialize<ImportResult>(json);
-        if (result == null)
-            return Json(new { success = false, error = "Ошибка десериализации данных импорта" });
 
         int added = 0, updated = 0;
 
