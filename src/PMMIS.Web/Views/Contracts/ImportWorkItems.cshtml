@@ -261,7 +261,18 @@
 
         try {
             const resp = await fetch('@Url.Action("UploadExcel")', { method: 'POST', body: form });
-            const data = await resp.json();
+            
+            if (!resp.ok) {
+                showErrors([`Ошибка сервера: ${resp.status} ${resp.statusText}. Попробуйте ещё раз.`]);
+                return;
+            }
+            
+            const text = await resp.text();
+            let data;
+            try { data = JSON.parse(text); } catch { 
+                showErrors(['Сервер вернул некорректный ответ. Попробуйте ещё раз.']);
+                return;
+            }
 
             if (!data.success && data.errors?.length) {
                 showErrors(data.errors);

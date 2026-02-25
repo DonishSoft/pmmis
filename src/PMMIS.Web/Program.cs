@@ -23,6 +23,16 @@ if (!string.IsNullOrEmpty(syncfusionLicense))
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+// Allow large file uploads (for Excel import)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 100_000_000; // 100MB
+});
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 100_000_000;
+});
+
 // Syncfusion license is registered above, EJ2 components are loaded via CDN in views
 
 // Database
