@@ -278,9 +278,9 @@
             if (isAI && seconds === 30) statusText.textContent = 'Gemini обрабатывает ~1600 позиций, подождите...';
         }, 1000);
 
-        // Timeout: 2 min
+        // Timeout: 5 min (Gemini needs time for large files)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000);
+        const timeout = setTimeout(() => controller.abort(), 300000);
 
         try {
             const resp = await fetch('@Url.Action("UploadExcel")', { method: 'POST', body: form, signal: controller.signal });
