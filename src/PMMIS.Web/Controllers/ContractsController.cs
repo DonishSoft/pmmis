@@ -1400,50 +1400,57 @@ public class ContractsController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequestSizeLimit(50_000_000)] // 50MB
     public async Task<IActionResult> UploadExcel(int contractId, IFormFile file, string mode = "ClosedXML")
     {
-        if (file == null || file.Length == 0)
-            return Json(new { success = false, error = "Файл не выбран" });
-
-        var ext = Path.GetExtension(file.FileName).ToLower();
-        if (ext != ".xlsx" && ext != ".xls")
-            return Json(new { success = false, error = "Поддерживаются только .xlsx файлы" });
-
-        ImportResult result;
-        using var stream = file.OpenReadStream();
-
-        if (mode == "AI")
+        try
         {
-            var aiService = HttpContext.RequestServices.GetRequiredService<IAiImportService>();
-            result = await aiService.ParseExcelWithAiAsync(stream, contractId);
+            if (file == null || file.Length == 0)
+                return Json(new { success = false, errors = new[] { "Файл не выбран" } });
+
+            var ext = Path.GetExtension(file.FileName).ToLower();
+            if (ext != ".xlsx" && ext != ".xls")
+                return Json(new { success = false, errors = new[] { "Поддерживаются только .xlsx файлы" } });
+
+            ImportResult result;
+            using var stream = file.OpenReadStream();
+
+            if (mode == "AI")
+            {
+                var aiService = HttpContext.RequestServices.GetRequiredService<IAiImportService>();
+                result = await aiService.ParseExcelWithAiAsync(stream, contractId);
+            }
+            else
+            {
+                var excelService = HttpContext.RequestServices.GetRequiredService<IExcelImportService>();
+                result = await excelService.ParseExcelAsync(stream, contractId);
+            }
+
+            // Store result in TempData for confirmation step
+            var json = System.Text.Json.JsonSerializer.Serialize(result);
+            TempData["ImportResult"] = json;
+
+            return Json(new
+            {
+                success = result.Errors.Count == 0,
+                errors = result.Errors,
+                totalItems = result.Items.Count,
+                newItems = result.NewItems.Count,
+                missingItems = result.MissingItems.Count,
+                changes = result.Changes.Count,
+                matched = result.Matched.Count,
+                isFirstImport = result.IsFirstImport,
+                mode = result.Mode,
+                newItemsList = result.NewItems.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category }),
+                missingItemsList = result.MissingItems.Select(i => new { i.Id, i.Name, i.Unit, i.ItemNumber }),
+                changesList = result.Changes.Select(c => new { c.ExistingId, c.Name, c.Field, c.OldValue, c.NewValue }),
+                matchedList = result.Matched.Select(m => new { m.ExistingId, m.Name, m.ThisPeriodQuantity, m.ThisPeriodAmount })
+            });
         }
-        else
+        catch (Exception ex)
         {
-            var excelService = HttpContext.RequestServices.GetRequiredService<IExcelImportService>();
-            result = await excelService.ParseExcelAsync(stream, contractId);
+            return Json(new { success = false, errors = new[] { $"Ошибка обработки: {ex.Message}" } });
         }
-
-        // Store result in TempData for confirmation step
-        var json = System.Text.Json.JsonSerializer.Serialize(result);
-        TempData["ImportResult"] = json;
-
-        return Json(new
-        {
-            success = result.Errors.Count == 0,
-            errors = result.Errors,
-            totalItems = result.Items.Count,
-            newItems = result.NewItems.Count,
-            missingItems = result.MissingItems.Count,
-            changes = result.Changes.Count,
-            matched = result.Matched.Count,
-            isFirstImport = result.IsFirstImport,
-            mode = result.Mode,
-            // Send detail data for preview
-            newItemsList = result.NewItems.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category }),
-            missingItemsList = result.MissingItems.Select(i => new { i.Id, i.Name, i.Unit, i.ItemNumber }),
-            changesList = result.Changes.Select(c => new { c.ExistingId, c.Name, c.Field, c.OldValue, c.NewValue }),
-            matchedList = result.Matched.Select(m => new { m.ExistingId, m.Name, m.ThisPeriodQuantity, m.ThisPeriodAmount })
-        });
     }
 
     /// <summary>
