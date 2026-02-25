@@ -1445,6 +1445,7 @@ public class ContractsController : Controller
                 matched = result.Matched.Count,
                 isFirstImport = result.IsFirstImport,
                 mode = result.Mode,
+                items = result.Items.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category, i.ThisPeriodQuantity, i.ThisPeriodAmount, i.CumulativeQuantity }),
                 newItemsList = result.NewItems.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category }),
                 missingItemsList = result.MissingItems.Select(i => new { i.Id, i.Name, i.Unit, i.ItemNumber }),
                 changesList = result.Changes.Select(c => new { c.ExistingId, c.Name, c.Field, c.OldValue, c.NewValue }),

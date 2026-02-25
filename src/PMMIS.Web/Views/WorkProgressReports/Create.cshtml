@@ -297,73 +297,135 @@
                 @if (Model.WorkItems?.Any() == true)
                 {
                     <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ <span class="badge bg-secondary ms-2">@Model.WorkItems.Count позиций</span></h5>
-                            <div class="d-flex gap-2">
-                                <input type="text" class="form-control form-control-sm" id="workItemSearch" placeholder="Поиск..." style="width: 200px;" />
-                            </div>
+                        <div class="card-header bg-white p-0">
+                            <ul class="nav nav-tabs" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#tabCurrentItems" role="tab">
+                                        <i class="bi bi-list-task me-1"></i>Текущие позиции
+                                        <span class="badge bg-secondary ms-1">@Model.WorkItems.Count</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#tabImportExcel" role="tab">
+                                        <i class="bi bi-file-earmark-excel me-1"></i>Импорт из Excel
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
-                        <div class="card-body" style="max-height: 500px; overflow-y: auto;" id="workItemsContainer">
-                            @for (int w = 0; w < Model.WorkItems.Count; w++)
-                            {
-                                var wi = Model.WorkItems[w];
-                                <input type="hidden" name="WorkItems[@w].ContractWorkItemId" value="@wi.ContractWorkItemId" />
-                                <input type="hidden" name="WorkItems[@w].Name" value="@wi.Name" />
-                                <input type="hidden" name="WorkItems[@w].Unit" value="@wi.Unit" />
-                                <input type="hidden" name="WorkItems[@w].TargetQuantity" value="@wi.TargetQuantity" />
-                                <input type="hidden" name="WorkItems[@w].PreviousAchieved" value="@wi.PreviousAchieved" />
+                        <div class="card-body p-0">
+                            <div class="tab-content">
+                                <!-- Tab 1: Current Work Items -->
+                                <div class="tab-pane fade show active p-3" id="tabCurrentItems">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <small class="text-muted">Введите значения выполненных работ за текущий период</small>
+                                        <input type="text" class="form-control form-control-sm" id="workItemSearch"
+                                               placeholder="Поиск..." style="width: 200px;" />
+                                    </div>
+                                    <div style="max-height: 500px; overflow-y: auto;" id="workItemsContainer">
+                                        @for (int w = 0; w < Model.WorkItems.Count; w++)
+                                        {
+                                            var wi = Model.WorkItems[w];
+                                            <input type="hidden" name="WorkItems[@w].ContractWorkItemId" value="@wi.ContractWorkItemId" />
+                                            <input type="hidden" name="WorkItems[@w].Name" value="@wi.Name" />
+                                            <input type="hidden" name="WorkItems[@w].Unit" value="@wi.Unit" />
+                                            <input type="hidden" name="WorkItems[@w].TargetQuantity" value="@wi.TargetQuantity" />
+                                            <input type="hidden" name="WorkItems[@w].PreviousAchieved" value="@wi.PreviousAchieved" />
 
-                                <div class="card bg-light mb-3">
-                                    <div class="card-body py-3">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <div>
-                                                <strong>@wi.Name</strong>
-                                                <span class="badge bg-secondary ms-2">@wi.Unit</span>
-                                            </div>
-                                            <span class="badge bg-warning text-dark">
-                                                @wi.PreviousAchieved / @wi.TargetQuantity
-                                            </span>
-                                        </div>
-
-                                        @{
-                                            var wiPct = wi.TargetQuantity > 0 ? Math.Min(100, wi.PreviousAchieved / wi.TargetQuantity * 100) : 0;
-                                            var wiBarClass = wiPct >= 80 ? "bg-success" : wiPct >= 50 ? "bg-info" : wiPct >= 25 ? "bg-warning" : "bg-secondary";
-                                        }
-                                        <div class="progress mb-2" style="height: 8px;">
-                                            <div class="progress-bar @wiBarClass" style="width: @wiPct.ToString("F0")%"></div>
-                                        </div>
-
-                                        <div class="row g-2">
-                                            <div class="col-md-4">
-                                                <label class="form-label small text-muted mb-1">Значение в этом АВР</label>
-                                                @if (wi.Unit == "Да/Нет")
-                                                {
-                                                    <input type="hidden" name="WorkItems[@w].Value" class="wi-value-hidden" data-index="@w" value="@(wi.Value > 0 ? "1" : "0")" />
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                               @(wi.Value > 0 ? "checked" : "")
-                                                               onchange="document.querySelector('.wi-value-hidden[data-index=\'@w\']').value = this.checked ? '1' : '0'" />
-                                                        <label class="form-check-label">Выполнено</label>
+                                            <div class="card bg-light mb-2 work-item-card" data-name="@wi.Name.ToLower()" data-index="@w">
+                                                <div class="card-body py-2 px-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <div>
+                                                            <strong class="small">@wi.Name</strong>
+                                                            <span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">@wi.Unit</span>
+                                                        </div>
+                                                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem;">
+                                                            @wi.PreviousAchieved / @wi.TargetQuantity
+                                                        </span>
                                                     </div>
-                                                }
-                                                else
-                                                {
-                                                    <input type="number" name="WorkItems[@w].Value" 
-                                                           class="form-control form-control-sm" 
-                                                           value="@wi.Value" min="0" step="0.01"
-                                                           placeholder="0" />
-                                                }
+                                                    <div class="row g-2">
+                                                        <div class="col-md-4">
+                                                            @if (wi.Unit == "Да/Нет")
+                                                            {
+                                                                <input type="hidden" name="WorkItems[@w].Value" class="wi-value-hidden wi-value-input" data-index="@w" value="@(wi.Value > 0 ? "1" : "0")" />
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                                           @(wi.Value > 0 ? "checked" : "")
+                                                                           onchange="document.querySelector('.wi-value-hidden[data-index=\'@w\']').value = this.checked ? '1' : '0'" />
+                                                                    <label class="form-check-label small">Выполнено</label>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="number" name="WorkItems[@w].Value"
+                                                                       class="form-control form-control-sm wi-value-input" data-index="@w"
+                                                                       value="@wi.Value" min="0" step="0.01"
+                                                                       placeholder="0" />
+                                                            }
+                                                        </div>
+                                                        <div class="col-md-8">
+                                                            <input type="text" name="WorkItems[@w].Notes"
+                                                                   class="form-control form-control-sm"
+                                                                   value="@wi.Notes" placeholder="Комментарий..." />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="col-md-8">
-                                                <label class="form-label small text-muted mb-1">Примечание</label>
-                                                <input type="text" name="WorkItems[@w].Notes" 
-                                                       class="form-control form-control-sm" 
-                                                       value="@wi.Notes" placeholder="Комментарий..." />
-                                            </div>
-                                        </div>
+                                        }
                                     </div>
                                 </div>
-                            }
+
+                                <!-- Tab 2: Import from Excel -->
+                                <div class="tab-pane fade p-3" id="tabImportExcel">
+                                    <div class="alert alert-info mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Загрузите файл АВР (Excel), и значения «За этот период» будут автоматически заполнены для совпадающих позиций.
+                                    </div>
+
+                                    <div class="row g-3 align-items-end mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold">Файл Excel (.xlsx)</label>
+                                            <input type="file" class="form-control" id="avrExcelFile" accept=".xlsx,.xls" />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold">Режим</label>
+                                            <div class="d-flex gap-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="avrImportMode" value="ClosedXML" id="avrModeClosedXML" checked />
+                                                    <label class="form-check-label small" for="avrModeClosedXML">ClosedXML</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="avrImportMode" value="AI" id="avrModeAI" />
+                                                    <label class="form-check-label small" for="avrModeAI">Gemini AI</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button type="button" class="btn btn-success w-100" id="avrImportBtn">
+                                                <i class="bi bi-cloud-upload me-1"></i> Загрузить
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="progress d-none" id="avrImportProgress" style="height: 6px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                                    </div>
+                                    <div class="text-center text-muted mt-2 d-none" id="avrImportStatus">
+                                        <small id="avrImportStatusText">Обработка...</small>
+                                        <small class="ms-2" id="avrImportTimer"></small>
+                                    </div>
+
+                                    <!-- Import Results -->
+                                    <div class="d-none mt-3" id="avrImportResults">
+                                        <div class="row text-center g-3 mb-3">
+                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Найдено</small><strong id="avrFoundCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Совпало</small><strong class="text-success" id="avrMatchedCount">0</strong></div></div>
+                                            <div class="col"><div class="border rounded p-2"><small class="text-muted d-block">Заполнено</small><strong class="text-primary" id="avrFilledCount">0</strong></div></div>
+                                        </div>
+                                        <div class="alert alert-success d-none" id="avrImportSuccess"></div>
+                                        <div class="alert alert-warning d-none" id="avrImportErrors"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 }
@@ -603,11 +665,132 @@
     // Work items search
     document.getElementById('workItemSearch')?.addEventListener('input', function() {
         const q = this.value.toLowerCase();
-        document.querySelectorAll('#workItemsContainer > .card').forEach(card => {
-            const name = card.querySelector('strong')?.textContent?.toLowerCase() || '';
-            card.style.display = name.includes(q) ? '' : 'none';
+        document.querySelectorAll('#workItemsContainer .work-item-card').forEach(card => {
+            card.style.display = card.dataset.name?.includes(q) ? '' : 'none';
         });
     });
+
+    // ========================
+    // AVR Excel Import
+    // ========================
+    document.getElementById('avrImportBtn')?.addEventListener('click', async function() {
+        const fileInput = document.getElementById('avrExcelFile');
+        const file = fileInput?.files?.[0];
+        if (!file) { alert('Выберите файл Excel'); return; }
+
+        const contractId = document.getElementById('contractSelect')?.value;
+        if (!contractId) { alert('Сначала выберите контракт'); return; }
+
+        const mode = document.querySelector('input[name="avrImportMode"]:checked')?.value || 'ClosedXML';
+        const btn = this;
+        const progress = document.getElementById('avrImportProgress');
+        const statusDiv = document.getElementById('avrImportStatus');
+        const statusText = document.getElementById('avrImportStatusText');
+        const timerEl = document.getElementById('avrImportTimer');
+        const resultsDiv = document.getElementById('avrImportResults');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Обработка...';
+        progress.classList.remove('d-none');
+        statusDiv.classList.remove('d-none');
+        resultsDiv.classList.add('d-none');
+        statusText.textContent = mode === 'AI' ? 'Отправка в Gemini AI...' : 'Анализ файла ClosedXML...';
+
+        let seconds = 0;
+        const timer = setInterval(() => {
+            seconds++;
+            timerEl.textContent = `(${seconds} сек)`;
+            if (mode === 'AI' && seconds === 30) statusText.textContent = 'Gemini обрабатывает, подождите...';
+        }, 1000);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 180000);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('contractId', contractId);
+            formData.append('mode', mode);
+            formData.append('__RequestVerificationToken', document.querySelector('input[name="__RequestVerificationToken"]')?.value || '');
+
+            const resp = await fetch('@Url.Action("UploadExcel", "Contracts")', { method: 'POST', body: formData, signal: controller.signal });
+            if (!resp.ok) { showAvrError(`Ошибка сервера: ${resp.status}`); return; }
+
+            const text = await resp.text();
+            let data;
+            try { data = JSON.parse(text); } catch { showAvrError('Некорректный ответ сервера'); return; }
+
+            if (!data.success && data.errors?.length) { showAvrError(data.errors.join('<br>')); return; }
+
+            // Match parsed items to form work items
+            const items = data.items || [];
+            resultsDiv.classList.remove('d-none');
+            document.getElementById('avrFoundCount').textContent = items.length;
+
+            let matched = 0, filled = 0;
+            const workCards = document.querySelectorAll('#workItemsContainer .work-item-card');
+
+            function normalize(s) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/ё/g, 'е'); }
+
+            items.forEach(item => {
+                const itemName = normalize(item.name);
+                const itemNumber = item.itemNumber;
+
+                // Find matching card
+                for (const card of workCards) {
+                    const cardName = normalize(card.dataset.name);
+                    if (cardName === itemName || (itemNumber && cardName.includes(itemNumber + ' '))) {
+                        matched++;
+                        const idx = card.dataset.index;
+                        const valueInput = card.querySelector('.wi-value-input');
+                        const thisPeriodQty = item.thisPeriodQuantity || item.thisPeriodQty || 0;
+
+                        if (thisPeriodQty > 0 && valueInput) {
+                            valueInput.value = thisPeriodQty;
+                            card.style.background = '#d4edda'; // green highlight
+                            filled++;
+                        }
+                        break;
+                    }
+                }
+            });
+
+            document.getElementById('avrMatchedCount').textContent = matched;
+            document.getElementById('avrFilledCount').textContent = filled;
+
+            const successDiv = document.getElementById('avrImportSuccess');
+            successDiv.classList.remove('d-none');
+            successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Готово! Заполнено <strong>${filled}</strong> из <strong>${items.length}</strong> позиций. Перейдите во вкладку «Текущие позиции» для проверки.`;
+
+            if (filled > 0) {
+                // Switch to first tab to show filled values
+                setTimeout(() => {
+                    document.querySelector('a[href="#tabCurrentItems"]')?.click();
+                }, 2000);
+            }
+        } catch(err) {
+            if (err.name === 'AbortError') {
+                showAvrError('Таймаут (3 мин). Попробуйте ClosedXML.');
+            } else {
+                showAvrError('Ошибка: ' + err.message);
+            }
+        } finally {
+            clearInterval(timer);
+            clearTimeout(timeout);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Загрузить';
+            progress.classList.add('d-none');
+            statusDiv.classList.add('d-none');
+        }
+    });
+
+    function showAvrError(msg) {
+        const resultsDiv = document.getElementById('avrImportResults');
+        const errDiv = document.getElementById('avrImportErrors');
+        resultsDiv.classList.remove('d-none');
+        errDiv.classList.remove('d-none');
+        errDiv.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i> ${msg}`;
+    }
     if (initialContract) loadFinancials(initialContract);
 
     // ========================
