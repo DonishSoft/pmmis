@@ -81,6 +81,10 @@
             <div class="progress mt-3 d-none" id="uploadProgress" style="height: 6px;">
                 <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
             </div>
+            <div class="text-center text-muted mt-2 d-none" id="uploadStatus">
+                <small id="uploadStatusText">Загрузка файла...</small>
+                <small class="ms-2" id="uploadTimer"></small>
+            </div>
         </div>
     </div>
 
@@ -254,13 +258,32 @@
         const form = new FormData(this);
         const btn = document.getElementById('uploadBtn');
         const progress = document.getElementById('uploadProgress');
+        const statusDiv = document.getElementById('uploadStatus');
+        const statusText = document.getElementById('uploadStatusText');
+        const timerEl = document.getElementById('uploadTimer');
+        const isAI = document.querySelector('input[name="mode"]:checked')?.value === 'AI';
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Обработка...';
         progress.classList.remove('d-none');
+        statusDiv.classList.remove('d-none');
+        statusText.textContent = isAI ? 'Загрузка и анализ файла через Gemini AI...' : 'Загрузка и анализ файла...';
+
+        // Timer
+        let seconds = 0;
+        const timer = setInterval(() => {
+            seconds++;
+            timerEl.textContent = `(${seconds} сек)`;
+            if (isAI && seconds === 10) statusText.textContent = 'Отправка данных в Gemini API...';
+            if (isAI && seconds === 30) statusText.textContent = 'Gemini обрабатывает ~1600 позиций, подождите...';
+        }, 1000);
+
+        // Timeout: 2 min
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000);
 
         try {
-            const resp = await fetch('@Url.Action("UploadExcel")', { method: 'POST', body: form });
+            const resp = await fetch('@Url.Action("UploadExcel")', { method: 'POST', body: form, signal: controller.signal });
             
             if (!resp.ok) {
                 showErrors([`Ошибка сервера: ${resp.status} ${resp.statusText}. Попробуйте ещё раз.`]);
@@ -281,11 +304,18 @@
 
             showResults(data);
         } catch(err) {
-            showErrors(['Ошибка загрузки: ' + err.message]);
+            if (err.name === 'AbortError') {
+                showErrors(['Превышено время ожидания (2 мин). Попробуйте режим ClosedXML.']);
+            } else {
+                showErrors(['Ошибка загрузки: ' + err.message]);
+            }
         } finally {
+            clearInterval(timer);
+            clearTimeout(timeout);
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Загрузить и проанализировать';
             progress.classList.add('d-none');
+            statusDiv.classList.add('d-none');
         }
     });
 
