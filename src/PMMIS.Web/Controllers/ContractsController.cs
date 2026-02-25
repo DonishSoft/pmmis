@@ -1449,7 +1449,7 @@ public class ContractsController : Controller
                 newItemsList = result.NewItems.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category }),
                 missingItemsList = result.MissingItems.Select(i => new { i.Id, i.Name, i.Unit, i.ItemNumber }),
                 changesList = result.Changes.Select(c => new { c.ExistingId, c.Name, c.Field, c.OldValue, c.NewValue }),
-                matchedList = result.Matched.Select(m => new { m.ExistingId, m.Name, m.ThisPeriodQuantity, m.ThisPeriodAmount })
+                matchedList = result.Matched.Select(m => new { m.ExistingId, m.Name, m.ThisPeriodQuantity, m.ThisPeriodAmount, m.PreviousQuantity, m.PreviousAmount })
             });
         }
         catch (Exception ex)

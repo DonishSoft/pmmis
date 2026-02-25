@@ -111,4 +111,6 @@ public class MatchedItem
     public string Name { get; set; } = string.Empty;
     public decimal ThisPeriodQuantity { get; set; }
     public decimal ThisPeriodAmount { get; set; }
+    public decimal PreviousQuantity { get; set; }
+    public decimal PreviousAmount { get; set; }
 }

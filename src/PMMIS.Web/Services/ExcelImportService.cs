@@ -212,7 +212,9 @@ public class ExcelImportService : IExcelImportService
                     ExistingId = match.Id,
                     Name = item.Name,
                     ThisPeriodQuantity = item.ThisPeriodQuantity,
-                    ThisPeriodAmount = item.ThisPeriodAmount
+                    ThisPeriodAmount = item.ThisPeriodAmount,
+                    PreviousQuantity = match.AchievedQuantity,
+                    PreviousAmount = match.TotalAmount
                 });
             }
             else

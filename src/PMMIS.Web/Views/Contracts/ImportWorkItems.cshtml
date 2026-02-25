@@ -213,10 +213,11 @@
 
                 <!-- Matched Tab -->
                 <div class="tab-pane fade" id="tabMatched">
-                    <table class="table table-sm table-hover mb-0" id="matchedTable">
+                    <table class="table table-sm table-hover mb-0" id="matchedTable" style="font-size:0.85rem;">
                         <thead class="table-light">
                             <tr>
                                 <th>Наименование</th>
+                                <th class="text-end">Пред. период (кол-во)</th>
                                 <th class="text-end">За этот период (кол-во)</th>
                                 <th class="text-end">За этот период (сумма)</th>
                             </tr>
@@ -405,9 +406,12 @@
         if (data.matchedList?.length) {
             document.getElementById('matchedEmpty').classList.add('d-none');
             data.matchedList.forEach(m => {
-                matchBody.innerHTML += `<tr>
-                    <td>${esc(m.name?.substring(0, 70))}</td>
-                    <td class="text-end">${fmt(m.thisPeriodQuantity)}</td>
+                const hasChange = m.thisPeriodQuantity > 0;
+                const rowClass = hasChange ? 'table-success' : '';
+                matchBody.innerHTML += `<tr class="${rowClass}">
+                    <td>${esc(m.name?.substring(0, 80))}</td>
+                    <td class="text-end">${fmt(m.previousQuantity)}</td>
+                    <td class="text-end"><strong>${hasChange ? fmt(m.thisPeriodQuantity) : fmt(0)}</strong></td>
                     <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
                 </tr>`;
             });
