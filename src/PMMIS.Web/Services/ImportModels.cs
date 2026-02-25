@@ -49,6 +49,11 @@ public class ImportResult
     /// ID контракта
     /// </summary>
     public int ContractId { get; set; }
+    
+    /// <summary>
+    /// Имя файла
+    /// </summary>
+    public string? FileName { get; set; }
 }
 
 /// <summary>

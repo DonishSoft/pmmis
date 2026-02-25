@@ -1380,7 +1380,7 @@ public class ContractsController : Controller
             .Where(w => w.ContractId == contractId)
             .OrderBy(w => w.SortOrder)
             .Select(w => new {
-                w.Id, w.Name, w.Unit, w.TargetQuantity, w.AchievedQuantity, w.SortOrder,
+                w.Id, w.Name, w.Unit, w.Category, w.TargetQuantity, w.AchievedQuantity, w.SortOrder,
                 ProgressPercent = w.TargetQuantity > 0 ? Math.Round(w.AchievedQuantity / w.TargetQuantity * 100, 1) : 0
             })
             .ToListAsync();
@@ -1431,6 +1431,7 @@ public class ContractsController : Controller
             }
 
             // Store result in TempData for confirmation step
+            result.FileName = file.FileName;
             var cacheKey = $"ImportResult_{contractId}_{User.FindFirstValue(ClaimTypes.NameIdentifier)}";
             _cache.Set(cacheKey, result, TimeSpan.FromMinutes(30));
 
@@ -1530,6 +1531,52 @@ public class ContractsController : Controller
         }
 
         await _context.SaveChangesAsync();
+        
+        // Create import session to track this import
+        var periodName = ParsePeriodName(result.FileName ?? "");
+        var session = new ImportSession
+        {
+            ContractId = contractId,
+            FileName = result.FileName ?? "unknown.xlsx",
+            PeriodName = periodName,
+            ImportedAt = DateTime.UtcNow,
+            ImportedBy = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            Mode = result.Mode,
+            TotalItems = result.Items.Count,
+            MatchedItems = result.Matched.Count,
+            SortOrder = await _context.ImportSessions.CountAsync(s => s.ContractId == contractId)
+        };
+        _context.ImportSessions.Add(session);
+        await _context.SaveChangesAsync(); // get session ID
+        
+        // Save per-item data for this session
+        var workItems = await _context.ContractWorkItems
+            .Where(w => w.ContractId == contractId)
+            .ToListAsync();
+        
+        foreach (var item in result.Items)
+        {
+            ContractWorkItem? wi = null;
+            if (item.ExistingId.HasValue)
+                wi = workItems.FirstOrDefault(w => w.Id == item.ExistingId.Value);
+            else
+                wi = workItems.FirstOrDefault(w => w.Name == item.Name && w.Unit == item.Unit);
+            
+            if (wi != null)
+            {
+                _context.ImportSessionItems.Add(new ImportSessionItem
+                {
+                    ImportSessionId = session.Id,
+                    ContractWorkItemId = wi.Id,
+                    ThisPeriodQuantity = item.ThisPeriodQuantity,
+                    ThisPeriodAmount = item.ThisPeriodAmount,
+                    CumulativeQuantity = item.CumulativeQuantity,
+                    CumulativeAmount = item.CumulativeAmount
+                });
+            }
+        }
+        await _context.SaveChangesAsync();
+        
         TempData["Success"] = $"Импорт завершён: добавлено {added}, обновлено {updated} позиций";
         return Json(new { success = true, added, updated, redirectUrl = Url.Action("Details", new { id = contractId }) });
     }
@@ -1825,5 +1872,187 @@ public class ContractsController : Controller
         
         TempData["SuccessMessage"] = "Поправка удалена.";
         return RedirectToAction(nameof(Details), new { id = contractId });
+    }
+    
+    /// <summary>
+    /// Извлечь название периода из имени файла
+    /// Например: "№3. АВР Ноябрь 2025.xlsx" → "Ноябрь 2025"
+    /// </summary>
+    private static string ParsePeriodName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return "Неизвестный период";
+        
+        // Remove extension
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        
+        // Russian month names
+        var months = new[] { "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+            "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь" };
+        
+        foreach (var month in months)
+        {
+            var idx = name.IndexOf(month, StringComparison.OrdinalIgnoreCase);
+            if (idx >= 0)
+            {
+                // Extract "Месяц ГГГГ" pattern
+                var rest = name[idx..].Trim();
+                // Find a 4-digit year
+                var yearMatch = System.Text.RegularExpressions.Regex.Match(rest, @"\d{4}");
+                if (yearMatch.Success)
+                    return $"{month} {yearMatch.Value}";
+                return month;
+            }
+        }
+        
+        return name; // fallback: use filename without extension
+    }
+    
+    /// <summary>
+    /// Детальный просмотр объёма работ с историей импортов
+    /// </summary>
+    public async Task<IActionResult> WorkScope(int contractId)
+    {
+        var contract = await _context.Contracts
+            .Include(c => c.Contractor)
+            .FirstOrDefaultAsync(c => c.Id == contractId);
+        if (contract == null) return NotFound();
+        
+        var sessions = await _context.ImportSessions
+            .Where(s => s.ContractId == contractId)
+            .OrderBy(s => s.SortOrder)
+            .ToListAsync();
+        
+        var workItems = await _context.ContractWorkItems
+            .Where(w => w.ContractId == contractId)
+            .OrderBy(w => w.SortOrder)
+            .ToListAsync();
+        
+        ViewBag.Contract = contract;
+        ViewBag.Sessions = sessions;
+        ViewBag.WorkItems = workItems;
+        
+        return View();
+    }
+    
+    /// <summary>
+    /// API: получить данные сессии импорта
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetImportSessionData(int sessionId)
+    {
+        var items = await _context.ImportSessionItems
+            .Where(i => i.ImportSessionId == sessionId)
+            .Include(i => i.ContractWorkItem)
+            .Select(i => new
+            {
+                workItemId = i.ContractWorkItemId,
+                name = i.ContractWorkItem.Name,
+                unit = i.ContractWorkItem.Unit,
+                category = i.ContractWorkItem.Category,
+                targetQuantity = i.ContractWorkItem.TargetQuantity,
+                thisPeriodQuantity = i.ThisPeriodQuantity,
+                thisPeriodAmount = i.ThisPeriodAmount,
+                cumulativeQuantity = i.CumulativeQuantity,
+                cumulativeAmount = i.CumulativeAmount
+            })
+            .ToListAsync();
+        
+        return Json(items);
+    }
+    
+    /// <summary>
+    /// Экспорт объёма работ в Excel с данными по всем периодам
+    /// </summary>
+    public async Task<IActionResult> ExportWorkScope(int contractId)
+    {
+        var contract = await _context.Contracts.FindAsync(contractId);
+        if (contract == null) return NotFound();
+        
+        var sessions = await _context.ImportSessions
+            .Where(s => s.ContractId == contractId)
+            .OrderBy(s => s.SortOrder)
+            .ToListAsync();
+        
+        var workItems = await _context.ContractWorkItems
+            .Where(w => w.ContractId == contractId)
+            .OrderBy(w => w.SortOrder)
+            .ToListAsync();
+        
+        var sessionItems = await _context.ImportSessionItems
+            .Where(i => i.ImportSession.ContractId == contractId)
+            .ToListAsync();
+        
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var ws = workbook.Worksheets.Add("Объём работ");
+        
+        // Header row
+        int col = 1;
+        ws.Cell(1, col++).Value = "№";
+        ws.Cell(1, col++).Value = "Наименование";
+        ws.Cell(1, col++).Value = "Ед. изм.";
+        ws.Cell(1, col++).Value = "Кол-во (базис)";
+        ws.Cell(1, col++).Value = "Сумма (базис)";
+        
+        // Dynamic columns per session
+        foreach (var session in sessions)
+        {
+            ws.Cell(1, col++).Value = $"Кол-во {session.PeriodName}";
+            ws.Cell(1, col++).Value = $"Сумма {session.PeriodName}";
+        }
+        
+        ws.Cell(1, col++).Value = "Всего с начала";
+        ws.Cell(1, col).Value = "% выполнения";
+        
+        // Style header
+        var headerRange = ws.Range(1, 1, 1, col);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightGray;
+        
+        // Data rows
+        int row = 2;
+        string currentCat = "";
+        foreach (var wi in workItems)
+        {
+            // Category header
+            if (!string.IsNullOrEmpty(wi.Category) && wi.Category != currentCat)
+            {
+                currentCat = wi.Category;
+                ws.Cell(row, 1).Value = "";
+                ws.Cell(row, 2).Value = currentCat;
+                ws.Range(row, 1, row, col).Style.Font.Bold = true;
+                ws.Range(row, 1, row, col).Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.LightYellow;
+                row++;
+            }
+            
+            int c = 1;
+            ws.Cell(row, c++).Value = wi.ItemNumber ?? wi.SortOrder.ToString();
+            ws.Cell(row, c++).Value = wi.Name;
+            ws.Cell(row, c++).Value = wi.Unit;
+            ws.Cell(row, c++).Value = wi.TargetQuantity;
+            ws.Cell(row, c++).Value = wi.TotalAmount;
+            
+            foreach (var session in sessions)
+            {
+                var si = sessionItems.FirstOrDefault(x => x.ImportSessionId == session.Id && x.ContractWorkItemId == wi.Id);
+                ws.Cell(row, c++).Value = si?.ThisPeriodQuantity ?? 0;
+                ws.Cell(row, c++).Value = si?.ThisPeriodAmount ?? 0;
+            }
+            
+            ws.Cell(row, c++).Value = wi.AchievedQuantity;
+            var pct = wi.TargetQuantity > 0 ? wi.AchievedQuantity / wi.TargetQuantity * 100 : 0;
+            ws.Cell(row, c).Value = pct;
+            ws.Cell(row, c).Style.NumberFormat.Format = "0.00\"%\"";
+            
+            row++;
+        }
+        
+        ws.Columns().AdjustToContents();
+        
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+        
+        var fileName = $"Объём_работ_{contract.ContractNumber}_{DateTime.Now:yyyy-MM-dd}.xlsx";
+        return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }

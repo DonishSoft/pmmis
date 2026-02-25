@@ -288,6 +288,9 @@
                         <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Объём работ</h5>
                         <div class="d-flex gap-2 align-items-center">
                             <span class="badge bg-secondary" id="workItemsCount">0 позиций</span>
+                            <a asp-action="WorkScope" asp-route-contractId="@Model.Id" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye me-1"></i>Детальный просмотр
+                            </a>
                             @if (canEdit)
                             {
                                 <a asp-action="ImportWorkItems" asp-route-contractId="@Model.Id" class="btn btn-sm btn-outline-primary">
@@ -1007,14 +1010,21 @@
         }
         empty.classList.add('d-none');
         
+        let currentCat = '';
         tbody.innerHTML = workItems.map((item, idx) => {
             const pct = item.targetQuantity > 0 ? Math.min(100, (item.achievedQuantity / item.targetQuantity) * 100) : 0;
             const barClass = pct >= 80 ? 'bg-success' : pct >= 50 ? 'bg-info' : pct >= 25 ? 'bg-warning' : 'bg-danger';
             const isNew = !item.id || item.id === 0;
             
+            let catHeader = '';
+            if (item.category && item.category !== currentCat) {
+                currentCat = item.category;
+                catHeader = `<tr class="table-secondary"><td colspan="${canEditItems ? 7 : 6}"><strong><i class="bi bi-folder2 me-1"></i>${escHtml(currentCat)}</strong></td></tr>`;
+            }
+            
             if (isNew || workItemsDirty) {
                 // Editable row
-                return `<tr>
+                return catHeader + `<tr>
                     <td class="text-center text-muted">${idx + 1}</td>
                     <td><input type="text" class="form-control form-control-sm" value="${escHtml(item.name)}" 
                          onchange="updateItem(${idx}, 'name', this.value)" placeholder="Наименование работы..." /></td>
@@ -1031,7 +1041,7 @@
                 </tr>`;
             }
             // Readonly row
-            return `<tr>
+            return catHeader + `<tr>
                 <td class="text-center text-muted">${idx + 1}</td>
                 <td><strong>${escHtml(item.name)}</strong></td>
                 <td>${escHtml(item.unit)}</td>

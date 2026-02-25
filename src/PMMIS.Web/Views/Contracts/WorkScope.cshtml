@@ -1,0 +1,209 @@
+@using PMMIS.Domain.Entities
+@{
+    var contract = ViewBag.Contract as Contract;
+    var sessions = ViewBag.Sessions as List<ImportSession> ?? new();
+    var workItems = ViewBag.WorkItems as List<ContractWorkItem> ?? new();
+    ViewData["Title"] = "Объём работ — " + contract?.ContractNumber;
+}
+
+<div class="container-fluid py-3">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-controller="Contracts" asp-action="Index">Контракты</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Contracts" asp-action="Details" asp-route-id="@contract?.Id">@contract?.ContractNumber</a></li>
+            <li class="breadcrumb-item active">Объём работ</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-1"><i class="bi bi-list-task me-2"></i>Объём работ</h4>
+            <p class="text-muted mb-0">@contract?.ScopeOfWork</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-secondary fs-6">@workItems.Count позиций</span>
+            <span class="badge bg-info fs-6">@sessions.Count импортов</span>
+            <a asp-action="ExportWorkScope" asp-route-contractId="@contract?.Id" class="btn btn-sm btn-success">
+                <i class="bi bi-file-earmark-excel me-1"></i>Экспорт в Excel
+            </a>
+            <a asp-action="Details" asp-route-id="@contract?.Id" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabOverall" role="tab">
+                <i class="bi bi-bar-chart me-1"></i>Общий прогресс
+            </a>
+        </li>
+        @foreach (var session in sessions)
+        {
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tabSession_@session.Id" role="tab"
+                   data-session-id="@session.Id">
+                    <i class="bi bi-file-earmark me-1"></i>@session.PeriodName
+                </a>
+            </li>
+        }
+    </ul>
+
+    <div class="tab-content border border-top-0 rounded-bottom bg-white">
+        <!-- Overall Progress Tab -->
+        <div class="tab-pane fade show active p-3" id="tabOverall">
+            <div class="mb-2">
+                <input type="text" class="form-control form-control-sm" id="overallSearch" placeholder="Поиск по наименованию..." />
+            </div>
+            <div style="max-height:600px;overflow-y:auto;">
+                <table class="table table-sm table-hover mb-0" style="font-size:0.85rem;">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width:40px">#</th>
+                            <th>Наименование</th>
+                            <th style="width:80px">Ед.</th>
+                            <th style="width:100px" class="text-end">Базис</th>
+                            <th style="width:100px" class="text-end">Сумма</th>
+                            <th style="width:100px" class="text-end">Выполн.</th>
+                            <th style="width:120px">Прогресс</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            string currentCat = "";
+                            int num = 0;
+                        }
+                        @foreach (var wi in workItems)
+                        {
+                            if (!string.IsNullOrEmpty(wi.Category) && wi.Category != currentCat)
+                            {
+                                currentCat = wi.Category;
+                                <tr class="table-secondary">
+                                    <td colspan="7"><strong><i class="bi bi-folder2 me-1"></i>@currentCat</strong></td>
+                                </tr>
+                            }
+                            num++;
+                            var pct = wi.TargetQuantity > 0 ? (wi.AchievedQuantity / wi.TargetQuantity * 100) : 0;
+                            var barClass = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-info" : pct >= 25 ? "bg-warning" : "bg-danger";
+                            var rowClass = pct > 0 ? "table-success" : "";
+                            <tr class="@rowClass work-item-row">
+                                <td class="text-muted">@(wi.ItemNumber ?? num.ToString())</td>
+                                <td>@wi.Name</td>
+                                <td>@wi.Unit</td>
+                                <td class="text-end">@wi.TargetQuantity.ToString("N2")</td>
+                                <td class="text-end">@wi.TotalAmount.ToString("N2")</td>
+                                <td class="text-end">@wi.AchievedQuantity.ToString("N2")</td>
+                                <td>
+                                    <div class="progress" style="height:16px">
+                                        <div class="progress-bar @barClass" style="width:@(Math.Min(100, pct).ToString("F0"))%">@pct.ToString("F1")%</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Per-session tabs (loaded dynamically) -->
+        @foreach (var session in sessions)
+        {
+            <div class="tab-pane fade p-3" id="tabSession_@session.Id">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="text-muted small">
+                        <i class="bi bi-file-earmark me-1"></i>@session.FileName
+                        · <i class="bi bi-clock me-1"></i>@session.ImportedAt.ToString("dd.MM.yyyy HH:mm")
+                        · @session.Mode
+                        · @session.TotalItems позиций
+                    </div>
+                    <input type="text" class="form-control form-control-sm" style="max-width:250px" placeholder="Поиск..." onkeyup="filterSessionTable(this, '@session.Id')" />
+                </div>
+                <div style="max-height:600px;overflow-y:auto;">
+                    <table class="table table-sm table-hover mb-0" style="font-size:0.85rem;" id="sessionTable_@session.Id">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Наименование</th>
+                                <th class="text-end" style="width:80px">Ед.</th>
+                                <th class="text-end" style="width:100px">Базис</th>
+                                <th class="text-end" style="width:100px">За период</th>
+                                <th class="text-end" style="width:100px">Сумма</th>
+                                <th class="text-end" style="width:100px">Накоп.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="6" class="text-center text-muted py-3">
+                                <span class="spinner-border spinner-border-sm me-1"></span>Загрузка...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Search for overall tab
+    document.getElementById('overallSearch')?.addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('#tabOverall .work-item-row').forEach(row => {
+            const name = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
+            row.style.display = name.includes(q) ? '' : 'none';
+        });
+    });
+
+    // Load session data on tab click
+    document.querySelectorAll('a[data-session-id]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function() {
+            const sid = this.dataset.sessionId;
+            const tbody = document.querySelector(`#sessionTable_${sid} tbody`);
+            if (tbody.dataset.loaded) return;
+            
+            fetch(`@Url.Action("GetImportSessionData")?sessionId=${sid}`)
+                .then(r => r.json())
+                .then(items => {
+                    tbody.dataset.loaded = '1';
+                    tbody.innerHTML = '';
+                    let cat = '';
+                    items.forEach(m => {
+                        if (m.category && m.category !== cat) {
+                            cat = m.category;
+                            tbody.innerHTML += `<tr class="table-secondary"><td colspan="6"><strong><i class="bi bi-folder2 me-1"></i>${esc(cat)}</strong></td></tr>`;
+                        }
+                        const hasProgress = m.thisPeriodQuantity > 0;
+                        tbody.innerHTML += `<tr class="${hasProgress ? 'table-success' : ''} session-row">
+                            <td style="padding-left:1.5rem">${esc(m.name)}</td>
+                            <td class="text-end">${esc(m.unit)}</td>
+                            <td class="text-end">${fmt(m.targetQuantity)}</td>
+                            <td class="text-end"><strong>${fmt(m.thisPeriodQuantity)}</strong></td>
+                            <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
+                            <td class="text-end">${fmt(m.cumulativeQuantity)}</td>
+                        </tr>`;
+                    });
+                    if (items.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Нет данных</td></tr>';
+                    }
+                });
+        });
+    });
+
+    function filterSessionTable(input, sid) {
+        const q = input.value.toLowerCase();
+        document.querySelectorAll(`#sessionTable_${sid} .session-row`).forEach(row => {
+            const name = row.querySelector('td')?.textContent?.toLowerCase() || '';
+            row.style.display = name.includes(q) ? '' : 'none';
+        });
+    }
+
+    function esc(s) { 
+        if (!s) return ''; 
+        const d = document.createElement('div'); 
+        d.textContent = s; 
+        return d.innerHTML; 
+    }
+    function fmt(n) { return (n || 0).toLocaleString('ru-RU', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+</script>
+}

@@ -108,6 +108,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Contract Work Items (Объём работ)
     public DbSet<ContractWorkItem> ContractWorkItems => Set<ContractWorkItem>();
     public DbSet<WorkItemProgress> WorkItemProgresses => Set<WorkItemProgress>();
+    public DbSet<ImportSession> ImportSessions => Set<ImportSession>();
+    public DbSet<ImportSessionItem> ImportSessionItems => Set<ImportSessionItem>();
     
     // Contract Milestones
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
