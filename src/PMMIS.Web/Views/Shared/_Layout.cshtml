@@ -479,15 +479,19 @@
         });
 
         // === 3. Unsaved changes warning ===
-        var isDirty = false;
+        window.isDirty = false;
         var postForms = document.querySelectorAll('form[method="post"]');
         postForms.forEach(function(form) {
-            form.addEventListener('input', function() { isDirty = true; });
-            form.addEventListener('change', function() { isDirty = true; });
-            form.addEventListener('submit', function() { isDirty = false; });
+            form.addEventListener('input', function() { window.isDirty = true; });
+            form.addEventListener('change', function(e) {
+                // Don't mark dirty for contract selector navigations
+                if (e.target.id === 'contractSelect') return;
+                window.isDirty = true;
+            });
+            form.addEventListener('submit', function() { window.isDirty = false; });
         });
         window.addEventListener('beforeunload', function(e) {
-            if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+            if (window.isDirty) { e.preventDefault(); e.returnValue = ''; }
         });
     });
     </script>

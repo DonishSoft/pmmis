@@ -599,9 +599,10 @@
     document.getElementById('contractSelect')?.addEventListener('change', function() {
         const contractId = this.value;
         if (contractId) {
-            // Reset form to prevent 'Leave site?' dialog
-            const form = document.querySelector('form');
-            form.reset();
+            // Disable layout's 'Leave site?' dialog (isDirty from _Layout.cshtml)
+            window.isDirty = false;
+            if (typeof isDirty !== 'undefined') isDirty = false;
+            window.onbeforeunload = null;
             window.location.href = '@Url.Action("Create")' + '?contractId=' + contractId;
         }
     });
