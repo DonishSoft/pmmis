@@ -22,6 +22,11 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            echo "=== Cleaning Docker cache ==="
+            docker builder prune -af
+            docker system prune -af
+            docker volume prune -f
+
             echo "=== Building PMMIS web container ==="
             docker compose build --no-cache pmmis-web
 
