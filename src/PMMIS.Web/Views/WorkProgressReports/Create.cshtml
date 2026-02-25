@@ -294,8 +294,9 @@
                     </div>
                 }
 
-                @if (Model.WorkItems?.Any() == true)
+                @if (Model.WorkProgress?.ContractId > 0)
                 {
+                    var hasWorkItems = Model.WorkItems?.Any() == true;
                     <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
                         <div class="card-header bg-white p-0">
                             <ul class="nav nav-tabs" role="tablist">
@@ -304,12 +305,15 @@
                                         <i class="bi bi-file-earmark-excel me-1"></i>Импорт из Excel
                                     </a>
                                 </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" data-bs-toggle="tab" href="#tabCurrentItems" role="tab">
-                                        <i class="bi bi-list-task me-1"></i>Позиции
-                                        <span class="badge bg-secondary ms-1">@Model.WorkItems.Count</span>
-                                    </a>
-                                </li>
+                                @if (hasWorkItems)
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link" data-bs-toggle="tab" href="#tabCurrentItems" role="tab">
+                                            <i class="bi bi-list-task me-1"></i>Позиции
+                                            <span class="badge bg-secondary ms-1">@Model.WorkItems.Count</span>
+                                        </a>
+                                    </li>
+                                }
                             </ul>
                         </div>
                         <div class="card-body p-0">
@@ -375,9 +379,19 @@
                                         </div>
                                         <div class="alert alert-success d-none mt-2" id="avrImportSuccess"></div>
                                         <div class="alert alert-warning d-none mt-2" id="avrImportErrors"></div>
+
+                                        <!-- Confirm import button for first-time imports -->
+                                        <div class="d-none mt-3 text-center" id="avrConfirmImportSection">
+                                            <button type="button" class="btn btn-primary btn-lg" id="avrConfirmImportBtn">
+                                                <i class="bi bi-database-add me-1"></i> Сохранить позиции в контракт
+                                            </button>
+                                            <small class="text-muted d-block mt-1">Импортированные позиции будут сохранены в контракт для дальнейшего использования</small>
+                                        </div>
                                     </div>
                                 </div>
 
+                                @if (hasWorkItems)
+                                {
                                 <!-- Tab 2: Work Items Table (lightweight) -->
                                 <div class="tab-pane fade p-2" id="tabCurrentItems">
                                     <div class="d-flex justify-content-between align-items-center mb-2 px-1">
@@ -418,6 +432,7 @@
                                         </table>
                                     </div>
                                 </div>
+                                }
                             </div>
                         </div>
                     </div>
@@ -774,12 +789,15 @@
 
             const successDiv = document.getElementById('avrImportSuccess');
             successDiv.classList.remove('d-none');
-            successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Готово! Заполнено <strong>${filled}</strong> из <strong>${items.length}</strong> позиций. Перейдите во вкладку «Позиции» для проверки и сохранения.`;
 
-            if (filled > 0) {
-                setTimeout(() => {
-                    document.querySelector('a[href="#tabCurrentItems"]')?.click();
-                }, 3000);
+            const hasPositionsTab = document.querySelector('a[href="#tabCurrentItems"]');
+            if (hasPositionsTab && filled > 0) {
+                successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Готово! Заполнено <strong>${filled}</strong> из <strong>${items.length}</strong> позиций. Перейдите во вкладку «Позиции» для проверки.`;
+                setTimeout(() => hasPositionsTab.click(), 3000);
+            } else {
+                // First import — show confirm button
+                successDiv.innerHTML = `<i class="bi bi-check-circle me-1"></i> Найдено <strong>${items.length}</strong> позиций. Нажмите «Сохранить позиции в контракт» чтобы импортировать.`;
+                document.getElementById('avrConfirmImportSection')?.classList.remove('d-none');
             }
         } catch(err) {
             if (err.name === 'AbortError') {
@@ -791,9 +809,42 @@
             clearInterval(timer);
             clearTimeout(timeout);
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Загрузить';
+            btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Загрузить и проанализировать';
             progress.classList.add('d-none');
             statusDiv.classList.add('d-none');
+        }
+    });
+
+    // Confirm first import — save to contract
+    document.getElementById('avrConfirmImportBtn')?.addEventListener('click', async function() {
+        const contractId = document.getElementById('contractSelect')?.value;
+        if (!contractId) return;
+
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Сохранение...';
+
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const resp = await fetch(`@Url.Action("ConfirmImport", "Contracts")?contractId=${contractId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `__RequestVerificationToken=${encodeURIComponent(token)}`
+            });
+            const data = await resp.json();
+            if (data.success) {
+                // Reload page to show imported items
+                window.isDirty = false;
+                window.location.href = '@Url.Action("Create")' + '?contractId=' + contractId;
+            } else {
+                showAvrError(data.error || 'Ошибка сохранения');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-database-add me-1"></i> Сохранить позиции в контракт';
+            }
+        } catch(err) {
+            showAvrError('Ошибка: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-database-add me-1"></i> Сохранить позиции в контракт';
         }
     });
 
