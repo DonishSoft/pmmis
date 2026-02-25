@@ -20,11 +20,13 @@ public class ProcurementController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly ITaskService _taskService;
+    private readonly IAuditService _auditService;
 
-    public ProcurementController(ApplicationDbContext context, ITaskService taskService)
+    public ProcurementController(ApplicationDbContext context, ITaskService taskService, IAuditService auditService)
     {
         _context = context;
         _taskService = taskService;
+        _auditService = auditService;
     }
 
     public async Task<IActionResult> Index(int? projectId, ProcurementStatus? status, ProcurementType? type, string? search)
@@ -122,6 +124,9 @@ public class ProcurementController : Controller
             _context.ProcurementPlans.Add(plan);
             await _context.SaveChangesAsync();
             
+            // Audit log
+            await _auditService.LogCreateAsync("ProcurementPlan", plan.Id, User);
+            
             // Auto-create task for procurement monitoring
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!string.IsNullOrEmpty(userId))
@@ -178,6 +183,9 @@ public class ProcurementController : Controller
 
         if (ModelState.IsValid)
         {
+            // Load old values for audit
+            var oldPlan = await _context.ProcurementPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            
             plan.UpdatedAt = DateTime.UtcNow;
             
             // Convert ALL dates to UTC (PostgreSQL requires DateTimeKind.Utc)
@@ -192,6 +200,10 @@ public class ProcurementController : Controller
             
             _context.Update(plan);
             await _context.SaveChangesAsync();
+            
+            // Audit log
+            if (oldPlan != null)
+                await _auditService.LogChangesAsync("ProcurementPlan", plan.Id, oldPlan, plan, User);
             
             TempData["Success"] = "Позиция плана закупок обновлена";
             return RedirectToAction(nameof(Index), new { projectId = plan.ProjectId });
@@ -223,6 +235,10 @@ public class ProcurementController : Controller
             
             _context.ProcurementPlans.Remove(plan);
             await _context.SaveChangesAsync();
+            
+            // Audit log
+            await _auditService.LogDeleteAsync("ProcurementPlan", id, User);
+            
             TempData["Success"] = "Позиция удалена";
             return RedirectToAction(nameof(Index), new { projectId });
         }
@@ -327,6 +343,17 @@ public class ProcurementController : Controller
     #endregion
 
     #region API
+
+    [HttpGet]
+    public async Task<IActionResult> GetHistory(int id)
+    {
+        var logs = await _context.AuditLogs
+            .Where(a => a.EntityType == "ProcurementPlan" && a.EntityId == id)
+            .OrderByDescending(a => a.Timestamp)
+            .Select(a => new { a.Action, a.Changes, a.UserFullName, a.UserPosition, a.Timestamp })
+            .ToListAsync();
+        return Json(logs);
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetComponentsByProject(int projectId)

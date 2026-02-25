@@ -24,19 +24,22 @@ public class ContractsController : Controller
     private readonly IFileService _fileService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IDataAccessService _dataAccessService;
+    private readonly IAuditService _auditService;
 
     public ContractsController(
         ApplicationDbContext context, 
         ITaskService taskService, 
         IFileService fileService,
         UserManager<ApplicationUser> userManager,
-        IDataAccessService dataAccessService)
+        IDataAccessService dataAccessService,
+        IAuditService auditService)
     {
         _context = context;
         _taskService = taskService;
         _fileService = fileService;
         _userManager = userManager;
         _dataAccessService = dataAccessService;
+        _auditService = auditService;
     }
 
     public async Task<IActionResult> Index()
@@ -769,6 +772,9 @@ public class ContractsController : Controller
             _context.Add(viewModel.Contract);
             await _context.SaveChangesAsync();
             
+            // Audit log
+            await _auditService.LogCreateAsync("Contract", viewModel.Contract.Id, User);
+            
             // Link procurement plan to this contract and sync status
             if (viewModel.Contract.ProcurementPlanId.HasValue)
             {
@@ -965,6 +971,9 @@ public class ContractsController : Controller
         {
             try
             {
+                // Load old values for audit comparison
+                var oldContract = await _context.Contracts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
+                
                 // Preserve original CreatedAt from database (form doesn't send it)
                 var existingCreatedAt = await _context.Contracts
                     .Where(c => c.Id == id)
@@ -1156,6 +1165,11 @@ public class ContractsController : Controller
                 await UploadCategorizedDocuments(viewModel, id, currentUserId);
                 
                 await _context.SaveChangesAsync();
+                
+                // Audit log
+                if (oldContract != null)
+                    await _auditService.LogChangesAsync("Contract", id, oldContract, viewModel.Contract, User);
+                
                 TempData["Success"] = "Контракт успешно обновлён";
             }
             catch (DbUpdateConcurrencyException)
@@ -1191,9 +1205,22 @@ public class ContractsController : Controller
         {
             _context.Contracts.Remove(contract);
             await _context.SaveChangesAsync();
+            await _auditService.LogDeleteAsync("Contract", id, User);
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    // Audit history
+    [HttpGet]
+    public async Task<IActionResult> GetHistory(int id)
+    {
+        var logs = await _context.AuditLogs
+            .Where(a => a.EntityType == "Contract" && a.EntityId == id)
+            .OrderByDescending(a => a.Timestamp)
+            .Select(a => new { a.Action, a.Changes, a.UserFullName, a.UserPosition, a.Timestamp })
+            .ToListAsync();
+        return Json(logs);
     }
 
     // Grid data for Syncfusion DataGrid
