@@ -97,6 +97,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<TaskChecklist> TaskChecklists => Set<TaskChecklist>();
     public DbSet<TaskChecklistItem> TaskChecklistItems => Set<TaskChecklistItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     
     // Contract Indicators
     public DbSet<ContractIndicator> ContractIndicators => Set<ContractIndicator>();

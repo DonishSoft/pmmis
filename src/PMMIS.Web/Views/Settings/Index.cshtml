@@ -1,0 +1,169 @@
+@model List<PMMIS.Domain.Entities.AppSetting>
+@{
+    ViewData["Title"] = "Настройки";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-gear me-2"></i>Настройки системы</h2>
+    </div>
+
+    <!-- API Keys Section -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-key me-2"></i>API ключи</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">Для работы AI-импорта объёма работ необходим API ключ Gemini.</p>
+            
+            @{
+                var geminiKey = Model.FirstOrDefault(s => s.Key == "Gemini:ApiKey");
+            }
+            
+            <form asp-action="SaveSetting" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="key" value="Gemini:ApiKey" />
+                <input type="hidden" name="description" value="API ключ Google Gemini для AI-импорта" />
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Gemini API Key</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-stars"></i></span>
+                            <input type="password" name="value" class="form-control" 
+                                   value="@geminiKey?.Value" 
+                                   placeholder="AIzaSy..." id="geminiKeyInput" />
+                            <button type="button" class="btn btn-outline-secondary" onclick="toggleKey()">
+                                <i class="bi bi-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Получить ключ: <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-lg me-1"></i> Сохранить
+                        </button>
+                    </div>
+                    @if (geminiKey != null)
+                    {
+                        <div class="col-md-2">
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Настроен</span>
+                        </div>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- All Settings Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-sliders me-2"></i>Все настройки</h5>
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addSettingModal">
+                <i class="bi bi-plus-lg me-1"></i>Добавить
+            </button>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.Any())
+            {
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ключ</th>
+                            <th>Значение</th>
+                            <th>Описание</th>
+                            <th style="width:80px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var setting in Model)
+                        {
+                            <tr>
+                                <td><code>@setting.Key</code></td>
+                                <td>
+                                    @if (setting.Key.Contains("Key", StringComparison.OrdinalIgnoreCase) || 
+                                         setting.Key.Contains("Secret", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="text-muted">••••••••</span>
+                                    }
+                                    else
+                                    {
+                                        @setting.Value
+                                    }
+                                </td>
+                                <td class="text-muted">@setting.Description</td>
+                                <td>
+                                    <form asp-action="DeleteSetting" method="post" onsubmit="return confirm('Удалить настройку?')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@setting.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-gear fs-1 d-block mb-2"></i>
+                    Нет сохранённых настроек
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Add Setting Modal -->
+<div class="modal fade" id="addSettingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="SaveSetting" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить настройку</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ключ <span class="text-danger">*</span></label>
+                        <input type="text" name="key" class="form-control" required placeholder="Например: Gemini:ApiKey" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Значение <span class="text-danger">*</span></label>
+                        <input type="text" name="value" class="form-control" required />
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Описание</label>
+                        <input type="text" name="description" class="form-control" placeholder="Описание настройки" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleKey() {
+        const input = document.getElementById('geminiKeyInput');
+        const icon = document.getElementById('eyeIcon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    }
+</script>
+}

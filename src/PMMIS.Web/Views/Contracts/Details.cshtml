@@ -289,6 +289,9 @@
                         <span class="badge bg-secondary" id="workItemsCount">0 позиций</span>
                         @if (canEdit)
                         {
+                            <a asp-action="ImportWorkItems" asp-route-contractId="@Model.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-file-earmark-arrow-up me-1"></i>Импорт из Excel
+                            </a>
                             <button type="button" class="btn btn-sm btn-success" id="addWorkItemBtn">
                                 <i class="bi bi-plus-lg me-1"></i>Добавить
                             </button>

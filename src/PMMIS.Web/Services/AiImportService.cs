@@ -44,10 +44,15 @@ public class AiImportService : IAiImportService
             }
 
             // Step 2: Send to Gemini API
-            var apiKey = _config["Gemini:ApiKey"];
+            var apiKey = await _context.AppSettings
+                .Where(s => s.Key == "Gemini:ApiKey")
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+            apiKey ??= _config["Gemini:ApiKey"];
+            
             if (string.IsNullOrEmpty(apiKey))
             {
-                result.Errors.Add("API ключ Gemini не настроен. Добавьте Gemini:ApiKey в appsettings.json");
+                result.Errors.Add("API ключ Gemini не настроен. Перейдите в Настройки → API ключи");
                 return result;
             }
 
