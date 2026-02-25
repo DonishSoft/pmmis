@@ -16,10 +16,12 @@ public interface IExcelImportService
 public class ExcelImportService : IExcelImportService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<ExcelImportService> _logger;
 
-    public ExcelImportService(ApplicationDbContext context)
+    public ExcelImportService(ApplicationDbContext context, ILogger<ExcelImportService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<ImportResult> ParseExcelAsync(Stream fileStream, int contractId)
@@ -28,7 +30,10 @@ public class ExcelImportService : IExcelImportService
 
         try
         {
+            _logger.LogInformation("=== ClosedXML Import Start === ContractId={ContractId}, StreamLength={Len}", contractId, fileStream.Length);
+            
             using var workbook = new XLWorkbook(fileStream);
+            _logger.LogInformation("Workbook opened. Sheets: {Sheets}", string.Join(", ", workbook.Worksheets.Select(w => w.Name)));
             
             // Find the data sheet (стр 4 or similar)
             var worksheet = FindDataSheet(workbook);
@@ -38,16 +43,19 @@ public class ExcelImportService : IExcelImportService
                     string.Join(", ", workbook.Worksheets.Select(w => w.Name)));
                 return result;
             }
+            _logger.LogInformation("Sheet found: {Sheet}, LastRow={Row}", worksheet.Name, worksheet.LastRowUsed()?.RowNumber());
 
             // Parse work items from the sheet
             var items = ParseWorkItems(worksheet);
             result.Items = items;
+            _logger.LogInformation("Parsed {Count} items from Excel", items.Count);
 
             // Compare with existing data
             var existing = await _context.ContractWorkItems
                 .Where(w => w.ContractId == contractId)
                 .OrderBy(w => w.SortOrder)
                 .ToListAsync();
+            _logger.LogInformation("Found {Count} existing items in DB", existing.Count);
 
             if (existing.Count == 0)
             {
@@ -58,9 +66,13 @@ public class ExcelImportService : IExcelImportService
             {
                 CompareWithExisting(result, items, existing);
             }
+            
+            _logger.LogInformation("=== ClosedXML Import Done === New={New}, Matched={Match}, Missing={Miss}, Changes={Chg}",
+                result.NewItems.Count, result.Matched.Count, result.MissingItems.Count, result.Changes.Count);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "ClosedXML import FAILED for ContractId={ContractId}", contractId);
             result.Errors.Add($"Ошибка чтения файла: {ex.Message}");
         }
 

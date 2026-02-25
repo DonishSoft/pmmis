@@ -21,12 +21,14 @@ public class AiImportService : IAiImportService
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _config;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<AiImportService> _logger;
 
-    public AiImportService(ApplicationDbContext context, IConfiguration config, IHttpClientFactory httpClientFactory)
+    public AiImportService(ApplicationDbContext context, IConfiguration config, IHttpClientFactory httpClientFactory, ILogger<AiImportService> logger)
     {
         _context = context;
         _config = config;
         _httpClient = httpClientFactory.CreateClient();
+        _logger = logger;
     }
 
     public async Task<ImportResult> ParseExcelWithAiAsync(Stream fileStream, int contractId)
@@ -36,12 +38,14 @@ public class AiImportService : IAiImportService
         try
         {
             // Step 1: Convert Excel to CSV text
+            _logger.LogInformation("=== Gemini AI Import Start === ContractId={ContractId}", contractId);
             var csvText = ConvertExcelToCsv(fileStream);
             if (string.IsNullOrEmpty(csvText))
             {
                 result.Errors.Add("Не удалось прочитать данные из Excel файла");
                 return result;
             }
+            _logger.LogInformation("CSV converted. Length={Len} chars", csvText.Length);
 
             // Step 2: Send to Gemini API
             var apiKey = await _context.AppSettings
@@ -55,8 +59,10 @@ public class AiImportService : IAiImportService
                 result.Errors.Add("API ключ Gemini не настроен. Перейдите в Настройки → API ключи");
                 return result;
             }
+            _logger.LogInformation("API key found. Calling Gemini...");
 
             var items = await CallGeminiApi(csvText, apiKey);
+            _logger.LogInformation("Gemini returned {Count} items", items?.Count ?? 0);
             if (items == null || items.Count == 0)
             {
                 result.Errors.Add("Gemini не смог распознать данные из файла");
@@ -83,6 +89,7 @@ public class AiImportService : IAiImportService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Gemini AI import FAILED for ContractId={ContractId}", contractId);
             result.Errors.Add($"Ошибка AI импорта: {ex.Message}");
         }
 
