@@ -405,11 +405,17 @@
         matchBody.innerHTML = '';
         if (data.matchedList?.length) {
             document.getElementById('matchedEmpty').classList.add('d-none');
+            let currentCat = '';
             data.matchedList.forEach(m => {
+                // Category header
+                if (m.category && m.category !== currentCat) {
+                    currentCat = m.category;
+                    matchBody.innerHTML += `<tr class="table-secondary"><td colspan="4"><strong><i class="bi bi-folder2 me-1"></i>${esc(currentCat)}</strong></td></tr>`;
+                }
                 const hasChange = m.thisPeriodQuantity > 0;
                 const rowClass = hasChange ? 'table-success' : '';
                 matchBody.innerHTML += `<tr class="${rowClass}">
-                    <td>${esc(m.name?.substring(0, 80))}</td>
+                    <td style="padding-left:1.5rem">${esc(m.name?.substring(0, 80))}</td>
                     <td class="text-end">${fmt(m.previousQuantity)}</td>
                     <td class="text-end"><strong>${hasChange ? fmt(m.thisPeriodQuantity) : fmt(0)}</strong></td>
                     <td class="text-end">${fmt(m.thisPeriodAmount)}</td>

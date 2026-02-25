@@ -109,6 +109,7 @@ public class MatchedItem
 {
     public int ExistingId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
     public decimal ThisPeriodQuantity { get; set; }
     public decimal ThisPeriodAmount { get; set; }
     public decimal PreviousQuantity { get; set; }
