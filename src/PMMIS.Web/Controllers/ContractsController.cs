@@ -1950,6 +1950,8 @@ public class ContractsController : Controller
                 unit = i.ContractWorkItem.Unit,
                 category = i.ContractWorkItem.Category,
                 targetQuantity = i.ContractWorkItem.TargetQuantity,
+                unitPrice = i.ContractWorkItem.UnitPrice,
+                totalAmount = i.ContractWorkItem.TotalAmount,
                 thisPeriodQuantity = i.ThisPeriodQuantity,
                 thisPeriodAmount = i.ThisPeriodAmount,
                 cumulativeQuantity = i.CumulativeQuantity,
@@ -1990,8 +1992,9 @@ public class ContractsController : Controller
         ws.Cell(1, col++).Value = "№";
         ws.Cell(1, col++).Value = "Наименование";
         ws.Cell(1, col++).Value = "Ед. изм.";
-        ws.Cell(1, col++).Value = "Кол-во (базис)";
-        ws.Cell(1, col++).Value = "Сумма (базис)";
+        ws.Cell(1, col++).Value = "Кол-во";
+        ws.Cell(1, col++).Value = "Цена ед.";
+        ws.Cell(1, col++).Value = "Сумма";
         
         // Dynamic columns per session
         foreach (var session in sessions)
@@ -2029,6 +2032,7 @@ public class ContractsController : Controller
             ws.Cell(row, c++).Value = wi.Name;
             ws.Cell(row, c++).Value = wi.Unit;
             ws.Cell(row, c++).Value = wi.TargetQuantity;
+            ws.Cell(row, c++).Value = wi.UnitPrice;
             ws.Cell(row, c++).Value = wi.TotalAmount;
             
             foreach (var session in sessions)

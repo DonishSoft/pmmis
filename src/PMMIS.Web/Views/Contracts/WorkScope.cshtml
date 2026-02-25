@@ -63,10 +63,11 @@
                         <tr>
                             <th style="width:40px">#</th>
                             <th>Наименование</th>
-                            <th style="width:80px">Ед.</th>
-                            <th style="width:100px" class="text-end">Базис</th>
+                            <th style="width:60px">Ед.</th>
+                            <th style="width:90px" class="text-end">Кол-во</th>
+                            <th style="width:90px" class="text-end">Цена ед.</th>
                             <th style="width:100px" class="text-end">Сумма</th>
-                            <th style="width:100px" class="text-end">Выполн.</th>
+                            <th style="width:90px" class="text-end">Выполн.</th>
                             <th style="width:120px">Прогресс</th>
                         </tr>
                     </thead>
@@ -81,7 +82,7 @@
                             {
                                 currentCat = wi.Category;
                                 <tr class="table-secondary">
-                                    <td colspan="7"><strong><i class="bi bi-folder2 me-1"></i>@currentCat</strong></td>
+                                    <td colspan="8"><strong><i class="bi bi-folder2 me-1"></i>@currentCat</strong></td>
                                 </tr>
                             }
                             num++;
@@ -93,6 +94,7 @@
                                 <td>@wi.Name</td>
                                 <td>@wi.Unit</td>
                                 <td class="text-end">@wi.TargetQuantity.ToString("N2")</td>
+                                <td class="text-end">@wi.UnitPrice.ToString("N2")</td>
                                 <td class="text-end">@wi.TotalAmount.ToString("N2")</td>
                                 <td class="text-end">@wi.AchievedQuantity.ToString("N2")</td>
                                 <td>
@@ -125,15 +127,17 @@
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th>Наименование</th>
-                                <th class="text-end" style="width:80px">Ед.</th>
-                                <th class="text-end" style="width:100px">Базис</th>
-                                <th class="text-end" style="width:100px">За период</th>
+                                <th class="text-end" style="width:60px">Ед.</th>
+                                <th class="text-end" style="width:90px">Кол-во</th>
+                                <th class="text-end" style="width:90px">Цена ед.</th>
                                 <th class="text-end" style="width:100px">Сумма</th>
-                                <th class="text-end" style="width:100px">Накоп.</th>
+                                <th class="text-end" style="width:90px">За период</th>
+                                <th class="text-end" style="width:100px">Сумма пер.</th>
+                                <th class="text-end" style="width:90px">Накоп.</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="6" class="text-center text-muted py-3">
+                            <tr><td colspan="8" class="text-center text-muted py-3">
                                 <span class="spinner-border spinner-border-sm me-1"></span>Загрузка...
                             </td></tr>
                         </tbody>
@@ -171,20 +175,22 @@
                     items.forEach(m => {
                         if (m.category && m.category !== cat) {
                             cat = m.category;
-                            tbody.innerHTML += `<tr class="table-secondary"><td colspan="6"><strong><i class="bi bi-folder2 me-1"></i>${esc(cat)}</strong></td></tr>`;
+                            tbody.innerHTML += `<tr class="table-secondary"><td colspan="8"><strong><i class="bi bi-folder2 me-1"></i>${esc(cat)}</strong></td></tr>`;
                         }
                         const hasProgress = m.thisPeriodQuantity > 0;
                         tbody.innerHTML += `<tr class="${hasProgress ? 'table-success' : ''} session-row">
                             <td style="padding-left:1.5rem">${esc(m.name)}</td>
                             <td class="text-end">${esc(m.unit)}</td>
                             <td class="text-end">${fmt(m.targetQuantity)}</td>
+                            <td class="text-end">${fmt(m.unitPrice)}</td>
+                            <td class="text-end">${fmt(m.totalAmount)}</td>
                             <td class="text-end"><strong>${fmt(m.thisPeriodQuantity)}</strong></td>
                             <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
                             <td class="text-end">${fmt(m.cumulativeQuantity)}</td>
                         </tr>`;
                     });
                     if (items.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Нет данных</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Нет данных</td></tr>';
                     }
                 });
         });
