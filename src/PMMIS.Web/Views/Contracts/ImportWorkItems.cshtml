@@ -123,7 +123,7 @@
                 </div>
                 <div class="col">
                     <div class="card border-0 bg-light text-center p-3">
-                        <div class="text-muted small">Изменения</div>
+                        <div class="text-muted small">Прогресс</div>
                         <div class="fs-3 fw-bold text-warning" id="changesCount">0</div>
                     </div>
                 </div>
@@ -149,7 +149,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#tabChanges" role="tab">
-                        ⚠️ Изменения <span class="badge bg-warning text-dark ms-1" id="tabChangesBadge">0</span>
+                        ⚠️ Прогресс <span class="badge bg-warning text-dark ms-1" id="tabChangesBadge">0</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -194,21 +194,23 @@
                     <p class="text-muted text-center py-3 d-none" id="missingItemsEmpty">Все позиции найдены в файле</p>
                 </div>
 
-                <!-- Changes Tab -->
+                <!-- Changes/Progress Tab -->
                 <div class="tab-pane fade" id="tabChanges">
-                    <table class="table table-sm table-hover mb-0" id="changesTable">
+                    <p class="text-muted small mb-2"><i class="bi bi-info-circle me-1"></i>Позиции с прогрессом за текущий период</p>
+                    <table class="table table-sm table-hover mb-0" id="changesTable" style="font-size:0.85rem;">
                         <thead class="table-light">
                             <tr>
                                 <th>Наименование</th>
-                                <th>Поле</th>
-                                <th class="text-end">Было</th>
-                                <th></th>
-                                <th class="text-end">Стало</th>
+                                <th class="text-end">Ед.</th>
+                                <th class="text-end">Базис</th>
+                                <th class="text-end">Пред. период</th>
+                                <th class="text-end">За этот период</th>
+                                <th class="text-end">Сумма</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
-                    <p class="text-muted text-center py-3 d-none" id="changesEmpty">Изменений нет</p>
+                    <p class="text-muted text-center py-3 d-none" id="changesEmpty">Нет позиций с прогрессом</p>
                 </div>
 
                 <!-- Matched Tab -->
@@ -217,9 +219,12 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Наименование</th>
-                                <th class="text-end">Пред. период (кол-во)</th>
-                                <th class="text-end">За этот период (кол-во)</th>
-                                <th class="text-end">За этот период (сумма)</th>
+                                <th class="text-end">Ед.</th>
+                                <th class="text-end">Базис</th>
+                                <th class="text-end">Пред. период</th>
+                                <th class="text-end">Пред. сумма</th>
+                                <th class="text-end">За этот период</th>
+                                <th class="text-end">Сумма</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -338,12 +343,12 @@
         document.getElementById('matchedCount').textContent = data.matched;
         document.getElementById('newCount').textContent = data.newItems;
         document.getElementById('missingCount').textContent = data.missingItems;
-        document.getElementById('changesCount').textContent = data.changes;
+        // changesCount is updated dynamically from matchedList progress items
 
         // Tab badges
         document.getElementById('tabNewBadge').textContent = data.newItems;
         document.getElementById('tabMissingBadge').textContent = data.missingItems;
-        document.getElementById('tabChangesBadge').textContent = data.changes;
+        // tabChangesBadge is updated dynamically when rendering progress items
         document.getElementById('tabMatchedBadge').textContent = data.matched;
 
         // New items table
@@ -382,41 +387,56 @@
             document.getElementById('missingItemsEmpty').classList.remove('d-none');
         }
 
-        // Changes table
+        // Changes/Progress table — only items with progress this period
         const chgBody = document.querySelector('#changesTable tbody');
         chgBody.innerHTML = '';
-        if (data.changesList?.length) {
-            document.getElementById('changesEmpty').classList.add('d-none');
-            data.changesList.forEach(c => {
-                chgBody.innerHTML += `<tr>
-                    <td>${esc(c.name?.substring(0, 60))}</td>
-                    <td><span class="badge bg-warning text-dark">${esc(c.field)}</span></td>
-                    <td class="text-end text-danger text-decoration-line-through">${esc(c.oldValue)}</td>
-                    <td class="text-center">→</td>
-                    <td class="text-end text-success fw-semibold">${esc(c.newValue)}</td>
-                </tr>`;
-            });
+        if (data.matchedList?.length) {
+            const progressItems = data.matchedList.filter(m => m.thisPeriodQuantity > 0);
+            document.getElementById('tabChangesBadge').textContent = progressItems.length;
+            document.getElementById('changesCount').textContent = progressItems.length;
+            if (progressItems.length > 0) {
+                document.getElementById('changesEmpty').classList.add('d-none');
+                let chgCat = '';
+                progressItems.forEach(m => {
+                    if (m.category && m.category !== chgCat) {
+                        chgCat = m.category;
+                        chgBody.innerHTML += `<tr class="table-secondary"><td colspan="6"><strong><i class="bi bi-folder2 me-1"></i>${esc(chgCat)}</strong></td></tr>`;
+                    }
+                    chgBody.innerHTML += `<tr class="table-success">
+                        <td style="padding-left:1.5rem">${esc(m.name?.substring(0, 80))}</td>
+                        <td class="text-end">${esc(m.unit)}</td>
+                        <td class="text-end">${fmt(m.targetQuantity)}</td>
+                        <td class="text-end">${fmt(m.previousQuantity)}</td>
+                        <td class="text-end"><strong>${fmt(m.thisPeriodQuantity)}</strong></td>
+                        <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
+                    </tr>`;
+                });
+            } else {
+                document.getElementById('changesEmpty').classList.remove('d-none');
+            }
         } else {
             document.getElementById('changesEmpty').classList.remove('d-none');
         }
 
-        // Matched table
+        // Matched table — all matched items with full details
         const matchBody = document.querySelector('#matchedTable tbody');
         matchBody.innerHTML = '';
         if (data.matchedList?.length) {
             document.getElementById('matchedEmpty').classList.add('d-none');
             let currentCat = '';
             data.matchedList.forEach(m => {
-                // Category header
                 if (m.category && m.category !== currentCat) {
                     currentCat = m.category;
-                    matchBody.innerHTML += `<tr class="table-secondary"><td colspan="4"><strong><i class="bi bi-folder2 me-1"></i>${esc(currentCat)}</strong></td></tr>`;
+                    matchBody.innerHTML += `<tr class="table-secondary"><td colspan="7"><strong><i class="bi bi-folder2 me-1"></i>${esc(currentCat)}</strong></td></tr>`;
                 }
                 const hasChange = m.thisPeriodQuantity > 0;
                 const rowClass = hasChange ? 'table-success' : '';
                 matchBody.innerHTML += `<tr class="${rowClass}">
                     <td style="padding-left:1.5rem">${esc(m.name?.substring(0, 80))}</td>
+                    <td class="text-end">${esc(m.unit)}</td>
+                    <td class="text-end">${fmt(m.targetQuantity)}</td>
                     <td class="text-end">${fmt(m.previousQuantity)}</td>
+                    <td class="text-end">${fmt(m.previousAmount)}</td>
                     <td class="text-end"><strong>${hasChange ? fmt(m.thisPeriodQuantity) : fmt(0)}</strong></td>
                     <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
                 </tr>`;

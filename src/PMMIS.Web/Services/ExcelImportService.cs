@@ -212,6 +212,8 @@ public class ExcelImportService : IExcelImportService
                     ExistingId = match.Id,
                     Name = item.Name,
                     Category = item.Category,
+                    Unit = item.Unit,
+                    TargetQuantity = match.TargetQuantity,
                     ThisPeriodQuantity = item.ThisPeriodQuantity,
                     ThisPeriodAmount = item.ThisPeriodAmount,
                     PreviousQuantity = match.AchievedQuantity,
