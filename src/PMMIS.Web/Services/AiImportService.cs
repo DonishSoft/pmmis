@@ -28,6 +28,7 @@ public class AiImportService : IAiImportService
         _context = context;
         _config = config;
         _httpClient = httpClientFactory.CreateClient();
+        _httpClient.Timeout = TimeSpan.FromMinutes(5); // Gemini needs time for large files
         _logger = logger;
     }
 
