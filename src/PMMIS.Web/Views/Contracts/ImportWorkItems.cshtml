@@ -1,0 +1,422 @@
+@{
+    ViewData["Title"] = "Импорт объёма работ";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var contract = (PMMIS.Domain.Entities.Contract)ViewBag.Contract;
+    int existingCount = ViewBag.ExistingCount;
+}
+
+<div class="container-fluid">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Contracts" asp-action="Index">Контракты</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Contracts" asp-action="Details" asp-route-id="@contract.Id">@contract.ContractNumber</a></li>
+            <li class="breadcrumb-item active">Импорт объёма работ</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1"><i class="bi bi-file-earmark-arrow-up me-2"></i>Импорт объёма работ из Excel</h2>
+            <p class="text-muted mb-0">Контракт: <strong>@contract.ContractNumber</strong> — @contract.ScopeOfWork</p>
+        </div>
+        <a asp-action="Details" asp-route-id="@contract.Id" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Назад
+        </a>
+    </div>
+
+    @if (existingCount > 0)
+    {
+        <div class="alert alert-info d-flex align-items-center mb-4">
+            <i class="bi bi-info-circle me-2 fs-5"></i>
+            <div>
+                В базе уже <strong>@existingCount</strong> позиций объёма работ. 
+                При импорте будет выполнено сравнение с существующими данными.
+            </div>
+        </div>
+    }
+
+    <!-- Step 1: Upload -->
+    <div class="card border-0 shadow-sm mb-4" id="uploadCard">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-1-circle me-2 text-primary"></i>Загрузка файла</h5>
+        </div>
+        <div class="card-body">
+            <form id="uploadForm" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="contractId" value="@contract.Id" />
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Файл Excel (.xlsx) <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required id="excelFile" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Режим обработки</label>
+                        <div class="d-flex gap-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="mode" id="modeClosedXML" value="ClosedXML" checked>
+                                <label class="form-check-label" for="modeClosedXML">
+                                    <i class="bi bi-table me-1"></i> ClosedXML 
+                                    <span class="badge bg-success ms-1">Бесплатно</span>
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="mode" id="modeAI" value="AI">
+                                <label class="form-check-label" for="modeAI">
+                                    <i class="bi bi-stars me-1"></i> Gemini AI
+                                    <span class="badge bg-warning text-dark ms-1">~$0.02</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100" id="uploadBtn">
+                            <i class="bi bi-cloud-upload me-1"></i> Загрузить и проанализировать
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Progress -->
+            <div class="progress mt-3 d-none" id="uploadProgress" style="height: 6px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Preview Results -->
+    <div class="card border-0 shadow-sm mb-4 d-none" id="resultsCard">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-2-circle me-2 text-primary"></i>Результат анализа</h5>
+            <span class="badge bg-secondary" id="modeBadge"></span>
+        </div>
+        <div class="card-body">
+            <!-- Summary KPIs -->
+            <div class="row g-3 mb-4" id="summaryRow">
+                <div class="col">
+                    <div class="card border-0 bg-light text-center p-3">
+                        <div class="text-muted small">Всего позиций</div>
+                        <div class="fs-3 fw-bold text-primary" id="totalCount">0</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-0 bg-light text-center p-3">
+                        <div class="text-muted small">Совпадают</div>
+                        <div class="fs-3 fw-bold text-success" id="matchedCount">0</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-0 bg-light text-center p-3">
+                        <div class="text-muted small">Новые</div>
+                        <div class="fs-3 fw-bold text-info" id="newCount">0</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-0 bg-light text-center p-3">
+                        <div class="text-muted small">Отсутствуют</div>
+                        <div class="fs-3 fw-bold text-danger" id="missingCount">0</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-0 bg-light text-center p-3">
+                        <div class="text-muted small">Изменения</div>
+                        <div class="fs-3 fw-bold text-warning" id="changesCount">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Errors -->
+            <div class="alert alert-danger d-none" id="errorsAlert">
+                <h6><i class="bi bi-exclamation-triangle me-1"></i>Ошибки:</h6>
+                <ul id="errorsList" class="mb-0"></ul>
+            </div>
+
+            <!-- Tabs for details -->
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#tabNew" role="tab">
+                        🆕 Новые <span class="badge bg-info ms-1" id="tabNewBadge">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabMissing" role="tab">
+                        ❌ Отсутствуют <span class="badge bg-danger ms-1" id="tabMissingBadge">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabChanges" role="tab">
+                        ⚠️ Изменения <span class="badge bg-warning text-dark ms-1" id="tabChangesBadge">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabMatched" role="tab">
+                        ✅ Совпадения <span class="badge bg-success ms-1" id="tabMatchedBadge">0</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 rounded-bottom p-3" style="max-height: 500px; overflow-y: auto;">
+                <!-- New Items Tab -->
+                <div class="tab-pane fade show active" id="tabNew">
+                    <table class="table table-sm table-hover mb-0" id="newItemsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:50px">№</th>
+                                <th>Наименование</th>
+                                <th>Ед.изм.</th>
+                                <th class="text-end">Кол-во</th>
+                                <th class="text-end">Цена ед.</th>
+                                <th class="text-end">Сумма</th>
+                                <th>Категория</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="text-muted text-center py-3 d-none" id="newItemsEmpty">Новых позиций нет</p>
+                </div>
+
+                <!-- Missing Items Tab -->
+                <div class="tab-pane fade" id="tabMissing">
+                    <table class="table table-sm table-hover mb-0" id="missingItemsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:50px">№</th>
+                                <th>Наименование</th>
+                                <th>Ед.изм.</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="text-muted text-center py-3 d-none" id="missingItemsEmpty">Все позиции найдены в файле</p>
+                </div>
+
+                <!-- Changes Tab -->
+                <div class="tab-pane fade" id="tabChanges">
+                    <table class="table table-sm table-hover mb-0" id="changesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Наименование</th>
+                                <th>Поле</th>
+                                <th class="text-end">Было</th>
+                                <th></th>
+                                <th class="text-end">Стало</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="text-muted text-center py-3 d-none" id="changesEmpty">Изменений нет</p>
+                </div>
+
+                <!-- Matched Tab -->
+                <div class="tab-pane fade" id="tabMatched">
+                    <table class="table table-sm table-hover mb-0" id="matchedTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Наименование</th>
+                                <th class="text-end">За этот период (кол-во)</th>
+                                <th class="text-end">За этот период (сумма)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="text-muted text-center py-3 d-none" id="matchedEmpty">Нет совпадений</p>
+                </div>
+            </div>
+
+            <!-- Confirm button -->
+            <div class="d-flex justify-content-between align-items-center mt-4" id="confirmSection">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="addNewCheck" checked>
+                    <label class="form-check-label" for="addNewCheck">
+                        Добавить новые позиции в базу
+                    </label>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" onclick="resetForm()">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Загрузить другой файл
+                    </button>
+                    <button class="btn btn-success btn-lg" id="confirmBtn" onclick="confirmImport()">
+                        <i class="bi bi-check-circle me-1"></i> Подтвердить импорт
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function fmt(n) { return n ? Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'; }
+
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = new FormData(this);
+        const btn = document.getElementById('uploadBtn');
+        const progress = document.getElementById('uploadProgress');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Обработка...';
+        progress.classList.remove('d-none');
+
+        try {
+            const resp = await fetch('@Url.Action("UploadExcel")', { method: 'POST', body: form });
+            const data = await resp.json();
+
+            if (!data.success && data.errors?.length) {
+                showErrors(data.errors);
+                return;
+            }
+
+            showResults(data);
+        } catch(err) {
+            showErrors(['Ошибка загрузки: ' + err.message]);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Загрузить и проанализировать';
+            progress.classList.add('d-none');
+        }
+    });
+
+    function showErrors(errors) {
+        const alert = document.getElementById('errorsAlert');
+        const list = document.getElementById('errorsList');
+        list.innerHTML = errors.map(e => '<li>' + esc(e) + '</li>').join('');
+        alert.classList.remove('d-none');
+        document.getElementById('resultsCard').classList.remove('d-none');
+    }
+
+    function showResults(data) {
+        document.getElementById('resultsCard').classList.remove('d-none');
+        document.getElementById('errorsAlert').classList.add('d-none');
+        document.getElementById('modeBadge').textContent = data.mode;
+
+        // KPIs
+        document.getElementById('totalCount').textContent = data.totalItems;
+        document.getElementById('matchedCount').textContent = data.matched;
+        document.getElementById('newCount').textContent = data.newItems;
+        document.getElementById('missingCount').textContent = data.missingItems;
+        document.getElementById('changesCount').textContent = data.changes;
+
+        // Tab badges
+        document.getElementById('tabNewBadge').textContent = data.newItems;
+        document.getElementById('tabMissingBadge').textContent = data.missingItems;
+        document.getElementById('tabChangesBadge').textContent = data.changes;
+        document.getElementById('tabMatchedBadge').textContent = data.matched;
+
+        // New items table
+        const newBody = document.querySelector('#newItemsTable tbody');
+        newBody.innerHTML = '';
+        if (data.newItemsList?.length) {
+            document.getElementById('newItemsEmpty').classList.add('d-none');
+            data.newItemsList.forEach(i => {
+                newBody.innerHTML += `<tr>
+                    <td class="text-muted">${esc(i.itemNumber)}</td>
+                    <td>${esc(i.name?.substring(0, 80))}</td>
+                    <td>${esc(i.unit)}</td>
+                    <td class="text-end">${fmt(i.quantity)}</td>
+                    <td class="text-end">${fmt(i.unitPrice)}</td>
+                    <td class="text-end fw-semibold">${fmt(i.totalAmount)}</td>
+                    <td><small class="text-muted">${esc(i.category?.substring(0, 40) || '')}</small></td>
+                </tr>`;
+            });
+        } else {
+            document.getElementById('newItemsEmpty').classList.remove('d-none');
+        }
+
+        // Missing items table
+        const missBody = document.querySelector('#missingItemsTable tbody');
+        missBody.innerHTML = '';
+        if (data.missingItemsList?.length) {
+            document.getElementById('missingItemsEmpty').classList.add('d-none');
+            data.missingItemsList.forEach(i => {
+                missBody.innerHTML += `<tr class="table-danger">
+                    <td>${esc(i.itemNumber)}</td>
+                    <td>${esc(i.name)}</td>
+                    <td>${esc(i.unit)}</td>
+                </tr>`;
+            });
+        } else {
+            document.getElementById('missingItemsEmpty').classList.remove('d-none');
+        }
+
+        // Changes table
+        const chgBody = document.querySelector('#changesTable tbody');
+        chgBody.innerHTML = '';
+        if (data.changesList?.length) {
+            document.getElementById('changesEmpty').classList.add('d-none');
+            data.changesList.forEach(c => {
+                chgBody.innerHTML += `<tr>
+                    <td>${esc(c.name?.substring(0, 60))}</td>
+                    <td><span class="badge bg-warning text-dark">${esc(c.field)}</span></td>
+                    <td class="text-end text-danger text-decoration-line-through">${esc(c.oldValue)}</td>
+                    <td class="text-center">→</td>
+                    <td class="text-end text-success fw-semibold">${esc(c.newValue)}</td>
+                </tr>`;
+            });
+        } else {
+            document.getElementById('changesEmpty').classList.remove('d-none');
+        }
+
+        // Matched table
+        const matchBody = document.querySelector('#matchedTable tbody');
+        matchBody.innerHTML = '';
+        if (data.matchedList?.length) {
+            document.getElementById('matchedEmpty').classList.add('d-none');
+            data.matchedList.forEach(m => {
+                matchBody.innerHTML += `<tr>
+                    <td>${esc(m.name?.substring(0, 70))}</td>
+                    <td class="text-end">${fmt(m.thisPeriodQuantity)}</td>
+                    <td class="text-end">${fmt(m.thisPeriodAmount)}</td>
+                </tr>`;
+            });
+        } else {
+            document.getElementById('matchedEmpty').classList.remove('d-none');
+        }
+
+        // Show confirm button
+        if (data.isFirstImport) {
+            document.getElementById('addNewCheck').checked = true;
+            document.getElementById('addNewCheck').parentElement.classList.add('d-none');
+        }
+    }
+
+    async function confirmImport() {
+        const btn = document.getElementById('confirmBtn');
+        const addNew = document.getElementById('addNewCheck').checked;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Сохранение...';
+
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const resp = await fetch('@Url.Action("ConfirmImport")?contractId=@contract.Id&addNewItems=' + addNew, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            });
+            const data = await resp.json();
+
+            if (data.success) {
+                // Show success and redirect
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Готово! Добавлено: ' + data.added + ', Обновлено: ' + data.updated;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+                setTimeout(() => { window.location.href = data.redirectUrl; }, 1500);
+            } else {
+                alert('Ошибка: ' + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Подтвердить импорт';
+            }
+        } catch(err) {
+            alert('Ошибка: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Подтвердить импорт';
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('resultsCard').classList.add('d-none');
+        document.getElementById('excelFile').value = '';
+    }
+</script>
+}

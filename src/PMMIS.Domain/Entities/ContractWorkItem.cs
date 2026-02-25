@@ -32,6 +32,26 @@ public class ContractWorkItem : BaseEntity
     public decimal AchievedQuantity { get; set; }
     
     /// <summary>
+    /// Стоимость единицы измерения
+    /// </summary>
+    public decimal UnitPrice { get; set; }
+    
+    /// <summary>
+    /// Общая сумма позиции (сомони)
+    /// </summary>
+    public decimal TotalAmount { get; set; }
+    
+    /// <summary>
+    /// Категория / раздел (например "Раздел 1. Крыша и кровля АР")
+    /// </summary>
+    public string? Category { get; set; }
+    
+    /// <summary>
+    /// Номер позиции из Excel (для матчинга при повторном импорте)
+    /// </summary>
+    public string? ItemNumber { get; set; }
+    
+    /// <summary>
     /// Порядок сортировки
     /// </summary>
     public int SortOrder { get; set; }

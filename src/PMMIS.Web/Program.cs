@@ -59,6 +59,9 @@ builder.Services.AddScoped<PMMIS.Web.Services.ITelegramSender, PMMIS.Web.Service
 // Task Management Service
 builder.Services.AddScoped<PMMIS.Web.Services.ITaskService, PMMIS.Web.Services.TaskService>();
 builder.Services.AddScoped<PMMIS.Web.Services.IAuditService, PMMIS.Web.Services.AuditService>();
+builder.Services.AddScoped<PMMIS.Web.Services.IExcelImportService, PMMIS.Web.Services.ExcelImportService>();
+builder.Services.AddScoped<PMMIS.Web.Services.IAiImportService, PMMIS.Web.Services.AiImportService>();
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<PMMIS.Web.Services.IPermissionService, PMMIS.Web.Services.PermissionService>();
 builder.Services.AddScoped<PMMIS.Web.Services.IUserHierarchyService, PMMIS.Web.Services.UserHierarchyService>();
 builder.Services.AddScoped<PMMIS.Web.Services.IDataAccessService, PMMIS.Web.Services.DataAccessService>();

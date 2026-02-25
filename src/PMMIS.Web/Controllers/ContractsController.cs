@@ -1384,6 +1384,149 @@ public class ContractsController : Controller
     }
     
     /// <summary>
+    /// Страница импорта объёма работ из Excel
+    /// </summary>
+    public async Task<IActionResult> ImportWorkItems(int contractId)
+    {
+        var contract = await _context.Contracts.FindAsync(contractId);
+        if (contract == null) return NotFound();
+        ViewBag.Contract = contract;
+        ViewBag.ExistingCount = await _context.ContractWorkItems.CountAsync(w => w.ContractId == contractId);
+        return View();
+    }
+
+    /// <summary>
+    /// Загрузка и парсинг Excel файла
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadExcel(int contractId, IFormFile file, string mode = "ClosedXML")
+    {
+        if (file == null || file.Length == 0)
+            return Json(new { success = false, error = "Файл не выбран" });
+
+        var ext = Path.GetExtension(file.FileName).ToLower();
+        if (ext != ".xlsx" && ext != ".xls")
+            return Json(new { success = false, error = "Поддерживаются только .xlsx файлы" });
+
+        ImportResult result;
+        using var stream = file.OpenReadStream();
+
+        if (mode == "AI")
+        {
+            var aiService = HttpContext.RequestServices.GetRequiredService<IAiImportService>();
+            result = await aiService.ParseExcelWithAiAsync(stream, contractId);
+        }
+        else
+        {
+            var excelService = HttpContext.RequestServices.GetRequiredService<IExcelImportService>();
+            result = await excelService.ParseExcelAsync(stream, contractId);
+        }
+
+        // Store result in TempData for confirmation step
+        var json = System.Text.Json.JsonSerializer.Serialize(result);
+        TempData["ImportResult"] = json;
+
+        return Json(new
+        {
+            success = result.Errors.Count == 0,
+            errors = result.Errors,
+            totalItems = result.Items.Count,
+            newItems = result.NewItems.Count,
+            missingItems = result.MissingItems.Count,
+            changes = result.Changes.Count,
+            matched = result.Matched.Count,
+            isFirstImport = result.IsFirstImport,
+            mode = result.Mode,
+            // Send detail data for preview
+            newItemsList = result.NewItems.Select(i => new { i.ItemNumber, i.Name, i.Unit, i.Quantity, i.UnitPrice, i.TotalAmount, i.Category }),
+            missingItemsList = result.MissingItems.Select(i => new { i.Id, i.Name, i.Unit, i.ItemNumber }),
+            changesList = result.Changes.Select(c => new { c.ExistingId, c.Name, c.Field, c.OldValue, c.NewValue }),
+            matchedList = result.Matched.Select(m => new { m.ExistingId, m.Name, m.ThisPeriodQuantity, m.ThisPeriodAmount })
+        });
+    }
+
+    /// <summary>
+    /// Подтверждение и сохранение импорта
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmImport(int contractId, bool addNewItems = true)
+    {
+        var json = TempData["ImportResult"]?.ToString();
+        if (string.IsNullOrEmpty(json))
+            return Json(new { success = false, error = "Данные импорта не найдены. Загрузите файл заново." });
+
+        var result = System.Text.Json.JsonSerializer.Deserialize<ImportResult>(json);
+        if (result == null)
+            return Json(new { success = false, error = "Ошибка десериализации данных импорта" });
+
+        int added = 0, updated = 0;
+
+        if (result.IsFirstImport)
+        {
+            // First import — create all items
+            foreach (var item in result.Items)
+            {
+                _context.ContractWorkItems.Add(new ContractWorkItem
+                {
+                    ContractId = contractId,
+                    Name = item.Name,
+                    Unit = item.Unit,
+                    TargetQuantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    TotalAmount = item.TotalAmount,
+                    Category = item.Category,
+                    ItemNumber = item.ItemNumber,
+                    SortOrder = item.SortOrder,
+                    AchievedQuantity = item.CumulativeQuantity
+                });
+                added++;
+            }
+        }
+        else
+        {
+            // Repeat import — update matched items and optionally add new ones
+            foreach (var item in result.Items)
+            {
+                if (item.ExistingId.HasValue)
+                {
+                    var existing = await _context.ContractWorkItems.FindAsync(item.ExistingId.Value);
+                    if (existing != null)
+                    {
+                        existing.AchievedQuantity = item.CumulativeQuantity;
+                        if (item.UnitPrice > 0) existing.UnitPrice = item.UnitPrice;
+                        if (item.TotalAmount > 0) existing.TotalAmount = item.TotalAmount;
+                        existing.Category = item.Category;
+                        updated++;
+                    }
+                }
+                else if (addNewItems)
+                {
+                    _context.ContractWorkItems.Add(new ContractWorkItem
+                    {
+                        ContractId = contractId,
+                        Name = item.Name,
+                        Unit = item.Unit,
+                        TargetQuantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        TotalAmount = item.TotalAmount,
+                        Category = item.Category,
+                        ItemNumber = item.ItemNumber,
+                        SortOrder = item.SortOrder,
+                        AchievedQuantity = item.CumulativeQuantity
+                    });
+                    added++;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        TempData["Success"] = $"Импорт завершён: добавлено {added}, обновлено {updated} позиций";
+        return Json(new { success = true, added, updated, redirectUrl = Url.Action("Details", new { id = contractId }) });
+    }
+    
+    /// <summary>
     /// API: Save work items for a contract (batch create/update)
     /// </summary>
     [HttpPost]
