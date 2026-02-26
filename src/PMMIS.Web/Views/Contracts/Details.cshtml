@@ -54,6 +54,12 @@
             </p>
         </div>
         <div class="d-flex gap-2">
+            @if (Model.Status != ContractStatus.Completed && canEdit)
+            {
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#completeContractModal">
+                    <i class="bi bi-check-circle me-1"></i> Завершить контракт
+                </button>
+            }
             @if (canAmend)
             {
                 <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#amendmentModal">
@@ -909,12 +915,65 @@
         </div>
         <div class="card-body p-0">
             <div id="historyBody"></div>
+            <div class="text-center py-2 d-none" id="historyShowAll">
+                <button class="btn btn-sm btn-outline-secondary" onclick="showAllHistory()">
+                    <i class="bi bi-chevron-down me-1"></i>Показать все изменения
+                </button>
+            </div>
             <div class="text-center text-muted py-4 d-none" id="historyEmpty">
                 <i class="bi bi-clock fs-3 d-block mb-1"></i>
                 Нет записей в журнале изменений
             </div>
         </div>
     </div>
+
+    <!-- Complete Contract Modal -->
+    @if (Model.Status != ContractStatus.Completed)
+    {
+        <div class="modal fade" id="completeContractModal" tabindex="-1">
+            <div class="modal-dialog">
+                <form asp-controller="Contracts" asp-action="CompleteContract" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="contractId" value="@Model.Id" />
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Завершить контракт</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                При завершении контракта статус связанной позиции плана закупок автоматически изменится на <strong>«Завершено»</strong>.
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Дата завершения <span class="text-danger">*</span></label>
+                                <input type="date" name="completionDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Оценка исполнения <span class="text-danger">*</span></label>
+                                <select name="rating" class="form-select" required>
+                                    <option value="HighlySatisfactory">Высоко удовлетворительно</option>
+                                    <option value="Satisfactory" selected>Удовлетворительно</option>
+                                    <option value="Unsatisfactory">Неудовлетворительно</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Документ о завершении</label>
+                                <input type="file" name="completionDoc" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" />
+                                <small class="text-muted">Акт завершения, отчёт и т.д.</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-success" onclick="return confirm('Завершить контракт? Это действие нельзя отменить.')">
+                                <i class="bi bi-check-circle me-1"></i>Завершить контракт
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
 </div>
 
 <script>
@@ -1126,8 +1185,7 @@
         if (logs.length === 0) { empty.classList.remove('d-none'); count.textContent = '0'; return; }
         count.textContent = logs.length;
 
-        let html = '<div class="list-group list-group-flush">';
-        logs.forEach(function(log) {
+        function renderLogItem(log) {
             const dt = new Date(log.timestamp);
             const dateStr = dt.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' }) 
                           + ' ' + dt.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
@@ -1153,8 +1211,7 @@
                     changesHtml += '</div>';
                 } catch(e) {}
             }
-
-            html += '<div class="list-group-item px-4 py-3">'
+            return '<div class="list-group-item px-4 py-3">'
                 + '<div class="d-flex justify-content-between align-items-start">'
                 + '<div>'
                 + actionBadge
@@ -1165,10 +1222,58 @@
                 + '</div>'
                 + changesHtml
                 + '</div>';
-        });
+        }
+
+        // Show only the latest entry initially
+        let html = '<div class="list-group list-group-flush">';
+        html += renderLogItem(logs[0]);
         html += '</div>';
         body.innerHTML = html;
+
+        // Store all logs for "show all" button
+        window._allHistoryLogs = logs;
+        if (logs.length > 1) {
+            document.getElementById('historyShowAll').classList.remove('d-none');
+        }
     })();
+
+    function showAllHistory() {
+        const body = document.getElementById('historyBody');
+        const logs = window._allHistoryLogs;
+        let html = '<div class="list-group list-group-flush">';
+        logs.forEach(function(log) { html += renderLogItem(log); });
+        html += '</div>';
+        body.innerHTML = html;
+        document.getElementById('historyShowAll').classList.add('d-none');
+    }
+
+    // Make renderLogItem accessible globally
+    function renderLogItem(log) {
+        const dt = new Date(log.timestamp);
+        const dateStr = dt.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' }) 
+                      + ' ' + dt.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+        let actionBadge = '';
+        if (log.action === 'Создание') actionBadge = '<span class="badge bg-success">Создание</span>';
+        else if (log.action === 'Удаление') actionBadge = '<span class="badge bg-danger">Удаление</span>';
+        else actionBadge = '<span class="badge bg-primary">Изменение</span>';
+        let changesHtml = '';
+        if (log.changes) {
+            try {
+                const changes = JSON.parse(log.changes);
+                changesHtml = '<div class="mt-2">';
+                changes.forEach(function(c) {
+                    changesHtml += '<div class="small mb-1"><strong>' + escHtml(c.Field) + ':</strong> '
+                        + '<span class="text-danger text-decoration-line-through">' + escHtml(c.OldValue) + '</span> → '
+                        + '<span class="text-success fw-semibold">' + escHtml(c.NewValue) + '</span></div>';
+                });
+                changesHtml += '</div>';
+            } catch(e) {}
+        }
+        return '<div class="list-group-item px-4 py-3"><div class="d-flex justify-content-between align-items-start"><div>'
+            + actionBadge + ' <strong>' + escHtml(log.userFullName) + '</strong>'
+            + (log.userPosition ? ' <span class="text-muted small">(' + escHtml(log.userPosition) + ')</span>' : '')
+            + '</div><small class="text-muted"><i class="bi bi-clock me-1"></i>' + dateStr + '</small></div>' + changesHtml + '</div>';
+    }
 
     function escHtml(str) {
         const div = document.createElement('div');

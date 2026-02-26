@@ -1821,9 +1821,46 @@ public class ContractsController : Controller
             }
         }
         
-        await _context.SaveChangesAsync();
+         await _context.SaveChangesAsync();
         
         TempData["SuccessMessage"] = "Поправка к контракту успешно добавлена.";
+        return RedirectToAction(nameof(Details), new { id = contract.Id });
+    }
+    
+    /// <summary>
+    /// Завершить контракт — дата завершения + документ
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CompleteContract(int contractId, DateTime completionDate, PerformanceRating rating, IFormFile? completionDoc)
+    {
+        var contract = await _context.Contracts
+            .Include(c => c.ProcurementPlan)
+            .FirstOrDefaultAsync(c => c.Id == contractId);
+            
+        if (contract == null) return NotFound();
+
+        contract.Status = ContractStatus.Completed;
+        contract.ActualCompletionDate = DateTime.SpecifyKind(completionDate, DateTimeKind.Utc);
+        contract.PerformanceRating = rating;
+
+        // Save completion document
+        if (completionDoc != null && completionDoc.Length > 0)
+        {
+            var doc = await _fileService.UploadFileAsync(completionDoc, "contracts/completion", DocumentType.Other, User.FindFirstValue(ClaimTypes.NameIdentifier));
+            doc.Description = "Документ о завершении контракта";
+            doc.ContractId = contract.Id;
+        }
+
+        // Auto-update Procurement Plan → Completed
+        if (contract.ProcurementPlan != null)
+        {
+            contract.ProcurementPlan.Status = ProcurementStatus.Completed;
+            contract.ProcurementPlan.ActualCompletionDate = contract.ActualCompletionDate;
+        }
+
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Контракт успешно завершён.";
         return RedirectToAction(nameof(Details), new { id = contract.Id });
     }
     

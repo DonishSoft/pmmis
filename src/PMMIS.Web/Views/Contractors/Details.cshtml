@@ -293,6 +293,11 @@
         </div>
         <div class="card-body p-0">
             <div id="historyBody"></div>
+            <div class="text-center py-2 d-none" id="historyShowAll">
+                <button class="btn btn-sm btn-outline-secondary" onclick="showAllHistory()">
+                    <i class="bi bi-chevron-down me-1"></i>Показать все изменения
+                </button>
+            </div>
             <div class="text-center text-muted py-4 d-none" id="historyEmpty">
                 <i class="bi bi-clock fs-3 d-block mb-1"></i>
                 Нет записей в журнале изменений
@@ -384,49 +389,41 @@
 
         function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-        let html = '<div class="list-group list-group-flush">';
-        logs.forEach(function(log) {
+        function renderItem(log) {
             const dt = new Date(log.timestamp);
             const dateStr = dt.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' }) 
                           + ' ' + dt.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
-            
-            let actionBadge = '';
-            if (log.action === 'Создание') actionBadge = '<span class="badge bg-success">Создание</span>';
-            else if (log.action === 'Удаление') actionBadge = '<span class="badge bg-danger">Удаление</span>';
-            else actionBadge = '<span class="badge bg-primary">Изменение</span>';
-
+            let actionBadge = log.action === 'Создание' ? '<span class="badge bg-success">Создание</span>'
+                : log.action === 'Удаление' ? '<span class="badge bg-danger">Удаление</span>'
+                : '<span class="badge bg-primary">Изменение</span>';
             let changesHtml = '';
             if (log.changes) {
                 try {
                     const changes = JSON.parse(log.changes);
                     changesHtml = '<div class="mt-2">';
-                    changes.forEach(function(c) {
-                        changesHtml += '<div class="small mb-1">'
-                            + '<strong>' + esc(c.Field) + ':</strong> '
-                            + '<span class="text-danger text-decoration-line-through">' + esc(c.OldValue) + '</span>'
-                            + ' → '
-                            + '<span class="text-success fw-semibold">' + esc(c.NewValue) + '</span>'
-                            + '</div>';
-                    });
+                    changes.forEach(c => { changesHtml += '<div class="small mb-1"><strong>' + esc(c.Field) + ':</strong> <span class="text-danger text-decoration-line-through">' + esc(c.OldValue) + '</span> → <span class="text-success fw-semibold">' + esc(c.NewValue) + '</span></div>'; });
                     changesHtml += '</div>';
                 } catch(e) {}
             }
+            return '<div class="list-group-item px-4 py-3"><div class="d-flex justify-content-between align-items-start"><div>' + actionBadge + ' <strong>' + esc(log.userFullName) + '</strong>' + (log.userPosition ? ' <span class="text-muted small">(' + esc(log.userPosition) + ')</span>' : '') + '</div><small class="text-muted"><i class="bi bi-clock me-1"></i>' + dateStr + '</small></div>' + changesHtml + '</div>';
+        }
 
-            html += '<div class="list-group-item px-4 py-3">'
-                + '<div class="d-flex justify-content-between align-items-start">'
-                + '<div>'
-                + actionBadge
-                + ' <strong>' + esc(log.userFullName) + '</strong>'
-                + (log.userPosition ? ' <span class="text-muted small">(' + esc(log.userPosition) + ')</span>' : '')
-                + '</div>'
-                + '<small class="text-muted"><i class="bi bi-clock me-1"></i>' + dateStr + '</small>'
-                + '</div>'
-                + changesHtml
-                + '</div>';
-        });
+        // Show only latest
+        body.innerHTML = '<div class="list-group list-group-flush">' + renderItem(logs[0]) + '</div>';
+        window._allLogs = logs;
+        window._renderItem = renderItem;
+        window._esc = esc;
+        if (logs.length > 1) document.getElementById('historyShowAll').classList.remove('d-none');
+    })();
+
+    function showAllHistory() {
+        const body = document.getElementById('historyBody');
+        let html = '<div class="list-group list-group-flush">';
+        window._allLogs.forEach(log => { html += window._renderItem(log); });
         html += '</div>';
         body.innerHTML = html;
-    })();
+        document.getElementById('historyShowAll').classList.add('d-none');
+    }
 </script>
 }
 
