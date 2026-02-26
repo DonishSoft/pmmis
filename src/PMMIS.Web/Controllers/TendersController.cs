@@ -67,6 +67,9 @@ public class TendersController : Controller
     {
         // Clear navigation property validation
         ModelState.Remove("ProcurementPlan");
+        ModelState.Remove("Extensions");
+        ModelState.Remove("Applicants");
+        ModelState.Remove("CreatedBy");
 
         if (!ModelState.IsValid)
         {
@@ -253,14 +256,18 @@ public class TendersController : Controller
 
     private async Task LoadProcurementPlans()
     {
-        var plans = await _context.ProcurementPlans
-            .Include(p => p.Project)
-            .Where(p => p.Status == ProcurementStatus.Planned 
-                && !_context.Tenders.Any(t => t.ProcurementPlanId == p.Id))
-            .OrderBy(p => p.ReferenceNo)
-            .Select(p => new { p.Id, Display = p.ReferenceNo + " — " + p.Description })
+        // Get IDs of procurement plans that already have tenders
+        var usedPlanIds = await _context.Tenders
+            .Select(t => t.ProcurementPlanId)
             .ToListAsync();
 
-        ViewBag.ProcurementPlans = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(plans, "Id", "Display");
+        var plans = await _context.ProcurementPlans
+            .Where(p => p.Status == ProcurementStatus.Planned && !usedPlanIds.Contains(p.Id))
+            .OrderBy(p => p.ReferenceNo)
+            .ToListAsync();
+
+        ViewBag.ProcurementPlans = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
+            plans.Select(p => new { p.Id, Display = p.ReferenceNo + " — " + p.Description }),
+            "Id", "Display");
     }
 }
