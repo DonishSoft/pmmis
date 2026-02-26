@@ -2,115 +2,204 @@
 @using PMMIS.Domain.Entities
 @{
     ViewData["Title"] = "Тендеры";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var selectedStatus = ViewBag.StatusFilter as TenderStatus?;
+    var searchQuery = ViewBag.Search as string ?? "";
+    var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
+    var canCreate = await permissionService.HasPermissionAsync(User, "Tenders", "create");
 }
 
-<div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0"><i class="bi bi-megaphone me-2"></i>Тендеры</h4>
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Объявить тендер
-        </a>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-megaphone me-2"></i>Тендеры</h2>
+        @if (canCreate)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Объявить тендер
+            </a>
+        }
     </div>
 
-    <!-- Filters -->
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-auto">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">Все статусы</option>
-                <option value="Open" selected="@(ViewBag.StatusFilter?.ToString() == "Open")">🟢 Открыт</option>
-                <option value="Extended" selected="@(ViewBag.StatusFilter?.ToString() == "Extended")">🟡 Продлён</option>
-                <option value="Closed" selected="@(ViewBag.StatusFilter?.ToString() == "Closed")">✅ Закрыт</option>
-                <option value="Cancelled" selected="@(ViewBag.StatusFilter?.ToString() == "Cancelled")">❌ Отменён</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Поиск по описанию..." />
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
-        </div>
-    </form>
-
-    @if (Model.Count == 0)
+    @if (TempData["Success"] != null)
     {
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-megaphone" style="font-size:3rem;opacity:0.3"></i>
-            <p class="mt-2">Нет тендеров</p>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
-    else
+
+    <!-- Summary Cards -->
+    @if (Model.Any())
     {
-        <div class="card border-0 shadow-sm">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width:50px">#</th>
-                            <th>Референс / Описание</th>
-                            <th>Проект</th>
-                            <th class="text-center">Начало</th>
-                            <th class="text-center">Окончание</th>
-                            <th class="text-center">Статус</th>
-                            <th class="text-center">Участники</th>
-                            <th class="text-center">Продл.</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var t in Model)
-                        {
-                            var statusBadge = t.Status switch
-                            {
-                                TenderStatus.Open => "bg-success",
-                                TenderStatus.Extended => "bg-warning text-dark",
-                                TenderStatus.Closed => "bg-secondary",
-                                TenderStatus.Cancelled => "bg-danger",
-                                _ => "bg-secondary"
-                            };
-                            var statusText = t.Status switch
-                            {
-                                TenderStatus.Open => "Открыт",
-                                TenderStatus.Extended => "Продлён",
-                                TenderStatus.Closed => "Закрыт",
-                                TenderStatus.Cancelled => "Отменён",
-                                _ => ""
-                            };
-                            var isExpiring = t.Status == TenderStatus.Open && t.EndDate <= DateTime.Today.AddDays(7);
-                            <tr class="@(isExpiring ? "table-warning" : "")">
-                                <td class="text-muted">@t.Id</td>
-                                <td>
-                                    <a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold text-decoration-none">
-                                        @t.ProcurementPlan.ReferenceNo
-                                    </a>
-                                    <div class="text-muted small text-truncate" style="max-width:400px">@t.ProcurementPlan.Description</div>
-                                </td>
-                                <td class="text-muted small">@t.ProcurementPlan.Project?.Code</td>
-                                <td class="text-center">@t.StartDate.ToString("dd.MM.yyyy")</td>
-                                <td class="text-center">
-                                    @t.EndDate.ToString("dd.MM.yyyy")
-                                    @if (isExpiring)
-                                    {
-                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Скоро истекает"></i>
-                                    }
-                                </td>
-                                <td class="text-center"><span class="badge @statusBadge">@statusText</span></td>
-                                <td class="text-center"><span class="badge bg-info">@t.Applicants.Count</span></td>
-                                <td class="text-center">
-                                    @if (t.Extensions.Any())
-                                    {
-                                        <span class="badge bg-warning text-dark" title="Было продлений: @t.Extensions.Count">@t.Extensions.Count</span>
-                                    }
-                                </td>
-                                <td>
-                                    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary" title="Подробнее">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Всего тендеров</div>
+                    <div class="fs-4 fw-bold text-primary">@Model.Count</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Открытые</div>
+                    <div class="fs-4 fw-bold text-success">@Model.Count(t => t.Status == TenderStatus.Open || t.Status == TenderStatus.Extended)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Закрытые</div>
+                    <div class="fs-4 fw-bold text-secondary">@Model.Count(t => t.Status == TenderStatus.Closed)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Участников</div>
+                    <div class="fs-4 fw-bold text-info">@Model.Sum(t => t.Applicants.Count)</div>
+                </div>
             </div>
         </div>
     }
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Поиск</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Ref No или описание..." value="@searchQuery" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Статус</label>
+                    <select name="status" class="form-select">
+                        <option value="">— Все —</option>
+                        <option value="Open" selected="@(selectedStatus == TenderStatus.Open)">🟢 Открыт</option>
+                        <option value="Extended" selected="@(selectedStatus == TenderStatus.Extended)">🟡 Продлён</option>
+                        <option value="Closed" selected="@(selectedStatus == TenderStatus.Closed)">✅ Закрыт</option>
+                        <option value="Cancelled" selected="@(selectedStatus == TenderStatus.Cancelled)">❌ Отменён</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary" title="Применить фильтр">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <a href="@Url.Action("Index")" class="btn btn-outline-secondary" title="Сбросить">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+                <div class="col text-end">
+                    <span class="text-muted">Найдено: <strong>@Model.Count</strong></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ref No</th>
+                        <th>Описание</th>
+                        <th>Проект</th>
+                        <th class="text-center">Начало</th>
+                        <th class="text-center">Окончание</th>
+                        <th class="text-center">Статус</th>
+                        <th class="text-center">Участники</th>
+                        <th class="text-center">Продл.</th>
+                        <th style="width: 100px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Model)
+                    {
+                        var isExpiring = (t.Status == TenderStatus.Open || t.Status == TenderStatus.Extended) && t.EndDate <= DateTime.Today.AddDays(7);
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@t.Id" class="fw-bold text-primary text-decoration-none">
+                                    <code>@t.ProcurementPlan.ReferenceNo</code>
+                                </a>
+                            </td>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@t.Id" class="text-dark text-decoration-none">
+                                    @t.ProcurementPlan.Description
+                                </a>
+                            </td>
+                            <td><span class="badge bg-secondary">@t.ProcurementPlan.Project?.Code</span></td>
+                            <td class="text-center text-muted">@t.StartDate.ToString("dd.MM.yyyy")</td>
+                            <td class="text-center">
+                                @t.EndDate.ToString("dd.MM.yyyy")
+                                @if (isExpiring)
+                                {
+                                    <br><small class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> скоро</small>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @switch (t.Status)
+                                {
+                                    case TenderStatus.Open:
+                                        <span class="badge bg-success">🟢 Открыт</span>
+                                        break;
+                                    case TenderStatus.Extended:
+                                        <span class="badge bg-warning text-dark">🟡 Продлён</span>
+                                        break;
+                                    case TenderStatus.Closed:
+                                        <span class="badge bg-secondary">✅ Закрыт</span>
+                                        break;
+                                    case TenderStatus.Cancelled:
+                                        <span class="badge bg-danger">❌ Отменён</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (t.Applicants.Any())
+                                {
+                                    <span class="badge bg-info">@t.Applicants.Count</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (t.Extensions.Any())
+                                {
+                                    <span class="badge bg-warning text-dark" title="Продлений: @t.Extensions.Count">@t.Extensions.Count</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary" title="Подробнее">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-5">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Нет тендеров
+                                <br>
+                                @if (canCreate)
+                                {
+                                    <a asp-action="Create" class="btn btn-primary btn-sm mt-3">
+                                        <i class="bi bi-plus-lg me-1"></i> Объявить первый тендер
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
