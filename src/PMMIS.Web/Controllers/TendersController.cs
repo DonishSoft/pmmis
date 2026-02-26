@@ -101,7 +101,17 @@ public class TendersController : Controller
             procPlan.AdvertisementDate = tender.StartDate;
         }
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}");
+            await LoadProcurementPlans();
+            return View(tender);
+        }
+        
         TempData["Success"] = "Тендер успешно объявлен";
         return RedirectToAction(nameof(Details), new { id = tender.Id });
     }
