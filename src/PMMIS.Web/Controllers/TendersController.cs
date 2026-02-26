@@ -90,6 +90,8 @@ public class TendersController : Controller
         tender.CreatedAt = DateTime.UtcNow;
         tender.CreatedBy = User.FindFirstValue(ClaimTypes.NameIdentifier);
         tender.Status = TenderStatus.Open;
+        tender.StartDate = DateTime.SpecifyKind(tender.StartDate, DateTimeKind.Utc);
+        tender.EndDate = DateTime.SpecifyKind(tender.EndDate, DateTimeKind.Utc);
 
         _context.Tenders.Add(tender);
 
@@ -144,6 +146,8 @@ public class TendersController : Controller
 
         if (newEndDate <= tender.EndDate)
             return Json(new { success = false, error = "Новая дата должна быть позже текущей" });
+
+        newEndDate = DateTime.SpecifyKind(newEndDate, DateTimeKind.Utc);
 
         var extension = new TenderExtension
         {
