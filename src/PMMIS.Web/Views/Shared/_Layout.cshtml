@@ -93,6 +93,13 @@
                         <span class="sidebar-text">План закупок</span>
                     </a>
                 }
+                @if (CanView(MenuKeys.Tenders))
+                {
+                    <a class="nav-link text-white @(currentController == "Tenders" ? "menu-active" : "")" asp-controller="Tenders" asp-action="Index">
+                        <i class="bi bi-megaphone me-2"></i>
+                        <span class="sidebar-text">Тендеры</span>
+                    </a>
+                }
                 @if (CanView(MenuKeys.Payments))
                 {
                     <a class="nav-link text-white @(currentController == "Payments" ? "menu-active" : "")" asp-controller="Payments" asp-action="Index">

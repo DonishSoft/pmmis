@@ -1,0 +1,437 @@
+@model PMMIS.Domain.Entities.Tender
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Тендер — " + Model.ProcurementPlan.ReferenceNo;
+    var statusBadge = Model.Status switch
+    {
+        TenderStatus.Open => "bg-success",
+        TenderStatus.Extended => "bg-warning text-dark",
+        TenderStatus.Closed => "bg-secondary",
+        TenderStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+    var statusText = Model.Status switch
+    {
+        TenderStatus.Open => "Открыт",
+        TenderStatus.Extended => "Продлён",
+        TenderStatus.Closed => "Закрыт",
+        TenderStatus.Cancelled => "Отменён",
+        _ => ""
+    };
+    var daysLeft = (Model.EndDate - DateTime.Today).Days;
+    var isOpen = Model.Status == TenderStatus.Open || Model.Status == TenderStatus.Extended;
+}
+
+<div class="container-fluid py-3">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-action="Index">Тендеры</a></li>
+            <li class="breadcrumb-item active">@Model.ProcurementPlan.ReferenceNo</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="bi bi-megaphone me-2"></i>@Model.ProcurementPlan.ReferenceNo
+                        <span class="badge @statusBadge ms-2">@statusText</span>
+                    </h4>
+                    <p class="text-muted mb-1">@Model.ProcurementPlan.Description</p>
+                    <small class="text-muted">
+                        <i class="bi bi-diagram-3 me-1"></i>@Model.ProcurementPlan.Project?.Code
+                    </small>
+                </div>
+                <div class="text-end">
+                    <div class="mb-1">
+                        <span class="text-muted small">Начало:</span>
+                        <strong>@Model.StartDate.ToString("dd.MM.yyyy")</strong>
+                    </div>
+                    <div class="mb-1">
+                        <span class="text-muted small">Окончание:</span>
+                        <strong class="@(daysLeft <= 7 && isOpen ? "text-danger" : "")">@Model.EndDate.ToString("dd.MM.yyyy")</strong>
+                    </div>
+                    @if (isOpen)
+                    {
+                        <div>
+                            @if (daysLeft > 0)
+                            {
+                                <span class="badge bg-info">@daysLeft дн. осталось</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Срок истёк</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabInfo" role="tab">
+                <i class="bi bi-info-circle me-1"></i>Информация
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabApplicants" role="tab">
+                <i class="bi bi-building me-1"></i>Участники
+                <span class="badge bg-info ms-1" id="applicantsCount">@Model.Applicants.Count</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabTemplates" role="tab">
+                <i class="bi bi-file-earmark-text me-1"></i>Темплейты
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content border border-top-0 rounded-bottom bg-white">
+        <!-- Tab 1: Information -->
+        <div class="tab-pane fade show active p-3" id="tabInfo">
+            <div class="row">
+                <div class="col-md-8">
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <div class="mb-3">
+                            <h6><i class="bi bi-chat-text me-1"></i>Примечания</h6>
+                            <p>@Model.Notes</p>
+                        </div>
+                    }
+
+                    <!-- Extension History -->
+                    <h6 class="mt-3"><i class="bi bi-clock-history me-1"></i>История продлений</h6>
+                    @if (Model.Extensions.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover" style="font-size:0.85rem">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Предыдущий срок</th>
+                                        <th>Новый срок</th>
+                                        <th>Причина</th>
+                                        <th>Дата продления</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ int extNum = 0; }
+                                    @foreach (var ext in Model.Extensions)
+                                    {
+                                        extNum++;
+                                        <tr>
+                                            <td class="text-muted">@extNum</td>
+                                            <td><span class="text-decoration-line-through text-danger">@ext.PreviousEndDate.ToString("dd.MM.yyyy")</span></td>
+                                            <td class="text-success fw-semibold">@ext.NewEndDate.ToString("dd.MM.yyyy")</td>
+                                            <td>@ext.Reason</td>
+                                            <td class="text-muted">@ext.ExtendedAt.ToString("dd.MM.yyyy HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small">Тендер не продлевался</p>
+                    }
+                </div>
+
+                <div class="col-md-4">
+                    <!-- Actions -->
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title"><i class="bi bi-gear me-1"></i>Действия</h6>
+                            @if (isOpen)
+                            {
+                                <button class="btn btn-sm btn-warning w-100 mb-2" data-bs-toggle="modal" data-bs-target="#extendModal">
+                                    <i class="bi bi-calendar-plus me-1"></i>Продлить срок
+                                </button>
+                                <form asp-action="CloseTender" method="post" class="mb-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="tenderId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-secondary w-100" onclick="return confirm('Закрыть тендер?')">
+                                        <i class="bi bi-lock me-1"></i>Закрыть тендер
+                                    </button>
+                                </form>
+                            }
+                            <form asp-action="Delete" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Удалить тендер и все данные?')">
+                                    <i class="bi bi-trash me-1"></i>Удалить тендер
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Applicants -->
+        <div class="tab-pane fade p-3" id="tabApplicants">
+            @if (isOpen)
+            {
+                <button class="btn btn-sm btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addApplicantModal">
+                    <i class="bi bi-plus-lg me-1"></i>Добавить компанию
+                </button>
+            }
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover" style="font-size:0.85rem" id="applicantsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Наименование компании</th>
+                            <th>Тип</th>
+                            <th>Email</th>
+                            <th>Телефон</th>
+                            <th>Страна</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="applicantsBody"></tbody>
+                </table>
+            </div>
+            <p class="text-muted text-center py-2 d-none" id="applicantsEmpty">Нет участников</p>
+        </div>
+
+        <!-- Tab 3: Templates -->
+        <div class="tab-pane fade p-3" id="tabTemplates">
+            <div id="fileManager" style="height:500px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Extend Deadline Modal -->
+<div class="modal fade" id="extendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Продлить срок тендера</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Текущая дата окончания</label>
+                    <input type="text" class="form-control" value="@Model.EndDate.ToString("dd.MM.yyyy")" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Новая дата окончания <span class="text-danger">*</span></label>
+                    <input type="date" id="newEndDate" class="form-control" min="@Model.EndDate.AddDays(1).ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Причина продления <span class="text-danger">*</span></label>
+                    <textarea id="extendReason" class="form-control" rows="3" placeholder="Укажите причину продления..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-warning" id="btnExtend">
+                    <i class="bi bi-calendar-plus me-1"></i>Продлить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Applicant Modal -->
+<div class="modal fade" id="addApplicantModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-building me-2"></i>Добавить компанию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Наименование компании <span class="text-danger">*</span></label>
+                        <input type="text" id="appCompanyName" class="form-control" placeholder="ООО «Строитель»" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Тип компании</label>
+                        <select id="appCompanyType" class="form-select">
+                            <option value="">— Выберите —</option>
+                            <option>ООО</option>
+                            <option>ОАО</option>
+                            <option>ГУП</option>
+                            <option>ИП</option>
+                            <option>Joint Venture</option>
+                            <option>Consortium</option>
+                            <option>LTD</option>
+                            <option>LLC</option>
+                            <option>Другое</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Электронная почта</label>
+                        <input type="email" id="appEmail" class="form-control" placeholder="info@company.com" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" id="appPhone" class="form-control" placeholder="+992 ..." />
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="appIsForeign" onchange="toggleForeignFields()">
+                            <label class="form-check-label" for="appIsForeign">Иностранная компания</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-none" id="countryFields1">
+                        <label class="form-label">Страна 1</label>
+                        <input type="text" id="appCountry1" class="form-control" placeholder="Например: Китай" />
+                    </div>
+                    <div class="col-md-6 d-none" id="countryFields2">
+                        <label class="form-label">Страна 2 <span class="text-muted">(консорциум)</span></label>
+                        <input type="text" id="appCountry2" class="form-control" placeholder="Необязательно" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" id="btnAddApplicant">
+                    <i class="bi bi-plus-lg me-1"></i>Добавить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const tenderId = @Model.Id;
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value 
+        || '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)?.[1] || '';
+
+    // ======= Applicants =======
+    async function loadApplicants() {
+        const resp = await fetch(`/Tenders/GetApplicants?tenderId=${tenderId}`);
+        const data = await resp.json();
+        const tbody = document.getElementById('applicantsBody');
+        const empty = document.getElementById('applicantsEmpty');
+        document.getElementById('applicantsCount').textContent = data.length;
+
+        if (!data.length) {
+            tbody.innerHTML = '';
+            empty.classList.remove('d-none');
+            return;
+        }
+        empty.classList.add('d-none');
+
+        tbody.innerHTML = data.map((a, i) => {
+            let countryInfo = '';
+            if (a.isForeign) {
+                countryInfo = `<span class="badge bg-warning text-dark">${esc(a.country1 || '')}${a.country2 ? ' / ' + esc(a.country2) : ''}</span>`;
+            } else {
+                countryInfo = '<span class="text-muted small">Местная</span>';
+            }
+            return `<tr>
+                <td class="text-muted">${i + 1}</td>
+                <td><strong>${esc(a.companyName)}</strong></td>
+                <td>${esc(a.companyType || '')}</td>
+                <td>${a.email ? `<a href="mailto:${esc(a.email)}">${esc(a.email)}</a>` : ''}</td>
+                <td>${esc(a.phone || '')}</td>
+                <td>${countryInfo}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeApplicant(${a.id})" title="Удалить">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('btnAddApplicant')?.addEventListener('click', async () => {
+        const data = {
+            tenderId,
+            companyName: document.getElementById('appCompanyName').value,
+            companyType: document.getElementById('appCompanyType').value,
+            email: document.getElementById('appEmail').value,
+            phone: document.getElementById('appPhone').value,
+            isForeign: document.getElementById('appIsForeign').checked,
+            country1: document.getElementById('appCountry1').value,
+            country2: document.getElementById('appCountry2').value
+        };
+
+        if (!data.companyName) { alert('Введите наименование компании'); return; }
+
+        const resp = await fetch('/Tenders/AddApplicant', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addApplicantModal')).hide();
+            // Reset form
+            ['appCompanyName', 'appEmail', 'appPhone', 'appCountry1', 'appCountry2'].forEach(
+                id => document.getElementById(id).value = ''
+            );
+            document.getElementById('appCompanyType').selectedIndex = 0;
+            document.getElementById('appIsForeign').checked = false;
+            toggleForeignFields();
+            loadApplicants();
+        } else {
+            alert(result.error || 'Ошибка');
+        }
+    });
+
+    async function removeApplicant(id) {
+        if (!confirm('Удалить участника?')) return;
+        const resp = await fetch(`/Tenders/RemoveApplicant?id=${id}`, { method: 'POST' });
+        const result = await resp.json();
+        if (result.success) loadApplicants();
+    }
+
+    function toggleForeignFields() {
+        const show = document.getElementById('appIsForeign').checked;
+        document.getElementById('countryFields1').classList.toggle('d-none', !show);
+        document.getElementById('countryFields2').classList.toggle('d-none', !show);
+    }
+
+    // ======= Extend Deadline =======
+    document.getElementById('btnExtend')?.addEventListener('click', async () => {
+        const newDate = document.getElementById('newEndDate').value;
+        const reason = document.getElementById('extendReason').value;
+        if (!newDate || !reason) { alert('Заполните все поля'); return; }
+
+        const form = new FormData();
+        form.append('tenderId', tenderId);
+        form.append('newEndDate', newDate);
+        form.append('reason', reason);
+        form.append('__RequestVerificationToken', token);
+
+        const resp = await fetch('/Tenders/ExtendDeadline', { method: 'POST', body: form });
+        const result = await resp.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.error || 'Ошибка');
+        }
+    });
+
+    // ======= File Manager (Templates) =======
+    document.querySelector('a[href="#tabTemplates"]')?.addEventListener('shown.bs.tab', function() {
+        if (document.getElementById('fileManager').children.length) return;
+        new ej.filemanager.FileManager({
+            ajaxSettings: {
+                url: '/api/FileManager/FileOperations',
+                uploadUrl: '/api/FileManager/Upload',
+                downloadUrl: '/api/FileManager/Download'
+            },
+            path: `/Tenders/${tenderId}/`,
+            view: 'Details'
+        }, '#fileManager');
+    });
+
+    // Init
+    loadApplicants();
+
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
+}

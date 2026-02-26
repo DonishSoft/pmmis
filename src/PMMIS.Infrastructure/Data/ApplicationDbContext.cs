@@ -111,6 +111,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<ImportSession> ImportSessions => Set<ImportSession>();
     public DbSet<ImportSessionItem> ImportSessionItems => Set<ImportSessionItem>();
     
+    // Tenders
+    public DbSet<Tender> Tenders => Set<Tender>();
+    public DbSet<TenderExtension> TenderExtensions => Set<TenderExtension>();
+    public DbSet<TenderApplicant> TenderApplicants => Set<TenderApplicant>();
+    
     // Contract Milestones
     public DbSet<ContractMilestone> ContractMilestones => Set<ContractMilestone>();
 

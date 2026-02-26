@@ -1,0 +1,64 @@
+@model PMMIS.Domain.Entities.Tender
+@{
+    ViewData["Title"] = "Объявить тендер";
+}
+
+<div class="container py-3" style="max-width:700px">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-action="Index">Тендеры</a></li>
+            <li class="breadcrumb-item active">Новый тендер</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-megaphone me-2"></i>Объявить тендер</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Позиция плана закупок <span class="text-danger">*</span></label>
+                    <select asp-for="ProcurementPlanId" asp-items="@ViewBag.ProcurementPlans" class="form-select">
+                        <option value="">— Выберите позицию —</option>
+                    </select>
+                    <span asp-validation-for="ProcurementPlanId" class="text-danger"></span>
+                    <div class="form-text">Только позиции со статусом «Запланировано» без активного тендера</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Дата начала тендера <span class="text-danger">*</span></label>
+                        <input asp-for="StartDate" type="date" class="form-control" />
+                        <span asp-validation-for="StartDate" class="text-danger"></span>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Дата окончания тендера <span class="text-danger">*</span></label>
+                        <input asp-for="EndDate" type="date" class="form-control" />
+                        <span asp-validation-for="EndDate" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Примечания</label>
+                    <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Дополнительная информация..."></textarea>
+                </div>
+
+                <div class="alert alert-info small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    При объявлении тендера статус позиции плана закупок автоматически изменится на <strong>«В процессе»</strong>.
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-megaphone me-1"></i>Объявить тендер
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

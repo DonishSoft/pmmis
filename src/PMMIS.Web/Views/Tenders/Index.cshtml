@@ -1,0 +1,116 @@
+@model List<PMMIS.Domain.Entities.Tender>
+@using PMMIS.Domain.Entities
+@{
+    ViewData["Title"] = "Тендеры";
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-megaphone me-2"></i>Тендеры</h4>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Объявить тендер
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Все статусы</option>
+                <option value="Open" selected="@(ViewBag.StatusFilter?.ToString() == "Open")">🟢 Открыт</option>
+                <option value="Extended" selected="@(ViewBag.StatusFilter?.ToString() == "Extended")">🟡 Продлён</option>
+                <option value="Closed" selected="@(ViewBag.StatusFilter?.ToString() == "Closed")">✅ Закрыт</option>
+                <option value="Cancelled" selected="@(ViewBag.StatusFilter?.ToString() == "Cancelled")">❌ Отменён</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Поиск по описанию..." />
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
+        </div>
+    </form>
+
+    @if (Model.Count == 0)
+    {
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-megaphone" style="font-size:3rem;opacity:0.3"></i>
+            <p class="mt-2">Нет тендеров</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:50px">#</th>
+                            <th>Референс / Описание</th>
+                            <th>Проект</th>
+                            <th class="text-center">Начало</th>
+                            <th class="text-center">Окончание</th>
+                            <th class="text-center">Статус</th>
+                            <th class="text-center">Участники</th>
+                            <th class="text-center">Продл.</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            var statusBadge = t.Status switch
+                            {
+                                TenderStatus.Open => "bg-success",
+                                TenderStatus.Extended => "bg-warning text-dark",
+                                TenderStatus.Closed => "bg-secondary",
+                                TenderStatus.Cancelled => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+                            var statusText = t.Status switch
+                            {
+                                TenderStatus.Open => "Открыт",
+                                TenderStatus.Extended => "Продлён",
+                                TenderStatus.Closed => "Закрыт",
+                                TenderStatus.Cancelled => "Отменён",
+                                _ => ""
+                            };
+                            var isExpiring = t.Status == TenderStatus.Open && t.EndDate <= DateTime.Today.AddDays(7);
+                            <tr class="@(isExpiring ? "table-warning" : "")">
+                                <td class="text-muted">@t.Id</td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold text-decoration-none">
+                                        @t.ProcurementPlan.ReferenceNo
+                                    </a>
+                                    <div class="text-muted small text-truncate" style="max-width:400px">@t.ProcurementPlan.Description</div>
+                                </td>
+                                <td class="text-muted small">@t.ProcurementPlan.Project?.Code</td>
+                                <td class="text-center">@t.StartDate.ToString("dd.MM.yyyy")</td>
+                                <td class="text-center">
+                                    @t.EndDate.ToString("dd.MM.yyyy")
+                                    @if (isExpiring)
+                                    {
+                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Скоро истекает"></i>
+                                    }
+                                </td>
+                                <td class="text-center"><span class="badge @statusBadge">@statusText</span></td>
+                                <td class="text-center"><span class="badge bg-info">@t.Applicants.Count</span></td>
+                                <td class="text-center">
+                                    @if (t.Extensions.Any())
+                                    {
+                                        <span class="badge bg-warning text-dark" title="Было продлений: @t.Extensions.Count">@t.Extensions.Count</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary" title="Подробнее">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
