@@ -43,15 +43,49 @@ public class FileManagerController : ControllerBase
     }
 
     [HttpPost("Upload")]
-    public IActionResult Upload(string path, string action, IList<IFormFile> uploadFiles)
+    [DisableRequestSizeLimit]
+    public IActionResult Upload(string path, string action, IList<IFormFile>? uploadFiles)
     {
+        // Handle remove action (cancel upload)
+        if (action == "remove")
+        {
+            var fileName = Request.Form["cancel-uploading"]!;
+            var filePath = Path.Combine(GetPhysicalPath(path), fileName!);
+            if (System.IO.File.Exists(filePath))
+                System.IO.File.Delete(filePath);
+            return Ok(new { });
+        }
+
         var targetDir = GetPhysicalPath(path);
         if (!Directory.Exists(targetDir))
             Directory.CreateDirectory(targetDir);
 
+        if (uploadFiles == null) return Ok(new { });
+
         foreach (var file in uploadFiles)
         {
             var filePath = Path.Combine(targetDir, file.FileName);
+
+            if (action == "save" && System.IO.File.Exists(filePath))
+            {
+                // File exists — tell client to ask
+                var existFile = new FileInfo(filePath);
+                return Content("", "application/json", System.Text.Encoding.UTF8);
+            }
+
+            if (action == "keepboth" && System.IO.File.Exists(filePath))
+            {
+                var ext = Path.GetExtension(file.FileName);
+                var nameWithout = Path.GetFileNameWithoutExtension(file.FileName);
+                int count = 1;
+                while (System.IO.File.Exists(filePath))
+                {
+                    filePath = Path.Combine(targetDir, $"{nameWithout}({count}){ext}");
+                    count++;
+                }
+            }
+
+            // action == "replace" or new file — just write
             using var stream = new FileStream(filePath, FileMode.Create);
             file.CopyTo(stream);
         }
