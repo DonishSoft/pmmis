@@ -16,10 +16,12 @@ namespace PMMIS.Web.Controllers;
 public class TendersController : Controller
 {
     private readonly ApplicationDbContext _context;
+    private readonly IWebHostEnvironment _env;
 
-    public TendersController(ApplicationDbContext context)
+    public TendersController(ApplicationDbContext context, IWebHostEnvironment env)
     {
         _context = context;
+        _env = env;
     }
 
     /// <summary>
@@ -217,10 +219,10 @@ public class TendersController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // ========== API: Applicants ==========
+    // ========== API: Applicants / Participants / Winner ==========
 
     /// <summary>
-    /// Получить список участников
+    /// Получить список заявителей
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetApplicants(int tenderId)
@@ -231,14 +233,15 @@ public class TendersController : Controller
             .Select(a => new
             {
                 a.Id, a.CompanyName, a.CompanyType, a.Email, a.Phone,
-                a.IsForeign, a.Country1, a.Country2, a.AddedAt
+                a.IsForeign, a.Country1, a.Country2, a.AddedAt,
+                a.IsParticipant, a.IsWinner, a.EvaluationDocPath
             })
             .ToListAsync();
         return Json(applicants);
     }
 
     /// <summary>
-    /// Добавить участника
+    /// Добавить заявителя (запрос на участие)
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> AddApplicant([FromBody] TenderApplicant applicant)
@@ -247,6 +250,8 @@ public class TendersController : Controller
             return Json(new { success = false, error = "Наименование компании обязательно" });
 
         applicant.AddedAt = DateTime.UtcNow;
+        applicant.IsParticipant = false;
+        applicant.IsWinner = false;
         _context.TenderApplicants.Add(applicant);
         await _context.SaveChangesAsync();
 
@@ -254,7 +259,7 @@ public class TendersController : Controller
     }
 
     /// <summary>
-    /// Удалить участника
+    /// Удалить заявителя
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> RemoveApplicant(int id)
@@ -265,6 +270,138 @@ public class TendersController : Controller
         _context.TenderApplicants.Remove(applicant);
         await _context.SaveChangesAsync();
         return Json(new { success = true });
+    }
+
+    /// <summary>
+    /// Допустить к участию (Запрос → Участник)
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> PromoteToParticipant(int applicantId)
+    {
+        var applicant = await _context.TenderApplicants.FindAsync(applicantId);
+        if (applicant == null) return Json(new { success = false, error = "Заявитель не найден" });
+
+        applicant.IsParticipant = true;
+        await _context.SaveChangesAsync();
+        return Json(new { success = true });
+    }
+
+    /// <summary>
+    /// Убрать из участников (обратно в запросы)
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> DemoteFromParticipant(int applicantId)
+    {
+        var applicant = await _context.TenderApplicants.FindAsync(applicantId);
+        if (applicant == null) return Json(new { success = false });
+
+        applicant.IsParticipant = false;
+        applicant.IsWinner = false;
+        await _context.SaveChangesAsync();
+        return Json(new { success = true });
+    }
+
+    /// <summary>
+    /// Объявить победителя — загрузка оценочного документа и создание контракта
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> DeclareWinner(
+        int applicantId,
+        IFormFile? evaluationDoc,
+        string contractNumber,
+        DateTime signingDate,
+        DateTime contractEndDate,
+        decimal contractAmount)
+    {
+        var applicant = await _context.TenderApplicants
+            .Include(a => a.Tender)
+                .ThenInclude(t => t.ProcurementPlan)
+            .FirstOrDefaultAsync(a => a.Id == applicantId);
+
+        if (applicant == null)
+            return Json(new { success = false, error = "Участник не найден" });
+
+        // 1. Save evaluation document
+        if (evaluationDoc != null && evaluationDoc.Length > 0)
+        {
+            var uploadDir = Path.Combine(_env.WebRootPath, "uploads", "evaluations");
+            if (!Directory.Exists(uploadDir))
+                Directory.CreateDirectory(uploadDir);
+            var fileName = $"eval_{applicant.TenderId}_{applicantId}_{Path.GetFileName(evaluationDoc.FileName)}";
+            var filePath = Path.Combine(uploadDir, fileName);
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await evaluationDoc.CopyToAsync(stream);
+            applicant.EvaluationDocPath = $"/uploads/evaluations/{fileName}";
+        }
+
+        // 2. Mark as winner
+        applicant.IsWinner = true;
+        applicant.IsParticipant = true;
+
+        // 3. Create or find Contractor
+        var existingContractor = await _context.Set<Contractor>()
+            .FirstOrDefaultAsync(c => c.Name == applicant.CompanyName);
+        
+        int contractorId;
+        if (existingContractor != null)
+        {
+            contractorId = existingContractor.Id;
+        }
+        else
+        {
+            var contractor = new Contractor
+            {
+                Name = applicant.CompanyName,
+                Country = applicant.IsForeign ? applicant.Country1 : "Таджикистан",
+                Email = applicant.Email,
+                Phone = applicant.Phone
+            };
+            _context.Set<Contractor>().Add(contractor);
+            await _context.SaveChangesAsync();
+            contractorId = contractor.Id;
+        }
+
+        // 4. Map ProcurementType → ContractType
+        var procPlan = applicant.Tender.ProcurementPlan;
+        var contractType = procPlan.Type switch
+        {
+            ProcurementType.Works => ContractType.Works,
+            ProcurementType.Goods => ContractType.Goods,
+            ProcurementType.ConsultingServices => ContractType.Consulting,
+            ProcurementType.NonConsultingServices => ContractType.Consulting,
+            _ => ContractType.Works
+        };
+
+        // 5. Create Contract
+        var contract = new Contract
+        {
+            ContractNumber = contractNumber,
+            ScopeOfWork = procPlan.Description ?? "",
+            ScopeOfWorkEn = procPlan.DescriptionEn,
+            Type = contractType,
+            Status = ContractStatus.Ongoing,
+            SigningDate = DateTime.SpecifyKind(signingDate, DateTimeKind.Utc),
+            ContractEndDate = DateTime.SpecifyKind(contractEndDate, DateTimeKind.Utc),
+            ContractAmount = contractAmount,
+            ProjectId = procPlan.ProjectId,
+            SubComponentId = procPlan.SubComponentId,
+            ContractorId = contractorId,
+            ProcurementPlanId = procPlan.Id
+        };
+
+        _context.Set<Contract>().Add(contract);
+
+        // 6. Update Procurement Plan status → Awarded
+        procPlan.Status = ProcurementStatus.Awarded;
+        procPlan.ActualContractSigningDate = contract.SigningDate;
+
+        // 7. Close tender
+        var tender = applicant.Tender;
+        tender.Status = TenderStatus.Closed;
+
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true, contractId = contract.Id, contractorId });
     }
 
     // ========== Helpers ==========
@@ -286,3 +423,4 @@ public class TendersController : Controller
             "Id", "Display");
     }
 }
+

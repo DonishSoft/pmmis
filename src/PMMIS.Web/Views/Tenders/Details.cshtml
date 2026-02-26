@@ -20,15 +20,26 @@
     };
     var daysLeft = (Model.EndDate - DateTime.Today).Days;
     var isOpen = Model.Status == TenderStatus.Open || Model.Status == TenderStatus.Extended;
+    var requestCount = Model.Applicants.Count;
+    var participantCount = Model.Applicants.Count(a => a.IsParticipant);
+    var winner = Model.Applicants.FirstOrDefault(a => a.IsWinner);
 }
 
-<div class="container-fluid py-3">
+<div class="container-fluid">
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb mb-0">
             <li class="breadcrumb-item"><a asp-action="Index">Тендеры</a></li>
             <li class="breadcrumb-item active">@Model.ProcurementPlan.ReferenceNo</li>
         </ol>
     </nav>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
     <!-- Header -->
     <div class="card border-0 shadow-sm mb-3">
@@ -43,6 +54,14 @@
                     <small class="text-muted">
                         <i class="bi bi-diagram-3 me-1"></i>@Model.ProcurementPlan.Project?.Code
                     </small>
+                    @if (winner != null)
+                    {
+                        <div class="mt-2">
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-trophy me-1"></i>Победитель: @winner.CompanyName
+                            </span>
+                        </div>
+                    }
                 </div>
                 <div class="text-end">
                     <div class="mb-1">
@@ -79,9 +98,15 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabApplicants" role="tab">
-                <i class="bi bi-building me-1"></i>Участники
-                <span class="badge bg-info ms-1" id="applicantsCount">@Model.Applicants.Count</span>
+            <a class="nav-link" data-bs-toggle="tab" href="#tabRequests" role="tab">
+                <i class="bi bi-envelope me-1"></i>Запросы
+                <span class="badge bg-secondary ms-1" id="requestsCount">@requestCount</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabParticipants" role="tab">
+                <i class="bi bi-people me-1"></i>Участники
+                <span class="badge bg-primary ms-1" id="participantsCount">@participantCount</span>
             </a>
         </li>
         <li class="nav-item">
@@ -173,17 +198,22 @@
             </div>
         </div>
 
-        <!-- Tab 2: Applicants -->
-        <div class="tab-pane fade p-3" id="tabApplicants">
-            @if (isOpen)
-            {
-                <button class="btn btn-sm btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addApplicantModal">
-                    <i class="bi bi-plus-lg me-1"></i>Добавить компанию
-                </button>
-            }
+        <!-- Tab 2: Requests (Запросы) -->
+        <div class="tab-pane fade p-3" id="tabRequests">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <small class="text-muted">Компании, запросившие тендерную документацию</small>
+                </div>
+                @if (isOpen)
+                {
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addApplicantModal">
+                        <i class="bi bi-plus-lg me-1"></i>Добавить компанию
+                    </button>
+                }
+            </div>
 
             <div class="table-responsive">
-                <table class="table table-sm table-hover" style="font-size:0.85rem" id="applicantsTable">
+                <table class="table table-hover mb-0" style="font-size:0.85rem" id="requestsTable">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
@@ -192,16 +222,47 @@
                             <th>Email</th>
                             <th>Телефон</th>
                             <th>Страна</th>
+                            <th>Статус</th>
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody id="applicantsBody"></tbody>
+                    <tbody id="requestsBody"></tbody>
                 </table>
             </div>
-            <p class="text-muted text-center py-2 d-none" id="applicantsEmpty">Нет участников</p>
+            <p class="text-muted text-center py-3 d-none" id="requestsEmpty">
+                <i class="bi bi-inbox d-block fs-3 mb-2" style="opacity:0.3"></i>
+                Нет запросов
+            </p>
         </div>
 
-        <!-- Tab 3: Templates -->
+        <!-- Tab 3: Participants (Участники) -->
+        <div class="tab-pane fade p-3" id="tabParticipants">
+            <div class="mb-3">
+                <small class="text-muted">Компании, подавшие тендерные документы</small>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="font-size:0.85rem" id="participantsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Наименование компании</th>
+                            <th>Тип</th>
+                            <th>Страна</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsBody"></tbody>
+                </table>
+            </div>
+            <p class="text-muted text-center py-3 d-none" id="participantsEmpty">
+                <i class="bi bi-inbox d-block fs-3 mb-2" style="opacity:0.3"></i>
+                Нет участников. Допустите компании из вкладки «Запросы».
+            </p>
+        </div>
+
+        <!-- Tab 4: Templates -->
         <div class="tab-pane fade p-3" id="tabTemplates">
             <div id="fileManager" style="height:500px"></div>
         </div>
@@ -288,7 +349,7 @@
                         <input type="text" id="appCountry1" class="form-control" placeholder="Например: Китай" />
                     </div>
                     <div class="col-md-6 d-none" id="countryFields2">
-                        <label class="form-label">Страна 2 <span class="text-muted">(консорциум)</span></label>
+                        <label class="form-label">Страна 2 (консорциум)</label>
                         <input type="text" id="appCountry2" class="form-control" placeholder="Необязательно" />
                     </div>
                 </div>
@@ -303,19 +364,80 @@
     </div>
 </div>
 
+<!-- Declare Winner Modal -->
+<div class="modal fade" id="winnerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-trophy me-2"></i>Объявить победителя</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    При объявлении победителя автоматически создаются <strong>Подрядчик</strong> и <strong>Контракт</strong>.
+                    Статус плана закупок изменится на <strong>«Присуждено»</strong>.
+                </div>
+                <input type="hidden" id="winnerApplicantId" />
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Компания-победитель</label>
+                    <input type="text" id="winnerCompanyName" class="form-control" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Оценочный документ</label>
+                    <input type="file" id="winnerEvalDoc" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx" />
+                </div>
+                <hr />
+                <h6><i class="bi bi-file-earmark-text me-1"></i>Данные контракта</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Номер контракта <span class="text-danger">*</span></label>
+                        <input type="text" id="winnerContractNumber" class="form-control" placeholder="Например: C-001-2026" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Сумма контракта (USD) <span class="text-danger">*</span></label>
+                        <input type="number" id="winnerContractAmount" class="form-control" step="0.01" value="@Model.ProcurementPlan.EstimatedAmount" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Дата подписания <span class="text-danger">*</span></label>
+                        <input type="date" id="winnerSigningDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Дата окончания <span class="text-danger">*</span></label>
+                        <input type="date" id="winnerContractEndDate" class="form-control" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-success" id="btnDeclareWinner">
+                    <i class="bi bi-trophy me-1"></i>Объявить победителя и создать контракт
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
     const tenderId = @Model.Id;
-    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value 
-        || '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)?.[1] || '';
+    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
 
-    // ======= Applicants =======
-    async function loadApplicants() {
+    // ======= Load Data =======
+    let allApplicants = [];
+
+    async function loadAll() {
         const resp = await fetch(`/Tenders/GetApplicants?tenderId=${tenderId}`);
-        const data = await resp.json();
-        const tbody = document.getElementById('applicantsBody');
-        const empty = document.getElementById('applicantsEmpty');
-        document.getElementById('applicantsCount').textContent = data.length;
+        allApplicants = await resp.json();
+        renderRequests();
+        renderParticipants();
+    }
+
+    function renderRequests() {
+        const data = allApplicants;
+        const tbody = document.getElementById('requestsBody');
+        const empty = document.getElementById('requestsEmpty');
+        document.getElementById('requestsCount').textContent = data.length;
 
         if (!data.length) {
             tbody.innerHTML = '';
@@ -325,12 +447,26 @@
         empty.classList.add('d-none');
 
         tbody.innerHTML = data.map((a, i) => {
-            let countryInfo = '';
-            if (a.isForeign) {
-                countryInfo = `<span class="badge bg-warning text-dark">${esc(a.country1 || '')}${a.country2 ? ' / ' + esc(a.country2) : ''}</span>`;
-            } else {
-                countryInfo = '<span class="text-muted small">Местная</span>';
+            let countryInfo = a.isForeign
+                ? `<span class="badge bg-warning text-dark">${esc(a.country1 || '')}${a.country2 ? ' / ' + esc(a.country2) : ''}</span>`
+                : '<span class="text-muted small">Местная</span>';
+
+            let statusBadge = a.isWinner
+                ? '<span class="badge bg-success"><i class="bi bi-trophy"></i> Победитель</span>'
+                : a.isParticipant
+                    ? '<span class="badge bg-primary">Участник</span>'
+                    : '<span class="badge bg-secondary">Запрос</span>';
+
+            let actions = '';
+            if (!a.isParticipant) {
+                actions += `<button class="btn btn-sm btn-outline-success me-1" onclick="promote(${a.id})" title="Допустить к участию">
+                    <i class="bi bi-arrow-right-circle"></i>
+                </button>`;
             }
+            actions += `<button class="btn btn-sm btn-outline-danger" onclick="removeApplicant(${a.id})" title="Удалить">
+                <i class="bi bi-x-lg"></i>
+            </button>`;
+
             return `<tr>
                 <td class="text-muted">${i + 1}</td>
                 <td><strong>${esc(a.companyName)}</strong></td>
@@ -338,14 +474,122 @@
                 <td>${a.email ? `<a href="mailto:${esc(a.email)}">${esc(a.email)}</a>` : ''}</td>
                 <td>${esc(a.phone || '')}</td>
                 <td>${countryInfo}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger" onclick="removeApplicant(${a.id})" title="Удалить">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </td>
+                <td>${statusBadge}</td>
+                <td class="text-end">${actions}</td>
             </tr>`;
         }).join('');
     }
+
+    function renderParticipants() {
+        const data = allApplicants.filter(a => a.isParticipant);
+        const tbody = document.getElementById('participantsBody');
+        const empty = document.getElementById('participantsEmpty');
+        document.getElementById('participantsCount').textContent = data.length;
+
+        if (!data.length) {
+            tbody.innerHTML = '';
+            empty.classList.remove('d-none');
+            return;
+        }
+        empty.classList.add('d-none');
+
+        tbody.innerHTML = data.map((a, i) => {
+            let countryInfo = a.isForeign
+                ? `<span class="badge bg-warning text-dark">${esc(a.country1 || '')}${a.country2 ? ' / ' + esc(a.country2) : ''}</span>`
+                : '<span class="text-muted small">Местная</span>';
+
+            let statusBadge = a.isWinner
+                ? '<span class="badge bg-success"><i class="bi bi-trophy me-1"></i>Победитель</span>'
+                : '<span class="badge bg-primary">Участник</span>';
+
+            let actions = '';
+            if (!a.isWinner) {
+                actions += `<button class="btn btn-sm btn-outline-success me-1" onclick="openWinnerModal(${a.id}, '${esc(a.companyName)}')" title="Объявить победителем">
+                    <i class="bi bi-trophy"></i>
+                </button>`;
+                actions += `<button class="btn btn-sm btn-outline-secondary" onclick="demote(${a.id})" title="Убрать из участников">
+                    <i class="bi bi-arrow-left-circle"></i>
+                </button>`;
+            } else {
+                if (a.evaluationDocPath) {
+                    actions += `<a href="${a.evaluationDocPath}" class="btn btn-sm btn-outline-info" target="_blank" title="Оценочный документ">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </a>`;
+                }
+            }
+
+            return `<tr class="${a.isWinner ? 'table-success' : ''}">
+                <td class="text-muted">${i + 1}</td>
+                <td><strong>${esc(a.companyName)}</strong></td>
+                <td>${esc(a.companyType || '')}</td>
+                <td>${countryInfo}</td>
+                <td>${statusBadge}</td>
+                <td class="text-end">${actions}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ======= Actions =======
+
+    async function promote(id) {
+        const resp = await fetch(`/Tenders/PromoteToParticipant?applicantId=${id}`, { method: 'POST' });
+        const r = await resp.json();
+        if (r.success) loadAll();
+    }
+
+    async function demote(id) {
+        if (!confirm('Убрать из участников?')) return;
+        const resp = await fetch(`/Tenders/DemoteFromParticipant?applicantId=${id}`, { method: 'POST' });
+        const r = await resp.json();
+        if (r.success) loadAll();
+    }
+
+    async function removeApplicant(id) {
+        if (!confirm('Удалить?')) return;
+        const resp = await fetch(`/Tenders/RemoveApplicant?id=${id}`, { method: 'POST' });
+        const r = await resp.json();
+        if (r.success) loadAll();
+    }
+
+    // ======= Winner Modal =======
+
+    function openWinnerModal(id, name) {
+        document.getElementById('winnerApplicantId').value = id;
+        document.getElementById('winnerCompanyName').value = name;
+        new bootstrap.Modal(document.getElementById('winnerModal')).show();
+    }
+
+    document.getElementById('btnDeclareWinner')?.addEventListener('click', async () => {
+        const applicantId = document.getElementById('winnerApplicantId').value;
+        const contractNumber = document.getElementById('winnerContractNumber').value;
+        const signingDate = document.getElementById('winnerSigningDate').value;
+        const contractEndDate = document.getElementById('winnerContractEndDate').value;
+        const contractAmount = document.getElementById('winnerContractAmount').value;
+        const evalDoc = document.getElementById('winnerEvalDoc').files[0];
+
+        if (!contractNumber || !signingDate || !contractEndDate || !contractAmount) {
+            alert('Заполните все обязательные поля контракта');
+            return;
+        }
+
+        const form = new FormData();
+        form.append('applicantId', applicantId);
+        form.append('contractNumber', contractNumber);
+        form.append('signingDate', signingDate);
+        form.append('contractEndDate', contractEndDate);
+        form.append('contractAmount', contractAmount);
+        if (evalDoc) form.append('evaluationDoc', evalDoc);
+
+        const resp = await fetch('/Tenders/DeclareWinner', { method: 'POST', body: form });
+        const result = await resp.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert(result.error || 'Ошибка');
+        }
+    });
+
+    // ======= Add Applicant =======
 
     document.getElementById('btnAddApplicant')?.addEventListener('click', async () => {
         const data = {
@@ -368,25 +612,17 @@
         const result = await resp.json();
         if (result.success) {
             bootstrap.Modal.getInstance(document.getElementById('addApplicantModal')).hide();
-            // Reset form
             ['appCompanyName', 'appEmail', 'appPhone', 'appCountry1', 'appCountry2'].forEach(
                 id => document.getElementById(id).value = ''
             );
             document.getElementById('appCompanyType').selectedIndex = 0;
             document.getElementById('appIsForeign').checked = false;
             toggleForeignFields();
-            loadApplicants();
+            loadAll();
         } else {
             alert(result.error || 'Ошибка');
         }
     });
-
-    async function removeApplicant(id) {
-        if (!confirm('Удалить участника?')) return;
-        const resp = await fetch(`/Tenders/RemoveApplicant?id=${id}`, { method: 'POST' });
-        const result = await resp.json();
-        if (result.success) loadApplicants();
-    }
 
     function toggleForeignFields() {
         const show = document.getElementById('appIsForeign').checked;
@@ -430,7 +666,7 @@
     });
 
     // Init
-    loadApplicants();
+    loadAll();
 
     function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>

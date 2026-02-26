@@ -55,6 +55,22 @@ public class TenderApplicant : BaseEntity
     public string? Country2 { get; set; }
     
     /// <summary>
+    /// Подал документы → участник тендера
+    /// </summary>
+    public bool IsParticipant { get; set; }
+    
+    /// <summary>
+    /// Победитель тендера
+    /// </summary>
+    public bool IsWinner { get; set; }
+    
+    /// <summary>
+    /// Путь к оценочному документу (для победителя)
+    /// </summary>
+    [MaxLength(500)]
+    public string? EvaluationDocPath { get; set; }
+    
+    /// <summary>
     /// Дата добавления
     /// </summary>
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
