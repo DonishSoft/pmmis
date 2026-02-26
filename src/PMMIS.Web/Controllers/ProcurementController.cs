@@ -78,6 +78,9 @@ public class ProcurementController : Controller
         if (item == null)
             return NotFound();
 
+        // Auto-recalculate status on view
+        await RecalculateStatusAsync(item);
+
         return View(item);
     }
 
@@ -199,7 +202,9 @@ public class ProcurementController : Controller
             plan.ActualCompletionDate = plan.ActualCompletionDate.ToUtc();
             
             _context.Update(plan);
-            await _context.SaveChangesAsync();
+            
+            // Auto-recalculate status (ignore form value)
+            await RecalculateStatusAsync(plan);
             
             // Audit log
             if (oldPlan != null)
@@ -339,6 +344,52 @@ public class ProcurementController : Controller
     };
 
 
+    /// <summary>
+    /// Recalculates ProcurementPlan status based on linked tenders and contracts.
+    /// </summary>
+    private async Task RecalculateStatusAsync(ProcurementPlan plan)
+    {
+        // Don't override Cancelled — it's an explicit manual action
+        if (plan.Status == ProcurementStatus.Cancelled)
+            return;
+
+        // Check for linked contract
+        var contract = await _context.Contracts
+            .FirstOrDefaultAsync(c => c.ProcurementPlanId == plan.Id);
+
+        if (contract != null)
+        {
+            plan.Status = contract.Status == ContractStatus.Completed
+                ? ProcurementStatus.Completed
+                : ProcurementStatus.Awarded;
+            await _context.SaveChangesAsync();
+            return;
+        }
+
+        // Check for tenders
+        var tender = await _context.Tenders
+            .Include(t => t.Applicants)
+            .FirstOrDefaultAsync(t => t.ProcurementPlanId == plan.Id);
+
+        if (tender != null)
+        {
+            if (tender.Status == TenderStatus.Closed)
+            {
+                var hasWinner = tender.Applicants.Any(a => a.IsWinner);
+                plan.Status = hasWinner ? ProcurementStatus.Awarded : ProcurementStatus.Evaluation;
+            }
+            else
+            {
+                plan.Status = ProcurementStatus.InProgress;
+            }
+            await _context.SaveChangesAsync();
+            return;
+        }
+
+        // No tender, no contract → Planned
+        plan.Status = ProcurementStatus.Planned;
+        await _context.SaveChangesAsync();
+    }
 
     #endregion
 

@@ -112,15 +112,24 @@
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Статус</label>
-                                <select asp-for="Status" class="form-select">
-                                    <option value="@((int)ProcurementStatus.Planned)">🔵 Запланировано</option>
-                                    <option value="@((int)ProcurementStatus.InProgress)">⏳ В процессе</option>
-                                    <option value="@((int)ProcurementStatus.Evaluation)">📋 Оценка</option>
-                                    <option value="@((int)ProcurementStatus.Awarded)">🏆 Присуждено</option>
-                                    <option value="@((int)ProcurementStatus.Completed)">✅ Завершено</option>
-                                    <option value="@((int)ProcurementStatus.Cancelled)">❌ Отменено</option>
-                                </select>
+                                <label class="form-label">Статус <span class="badge bg-info">авто</span></label>
+                                <input type="hidden" asp-for="Status" />
+                                @{
+                                    var statusInfo = Model.Status switch
+                                    {
+                                        ProcurementStatus.Planned => ("bg-secondary", "🔵 Запланировано"),
+                                        ProcurementStatus.InProgress => ("bg-primary", "⏳ В процессе"),
+                                        ProcurementStatus.Evaluation => ("bg-warning text-dark", "📋 Оценка"),
+                                        ProcurementStatus.Awarded => ("bg-success", "🏆 Присуждено"),
+                                        ProcurementStatus.Completed => ("bg-dark", "✅ Завершено"),
+                                        ProcurementStatus.Cancelled => ("bg-danger", "❌ Отменено"),
+                                        _ => ("bg-secondary", "—")
+                                    };
+                                }
+                                <div class="form-control-plaintext">
+                                    <span class="badge @statusInfo.Item1 fs-6">@statusInfo.Item2</span>
+                                </div>
+                                <small class="text-muted">Определяется автоматически</small>
                             </div>
                         </div>
                     </div>
