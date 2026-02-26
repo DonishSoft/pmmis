@@ -53,6 +53,10 @@ public class ProcurementController : Controller
             .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
             .ToListAsync();
 
+        // Auto-recalculate statuses for all displayed items
+        foreach (var item in items)
+            await RecalculateStatusAsync(item);
+
         ViewBag.Projects = await _context.Projects.OrderBy(p => p.Code).ToListAsync();
         ViewBag.SelectedProjectId = projectId;
         ViewBag.SelectedStatus = status;
