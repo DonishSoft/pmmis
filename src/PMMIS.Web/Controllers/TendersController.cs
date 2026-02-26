@@ -65,11 +65,12 @@ public class TendersController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Tender tender)
     {
-        // Clear navigation property validation
-        ModelState.Remove("ProcurementPlan");
-        ModelState.Remove("Extensions");
-        ModelState.Remove("Applicants");
-        ModelState.Remove("CreatedBy");
+        // Clear all navigation property validation (including nested keys like ProcurementPlan.Description)
+        var keysToRemove = ModelState.Keys
+            .Where(k => k.StartsWith("ProcurementPlan") || k.StartsWith("Extensions") || k.StartsWith("Applicants") || k == "CreatedBy")
+            .ToList();
+        foreach (var key in keysToRemove)
+            ModelState.Remove(key);
 
         if (!ModelState.IsValid)
         {
