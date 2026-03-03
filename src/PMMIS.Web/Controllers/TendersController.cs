@@ -23,11 +23,18 @@ public class TendersController : Controller
         _context = context;
         _env = env;
     }
+    /// <summary>
+    /// Шаблоны тендерной документации (файловый менеджер)
+    /// </summary>
+    public IActionResult Templates()
+    {
+        return View();
+    }
 
     /// <summary>
     /// Список тендеров
     /// </summary>
-    public async Task<IActionResult> Index(TenderStatus? status, string? search)
+    public async Task<IActionResult> Index(TenderStatus? status, ProcurementType? type, string? search)
     {
         var query = _context.Tenders
             .Include(t => t.ProcurementPlan)
@@ -39,6 +46,9 @@ public class TendersController : Controller
         if (status.HasValue)
             query = query.Where(t => t.Status == status.Value);
 
+        if (type.HasValue)
+            query = query.Where(t => t.ProcurementPlan.Type == type.Value);
+
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(t => t.ProcurementPlan.Description.Contains(search) 
                 || t.ProcurementPlan.ReferenceNo.Contains(search));
@@ -46,6 +56,7 @@ public class TendersController : Controller
         var tenders = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 
         ViewBag.StatusFilter = status;
+        ViewBag.TypeFilter = type;
         ViewBag.Search = search;
         return View(tenders);
     }

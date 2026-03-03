@@ -4,6 +4,7 @@
     ViewData["Title"] = "Тендеры";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var selectedStatus = ViewBag.StatusFilter as TenderStatus?;
+    var selectedType = ViewBag.TypeFilter as ProcurementType?;
     var searchQuery = ViewBag.Search as string ?? "";
     var permissionService = ViewContext.HttpContext.RequestServices.GetRequiredService<PMMIS.Web.Services.IPermissionService>();
     var canCreate = await permissionService.HasPermissionAsync(User, "Tenders", "create");
@@ -63,14 +64,14 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">Поиск</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                         <input type="text" name="search" class="form-control" placeholder="Ref No или описание..." value="@searchQuery" />
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Статус</label>
                     <select name="status" class="form-select">
                         <option value="">— Все —</option>
@@ -78,6 +79,16 @@
                         <option value="Extended" selected="@(selectedStatus == TenderStatus.Extended)">🟡 Продлён</option>
                         <option value="Closed" selected="@(selectedStatus == TenderStatus.Closed)">✅ Закрыт</option>
                         <option value="Cancelled" selected="@(selectedStatus == TenderStatus.Cancelled)">❌ Отменён</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Тип</label>
+                    <select name="type" class="form-select">
+                        <option value="">— Все —</option>
+                        <option value="Goods" selected="@(selectedType == ProcurementType.Goods)">Товары</option>
+                        <option value="Works" selected="@(selectedType == ProcurementType.Works)">Работы</option>
+                        <option value="ConsultingServices" selected="@(selectedType == ProcurementType.ConsultingServices)">Конс. услуги</option>
+                        <option value="NonConsultingServices" selected="@(selectedType == ProcurementType.NonConsultingServices)">Некон. услуги</option>
                     </select>
                 </div>
                 <div class="col-auto">
@@ -105,6 +116,7 @@
                     <tr>
                         <th>Ref No</th>
                         <th>Описание</th>
+                        <th>Тип</th>
                         <th>Проект</th>
                         <th class="text-center">Начало</th>
                         <th class="text-center">Окончание</th>
@@ -128,6 +140,23 @@
                                 <a asp-action="Details" asp-route-id="@t.Id" class="text-dark text-decoration-none">
                                     @t.ProcurementPlan.Description
                                 </a>
+                            </td>
+                            <td>
+                                @switch (t.ProcurementPlan.Type)
+                                {
+                                    case ProcurementType.Goods:
+                                        <span class="badge bg-info text-dark">Товары</span>
+                                        break;
+                                    case ProcurementType.Works:
+                                        <span class="badge bg-primary">Работы</span>
+                                        break;
+                                    case ProcurementType.ConsultingServices:
+                                        <span class="badge bg-purple" style="background-color:#6f42c1">Конс. услуги</span>
+                                        break;
+                                    case ProcurementType.NonConsultingServices:
+                                        <span class="badge bg-dark">Некон. услуги</span>
+                                        break;
+                                }
                             </td>
                             <td><span class="badge bg-secondary">@t.ProcurementPlan.Project?.Code</span></td>
                             <td class="text-center text-muted">@t.StartDate.ToString("dd.MM.yyyy")</td>
@@ -185,7 +214,7 @@
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-5">
+                            <td colspan="10" class="text-center text-muted py-5">
                                 <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                 Нет тендеров
                                 <br>

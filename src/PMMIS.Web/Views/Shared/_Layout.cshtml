@@ -81,9 +81,13 @@
                 }
                 @if (CanView(MenuKeys.Tenders))
                 {
-                    <a class="nav-link text-white @(currentController == "Tenders" ? "menu-active" : "")" asp-controller="Tenders" asp-action="Index">
+                    <a class="nav-link text-white @(currentController == "Tenders" && currentAction != "Templates" ? "menu-active" : "")" asp-controller="Tenders" asp-action="Index">
                         <i class="bi bi-megaphone me-2"></i>
                         <span class="sidebar-text">Тендеры</span>
+                    </a>
+                    <a class="nav-link text-white ps-4 @(currentController == "Tenders" && currentAction == "Templates" ? "menu-active" : "")" asp-controller="Tenders" asp-action="Templates" style="font-size: 0.85rem;">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        <span class="sidebar-text">Шаблоны</span>
                     </a>
                 }
                 @if (CanView(MenuKeys.Contractors))
