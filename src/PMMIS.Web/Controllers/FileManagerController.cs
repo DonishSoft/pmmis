@@ -78,7 +78,7 @@ public class FileManagerController : ControllerBase
 
     [HttpPost("Upload")]
     [DisableRequestSizeLimit]
-    public IActionResult Upload(string path, string action, IList<IFormFile>? uploadFiles)
+    public IActionResult Upload([FromForm] string path, [FromForm] string action, [FromForm(Name = "uploadFiles")] IList<IFormFile>? uploadFiles)
     {
         // Sanitize path — block invalid segments like "undefined"
         var rawPath = path;
