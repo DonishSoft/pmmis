@@ -15,13 +15,43 @@ public class FileManagerController : ControllerBase
 {
     private readonly string _root;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<FileManagerController> _logger;
 
-    public FileManagerController(IWebHostEnvironment env)
+    public FileManagerController(IWebHostEnvironment env, ILogger<FileManagerController> logger)
     {
         _env = env;
+        _logger = logger;
         _root = Path.Combine(env.WebRootPath, "uploads", "filemanager");
         if (!Directory.Exists(_root))
             Directory.CreateDirectory(_root);
+    }
+
+    /// <summary>
+    /// Debug endpoint to verify deployed version and check paths
+    /// </summary>
+    [HttpGet("Debug")]
+    public IActionResult Debug(string path = "/")
+    {
+        var sanitized = SanitizePath(path);
+        var physPath = GetPhysicalPath(sanitized);
+        var exists = Directory.Exists(physPath);
+        var items = new List<string>();
+        if (exists)
+        {
+            foreach (var d in Directory.GetDirectories(physPath))
+                items.Add("[DIR] " + Path.GetFileName(d));
+            foreach (var f in Directory.GetFiles(physPath))
+                items.Add("[FILE] " + Path.GetFileName(f) + " (" + new FileInfo(f).Length + " bytes)");
+        }
+        return Ok(new { 
+            version = "v3-2026-03-03",
+            root = _root, 
+            rawPath = path, 
+            sanitizedPath = sanitized, 
+            physicalPath = physPath, 
+            exists, 
+            items 
+        });
     }
 
 
@@ -31,6 +61,8 @@ public class FileManagerController : ControllerBase
         var action = args.GetProperty("action").GetString();
         var rawPath = args.TryGetProperty("path", out var p) ? p.GetString() ?? "/" : "/";
         var path = SanitizePath(rawPath);
+
+        _logger.LogInformation("FileOperations: action={Action}, rawPath={RawPath}, sanitizedPath={Path}", action, rawPath, path);
 
         return action switch
         {
@@ -49,7 +81,11 @@ public class FileManagerController : ControllerBase
     public IActionResult Upload(string path, string action, IList<IFormFile>? uploadFiles)
     {
         // Sanitize path — block invalid segments like "undefined"
+        var rawPath = path;
         path = SanitizePath(path);
+
+        _logger.LogWarning("UPLOAD: rawPath={RawPath}, sanitizedPath={Path}, action={Action}, fileCount={Count}",
+            rawPath, path, action, uploadFiles?.Count ?? 0);
 
         // Handle remove action (cancel upload)
         if (action == "remove")
@@ -65,20 +101,26 @@ public class FileManagerController : ControllerBase
         if (!Directory.Exists(targetDir))
             Directory.CreateDirectory(targetDir);
 
+        _logger.LogWarning("UPLOAD: targetDir={TargetDir}, dirExists={Exists}", targetDir, Directory.Exists(targetDir));
+
         if (uploadFiles == null) return Ok(new { });
 
         foreach (var file in uploadFiles)
         {
             var filePath = Path.Combine(targetDir, file.FileName);
+            var fileExists = System.IO.File.Exists(filePath);
 
-            if (action == "save" && System.IO.File.Exists(filePath))
+            _logger.LogWarning("UPLOAD: fileName={FileName}, filePath={FilePath}, fileExists={Exists}, action={Action}",
+                file.FileName, filePath, fileExists, action);
+
+            if (action == "save" && fileExists)
             {
+                _logger.LogWarning("UPLOAD: CONFLICT — returning empty 200 for file {FileName}", file.FileName);
                 // Syncfusion standard: empty 200 response triggers "File Already Exists" dialog
-                // with working KEEP BOTH / REPLACE / SKIP buttons
                 return Content("", "application/json", System.Text.Encoding.UTF8);
             }
 
-            if (action == "keepboth" && System.IO.File.Exists(filePath))
+            if (action == "keepboth" && fileExists)
             {
                 var ext = Path.GetExtension(file.FileName);
                 var nameWithout = Path.GetFileNameWithoutExtension(file.FileName);
@@ -93,6 +135,7 @@ public class FileManagerController : ControllerBase
             // action == "replace" or new file — just write
             using var stream = new FileStream(filePath, FileMode.Create);
             file.CopyTo(stream);
+            _logger.LogWarning("UPLOAD: SUCCESS — wrote {FileName} to {FilePath}", file.FileName, filePath);
         }
         return Ok(new { });
     }
