@@ -150,9 +150,9 @@ public class FileManagerController : ControllerBase
         if (!Directory.Exists(physPath))
             Directory.CreateDirectory(physPath);
 
-        // Seed default subfolders for Tenders (e.g. /Tenders/1/)
+        // Seed default subfolders for Tenders root (e.g. /Tenders/)
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length == 2 && segments[0] == "Tenders")
+        if (segments.Length == 1 && segments[0] == "Tenders")
         {
             var defaults = new[] { "Goods", "Works", "Consulting Services" };
             foreach (var folder in defaults)
