@@ -353,8 +353,11 @@ public class TendersController : Controller
         applicant.IsParticipant = true;
 
         // 3. Create or find Contractor
+        var fullName = !string.IsNullOrEmpty(applicant.CompanyType) 
+            ? $"{applicant.CompanyType} {applicant.CompanyName}" 
+            : applicant.CompanyName;
         var existingContractor = await _context.Set<Contractor>()
-            .FirstOrDefaultAsync(c => c.Name == applicant.CompanyName);
+            .FirstOrDefaultAsync(c => c.Name == fullName);
         
         int contractorId;
         if (existingContractor != null)
@@ -365,7 +368,7 @@ public class TendersController : Controller
         {
             var contractor = new Contractor
             {
-                Name = applicant.CompanyName,
+                Name = fullName,
                 Country = applicant.IsForeign ? applicant.Country1 : "Таджикистан",
                 Email = applicant.Email,
                 Phone = applicant.Phone

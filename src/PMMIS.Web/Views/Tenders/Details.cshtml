@@ -526,7 +526,7 @@
 
             let actions = '';
             if (!a.isWinner) {
-                actions += `<button class="btn btn-sm btn-outline-success me-1 btn-declare-winner" data-id="${a.id}" data-name="${esc(a.companyName)}" title="Объявить победителем">
+                actions += `<button class="btn btn-sm btn-outline-success me-1 btn-declare-winner" data-id="${a.id}" title="Объявить победителем">
                     <i class="bi bi-trophy"></i>
                 </button>`;
                 actions += `<button class="btn btn-sm btn-outline-secondary" onclick="demote(${a.id})" title="Убрать из участников">
@@ -579,10 +579,11 @@
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('.btn-declare-winner');
         if (!btn) return;
-        const id = btn.dataset.id;
-        const name = btn.dataset.name;
+        const id = parseInt(btn.dataset.id);
+        const applicant = allApplicants.find(a => a.id === id);
+        const fullName = applicant ? (applicant.companyType ? applicant.companyType + ' ' + applicant.companyName : applicant.companyName) : '';
         document.getElementById('winnerApplicantId').value = id;
-        document.getElementById('winnerCompanyName').value = name;
+        document.getElementById('winnerCompanyName').value = fullName;
         new bootstrap.Modal(document.getElementById('winnerModal')).show();
     });
 
