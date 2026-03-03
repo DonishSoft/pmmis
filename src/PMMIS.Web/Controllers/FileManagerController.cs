@@ -28,7 +28,8 @@ public class FileManagerController : ControllerBase
     public IActionResult FileOperations([FromBody] JsonElement args)
     {
         var action = args.GetProperty("action").GetString();
-        var path = args.TryGetProperty("path", out var p) ? p.GetString() ?? "/" : "/";
+        var rawPath = args.TryGetProperty("path", out var p) ? p.GetString() ?? "/" : "/";
+        var path = SanitizePath(rawPath);
 
         return action switch
         {
@@ -148,6 +149,19 @@ public class FileManagerController : ControllerBase
         var physPath = GetPhysicalPath(path);
         if (!Directory.Exists(physPath))
             Directory.CreateDirectory(physPath);
+
+        // Seed default subfolders for Tenders (e.g. /Tenders/1/)
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 2 && segments[0] == "Tenders")
+        {
+            var defaults = new[] { "Goods", "Works", "Consulting Services" };
+            foreach (var folder in defaults)
+            {
+                var subDir = Path.Combine(physPath, folder);
+                if (!Directory.Exists(subDir))
+                    Directory.CreateDirectory(subDir);
+            }
+        }
 
         var dirInfo = new DirectoryInfo(physPath);
         var cwd = GetFileInfo(dirInfo, path, true);

@@ -18,6 +18,10 @@ jobs:
             set -e
             cd ~/pmmis
 
+            echo "=== Backing up uploads from running container ==="
+            mkdir -p /tmp/pmmis-uploads-backup
+            docker cp pmmis-web:/app/wwwroot/uploads /tmp/pmmis-uploads-backup/ 2>/dev/null || echo "No running container or no uploads to backup"
+
             echo "=== Pulling latest code ==="
             git fetch origin main
             git reset --hard origin/main
@@ -30,6 +34,12 @@ jobs:
 
             echo "=== Restarting PMMIS web container ==="
             docker compose up -d pmmis-web
+
+            echo "=== Restoring uploads if volume was empty ==="
+            if [ -d "/tmp/pmmis-uploads-backup/uploads" ]; then
+              docker cp /tmp/pmmis-uploads-backup/uploads/. pmmis-web:/app/wwwroot/uploads/ 2>/dev/null || true
+              rm -rf /tmp/pmmis-uploads-backup
+            fi
 
             echo "=== Cleanup old images ==="
             docker image prune -f

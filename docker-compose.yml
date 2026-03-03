@@ -13,6 +13,7 @@ services:
       - ConnectionStrings__DefaultConnection=Host=pmmis-db;Port=5432;Database=pmmis;Username=pmmis_user;Password=${DB_PASSWORD:-PmmisSecure123!}
     volumes:
       - pmmis-keys:/root/.aspnet/DataProtection-Keys
+      - pmmis-uploads:/app/wwwroot/uploads
     depends_on:
       pmmis-db:
         condition: service_healthy
@@ -47,3 +48,5 @@ volumes:
     name: pmmis-pgdata
   pmmis-keys:
     name: pmmis-keys
+  pmmis-uploads:
+    name: pmmis-uploads
