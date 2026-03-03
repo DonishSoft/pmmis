@@ -76,6 +76,7 @@
 
 @section Scripts {
 <script>
+    ej.grids.Grid.Inject(ej.grids.Page, ej.grids.Sort, ej.grids.Filter, ej.grids.Toolbar, ej.grids.ExcelExport, ej.grids.PdfExport, ej.grids.Search);
     try {
         var contractorData = @Html.Raw(Json.Serialize(Model.Select(c => new {
             c.Id,
