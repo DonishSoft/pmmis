@@ -374,7 +374,7 @@
                 <input type="hidden" id="winnerApplicantId" />
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Компания-победитель</label>
-                    <input type="text" id="winnerCompanyName" class="form-control" disabled />
+                    <input type="text" id="winnerCompanyName" class="form-control bg-light" readonly />
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Оценочный документ</label>
@@ -385,11 +385,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Номер контракта <span class="text-danger">*</span></label>
-                        <input type="text" id="winnerContractNumber" class="form-control" placeholder="Например: C-001-2026" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Сумма контракта (USD) <span class="text-danger">*</span></label>
-                        <input type="number" id="winnerContractAmount" class="form-control" step="0.01" value="@Model.ProcurementPlan.EstimatedAmount" />
+                        <input type="text" id="winnerContractNumber" class="form-control bg-light" value="@Model.ProcurementPlan.ReferenceNo" readonly />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Дата подписания <span class="text-danger">*</span></label>
@@ -398,6 +394,39 @@
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Дата окончания <span class="text-danger">*</span></label>
                         <input type="date" id="winnerContractEndDate" class="form-control" />
+                    </div>
+                </div>
+                <hr />
+                <h6><i class="bi bi-currency-dollar me-1"></i>Финансы</h6>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Валюта <span class="text-danger">*</span></label>
+                        <select id="winnerCurrency" class="form-select">
+                            <option value="0">💵 USD — Доллар</option>
+                            <option value="1">🇹🇯 TJS — Сомони</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="winnerTjsAmountGroup" style="display:none;">
+                        <label class="form-label fw-semibold">Сумма (TJS) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">SM</span>
+                            <input type="number" id="winnerAmountTjs" class="form-control" step="0.01" min="0" />
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="winnerRateGroup" style="display:none;">
+                        <label class="form-label fw-semibold">Курс USD/TJS</label>
+                        <div class="input-group">
+                            <span class="input-group-text">📊</span>
+                            <input type="number" id="winnerExchangeRate" class="form-control" step="0.0001" readonly />
+                        </div>
+                        <small class="text-muted" id="winnerRateInfo">На дату подписания</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold" id="winnerUsdLabel">Сумма (USD) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" id="winnerContractAmount" class="form-control" step="0.01" min="0" value="@Model.ProcurementPlan.EstimatedAmount" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -557,16 +586,82 @@
         new bootstrap.Modal(document.getElementById('winnerModal')).show();
     });
 
+    // === Winner Finance Logic ===
+    const wCurrency = document.getElementById('winnerCurrency');
+    const wTjsGroup = document.getElementById('winnerTjsAmountGroup');
+    const wRateGroup = document.getElementById('winnerRateGroup');
+    const wAmountTjs = document.getElementById('winnerAmountTjs');
+    const wExchRate = document.getElementById('winnerExchangeRate');
+    const wAmountUsd = document.getElementById('winnerContractAmount');
+    const wSignDate = document.getElementById('winnerSigningDate');
+    const wRateInfo = document.getElementById('winnerRateInfo');
+    const wUsdLabel = document.getElementById('winnerUsdLabel');
+
+    function wToggleCurrency() {
+        const isTjs = wCurrency.value === '1';
+        wTjsGroup.style.display = isTjs ? '' : 'none';
+        wRateGroup.style.display = isTjs ? '' : 'none';
+        if (isTjs) {
+            wAmountTjs.setAttribute('required', 'required');
+            wAmountUsd.setAttribute('readonly', 'readonly');
+            wAmountUsd.removeAttribute('required');
+            wUsdLabel.innerHTML = 'Сумма (USD) <small class="text-muted">авто</small>';
+            wFetchRate();
+        } else {
+            wAmountUsd.removeAttribute('readonly');
+            wAmountUsd.setAttribute('required', 'required');
+            wUsdLabel.innerHTML = 'Сумма (USD) <span class="text-danger">*</span>';
+            wExchRate.value = '';
+            wAmountTjs.value = '';
+        }
+    }
+
+    async function wFetchRate() {
+        const dateVal = wSignDate?.value;
+        if (!dateVal) { wRateInfo.textContent = 'Укажите дату подписания'; return; }
+        wRateInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Загрузка курса...';
+        try {
+            const resp = await fetch(`/Currency/GetUsdRate?date=${dateVal}`);
+            const data = await resp.json();
+            if (data.rate) {
+                wExchRate.value = data.rate;
+                wRateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                wCalcUsd();
+            } else {
+                wRateInfo.textContent = 'Курс недоступен на эту дату';
+            }
+        } catch (e) {
+            wRateInfo.textContent = 'Ошибка загрузки курса';
+        }
+    }
+
+    function wCalcUsd() {
+        const tjs = parseFloat(wAmountTjs.value) || 0;
+        const rate = parseFloat(wExchRate.value) || 0;
+        if (rate > 0) wAmountUsd.value = (tjs / rate).toFixed(2);
+    }
+
+    wCurrency.addEventListener('change', wToggleCurrency);
+    wSignDate.addEventListener('change', () => { if (wCurrency.value === '1') wFetchRate(); });
+    wAmountTjs.addEventListener('input', wCalcUsd);
+
     document.getElementById('btnDeclareWinner')?.addEventListener('click', async () => {
         const applicantId = document.getElementById('winnerApplicantId').value;
         const contractNumber = document.getElementById('winnerContractNumber').value;
         const signingDate = document.getElementById('winnerSigningDate').value;
         const contractEndDate = document.getElementById('winnerContractEndDate').value;
         const contractAmount = document.getElementById('winnerContractAmount').value;
+        const currency = wCurrency.value;
+        const amountTjs = wAmountTjs.value;
+        const exchangeRate = wExchRate.value;
         const evalDoc = document.getElementById('winnerEvalDoc').files[0];
 
         if (!contractNumber || !signingDate || !contractEndDate || !contractAmount) {
             alert('Заполните все обязательные поля контракта');
+            return;
+        }
+        if (currency === '1' && (!amountTjs || !exchangeRate)) {
+            alert('Заполните сумму в TJS');
             return;
         }
 
@@ -576,6 +671,11 @@
         form.append('signingDate', signingDate);
         form.append('contractEndDate', contractEndDate);
         form.append('contractAmount', contractAmount);
+        form.append('currency', currency);
+        if (currency === '1') {
+            form.append('amountTjs', amountTjs);
+            form.append('exchangeRate', exchangeRate);
+        }
         if (evalDoc) form.append('evaluationDoc', evalDoc);
 
         const resp = await fetch('/Tenders/DeclareWinner', { method: 'POST', body: form });

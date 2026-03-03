@@ -322,7 +322,10 @@ public class TendersController : Controller
         string contractNumber,
         DateTime signingDate,
         DateTime contractEndDate,
-        decimal contractAmount)
+        decimal contractAmount,
+        int currency = 0,
+        decimal? amountTjs = null,
+        decimal? exchangeRate = null)
     {
         var applicant = await _context.TenderApplicants
             .Include(a => a.Tender)
@@ -394,6 +397,9 @@ public class TendersController : Controller
             SigningDate = DateTime.SpecifyKind(signingDate, DateTimeKind.Utc),
             ContractEndDate = DateTime.SpecifyKind(contractEndDate, DateTimeKind.Utc),
             ContractAmount = contractAmount,
+            Currency = (ContractCurrency)currency,
+            AmountTjs = amountTjs,
+            ExchangeRate = exchangeRate,
             ProjectId = procPlan.ProjectId,
             SubComponentId = procPlan.SubComponentId,
             ContractorId = contractorId,
