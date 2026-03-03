@@ -24,6 +24,26 @@ public class FileManagerController : ControllerBase
             Directory.CreateDirectory(_root);
     }
 
+    /// <summary>
+    /// Temporary debug endpoint — shows actual file system state
+    /// </summary>
+    [HttpGet("Debug")]
+    public IActionResult Debug(string path = "/")
+    {
+        var sanitized = SanitizePath(path);
+        var physPath = GetPhysicalPath(sanitized);
+        var exists = Directory.Exists(physPath);
+        var items = new List<string>();
+        if (exists)
+        {
+            foreach (var d in Directory.GetDirectories(physPath))
+                items.Add("[DIR] " + Path.GetFileName(d));
+            foreach (var f in Directory.GetFiles(physPath))
+                items.Add("[FILE] " + Path.GetFileName(f));
+        }
+        return Ok(new { root = _root, rawPath = path, sanitizedPath = sanitized, physicalPath = physPath, exists, items });
+    }
+
     [HttpPost("FileOperations")]
     public IActionResult FileOperations([FromBody] JsonElement args)
     {
@@ -72,21 +92,9 @@ public class FileManagerController : ControllerBase
 
             if (action == "save" && System.IO.File.Exists(filePath))
             {
-                // File exists — return proper Syncfusion conflict response
-                var existFile = new FileInfo(filePath);
-                var fileData = new
-                {
-                    name = existFile.Name,
-                    size = existFile.Length,
-                    isFile = true,
-                    dateModified = existFile.LastWriteTimeUtc.ToString("o"),
-                    dateCreated = existFile.CreationTimeUtc.ToString("o"),
-                    type = existFile.Extension,
-                    filterPath = path.EndsWith("/") ? path : path + "/",
-                    hasChild = false
-                };
-                Response.StatusCode = 400;
-                return new JsonResult(new { error = new { code = "400", message = "File Already Exists", fileExists = new[] { file.FileName } } });
+                // Syncfusion standard: empty 200 response triggers "File Already Exists" dialog
+                // with working KEEP BOTH / REPLACE / SKIP buttons
+                return Content("", "application/json", System.Text.Encoding.UTF8);
             }
 
             if (action == "keepboth" && System.IO.File.Exists(filePath))
