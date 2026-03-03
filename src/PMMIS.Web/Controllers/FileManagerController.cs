@@ -24,25 +24,6 @@ public class FileManagerController : ControllerBase
             Directory.CreateDirectory(_root);
     }
 
-    /// <summary>
-    /// Temporary debug endpoint — shows actual file system state
-    /// </summary>
-    [HttpGet("Debug")]
-    public IActionResult Debug(string path = "/")
-    {
-        var sanitized = SanitizePath(path);
-        var physPath = GetPhysicalPath(sanitized);
-        var exists = Directory.Exists(physPath);
-        var items = new List<string>();
-        if (exists)
-        {
-            foreach (var d in Directory.GetDirectories(physPath))
-                items.Add("[DIR] " + Path.GetFileName(d));
-            foreach (var f in Directory.GetFiles(physPath))
-                items.Add("[FILE] " + Path.GetFileName(f));
-        }
-        return Ok(new { root = _root, rawPath = path, sanitizedPath = sanitized, physicalPath = physPath, exists, items });
-    }
 
     [HttpPost("FileOperations")]
     public IActionResult FileOperations([FromBody] JsonElement args)
@@ -149,6 +130,7 @@ public class FileManagerController : ControllerBase
         if (string.IsNullOrEmpty(path)) return "/";
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
         var clean = segments.Where(s => s != "undefined" && s != "null" && s != "..").ToArray();
+        if (clean.Length == 0) return "/";
         return "/" + string.Join("/", clean) + "/";
     }
 
