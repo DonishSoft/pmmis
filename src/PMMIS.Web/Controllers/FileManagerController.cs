@@ -46,6 +46,9 @@ public class FileManagerController : ControllerBase
     [DisableRequestSizeLimit]
     public IActionResult Upload(string path, string action, IList<IFormFile>? uploadFiles)
     {
+        // Sanitize path — block invalid segments like "undefined"
+        path = SanitizePath(path);
+
         // Handle remove action (cancel upload)
         if (action == "remove")
         {
@@ -68,9 +71,21 @@ public class FileManagerController : ControllerBase
 
             if (action == "save" && System.IO.File.Exists(filePath))
             {
-                // File exists — tell client to ask
+                // File exists — return proper Syncfusion conflict response
                 var existFile = new FileInfo(filePath);
-                return Content("", "application/json", System.Text.Encoding.UTF8);
+                var fileData = new
+                {
+                    name = existFile.Name,
+                    size = existFile.Length,
+                    isFile = true,
+                    dateModified = existFile.LastWriteTimeUtc.ToString("o"),
+                    dateCreated = existFile.CreationTimeUtc.ToString("o"),
+                    type = existFile.Extension,
+                    filterPath = path.EndsWith("/") ? path : path + "/",
+                    hasChild = false
+                };
+                Response.StatusCode = 400;
+                return new JsonResult(new { error = new { code = "400", message = "File Already Exists", fileExists = new[] { file.FileName } } });
             }
 
             if (action == "keepboth" && System.IO.File.Exists(filePath))
@@ -111,9 +126,21 @@ public class FileManagerController : ControllerBase
 
     private string GetPhysicalPath(string virtualPath)
     {
-        var clean = virtualPath.Replace("/", Path.DirectorySeparatorChar.ToString())
+        var clean = SanitizePath(virtualPath)
+            .Replace("/", Path.DirectorySeparatorChar.ToString())
             .TrimStart(Path.DirectorySeparatorChar);
         return Path.Combine(_root, clean);
+    }
+
+    /// <summary>
+    /// Remove invalid path segments like "undefined", "..", etc.
+    /// </summary>
+    private static string SanitizePath(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return "/";
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var clean = segments.Where(s => s != "undefined" && s != "null" && s != "..").ToArray();
+        return "/" + string.Join("/", clean) + "/";
     }
 
     private IActionResult ReadFiles(string path)

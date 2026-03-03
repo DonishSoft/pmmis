@@ -504,7 +504,7 @@
 
             let actions = '';
             if (!a.isWinner) {
-                actions += `<button class="btn btn-sm btn-outline-success me-1" onclick="openWinnerModal(${a.id}, '${esc(a.companyName)}')" title="Объявить победителем">
+                actions += `<button class="btn btn-sm btn-outline-success me-1 btn-declare-winner" data-id="${a.id}" data-name="${esc(a.companyName)}" title="Объявить победителем">
                     <i class="bi bi-trophy"></i>
                 </button>`;
                 actions += `<button class="btn btn-sm btn-outline-secondary" onclick="demote(${a.id})" title="Убрать из участников">
@@ -553,11 +553,16 @@
 
     // ======= Winner Modal =======
 
-    function openWinnerModal(id, name) {
+    // Event delegation for dynamically rendered winner buttons
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-declare-winner');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
         document.getElementById('winnerApplicantId').value = id;
         document.getElementById('winnerCompanyName').value = name;
         new bootstrap.Modal(document.getElementById('winnerModal')).show();
-    }
+    });
 
     document.getElementById('btnDeclareWinner')?.addEventListener('click', async () => {
         const applicantId = document.getElementById('winnerApplicantId').value;
