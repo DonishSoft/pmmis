@@ -65,20 +65,6 @@
                     <small class="text-muted px-3 mt-3 mb-1 sidebar-text">ОСНОВНОЕ</small>
                 }
                 
-                @if (CanView(MenuKeys.Contracts))
-                {
-                    <a class="nav-link text-white @(currentController == "Contracts" ? "menu-active" : "")" asp-controller="Contracts" asp-action="Index">
-                        <i class="bi bi-file-earmark-text me-2"></i>
-                        <span class="sidebar-text">Контракты</span>
-                    </a>
-                }
-                @if (CanView(MenuKeys.Contractors))
-                {
-                    <a class="nav-link text-white @(currentController == "Contractors" ? "menu-active" : "")" asp-controller="Contractors" asp-action="Index">
-                        <i class="bi bi-building me-2"></i>
-                        <span class="sidebar-text">Подрядчики</span>
-                    </a>
-                }
                 @if (CanView(MenuKeys.Projects))
                 {
                     <a class="nav-link text-white @(currentController == "Projects" ? "menu-active" : "")" asp-controller="Projects" asp-action="Index">
@@ -100,11 +86,25 @@
                         <span class="sidebar-text">Тендеры</span>
                     </a>
                 }
-                @if (CanView(MenuKeys.Payments))
+                @if (CanView(MenuKeys.Contractors))
                 {
-                    <a class="nav-link text-white @(currentController == "Payments" ? "menu-active" : "")" asp-controller="Payments" asp-action="Index">
-                        <i class="bi bi-cash-stack me-2"></i>
-                        <span class="sidebar-text">Платежи</span>
+                    <a class="nav-link text-white @(currentController == "Contractors" ? "menu-active" : "")" asp-controller="Contractors" asp-action="Index">
+                        <i class="bi bi-building me-2"></i>
+                        <span class="sidebar-text">Подрядчики</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.Contracts))
+                {
+                    <a class="nav-link text-white @(currentController == "Contracts" ? "menu-active" : "")" asp-controller="Contracts" asp-action="Index">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        <span class="sidebar-text">Контракты</span>
+                    </a>
+                }
+                @if (CanView(MenuKeys.WorkProgressReports))
+                {
+                    <a class="nav-link text-white @(currentController == "WorkProgressReports" ? "menu-active" : "")" asp-controller="WorkProgressReports" asp-action="Index">
+                        <i class="bi bi-file-earmark-check me-2"></i>
+                        <span class="sidebar-text">АВР</span>
                     </a>
                 }
                 @if (CanView(MenuKeys.WorkProgress))
@@ -114,11 +114,11 @@
                         <span class="sidebar-text">Прогресс работ</span>
                     </a>
                 }
-                @if (CanView(MenuKeys.WorkProgressReports))
+                @if (CanView(MenuKeys.Payments))
                 {
-                    <a class="nav-link text-white @(currentController == "WorkProgressReports" ? "menu-active" : "")" asp-controller="WorkProgressReports" asp-action="Index">
-                        <i class="bi bi-file-earmark-check me-2"></i>
-                        <span class="sidebar-text">АВР</span>
+                    <a class="nav-link text-white @(currentController == "Payments" ? "menu-active" : "")" asp-controller="Payments" asp-action="Index">
+                        <i class="bi bi-cash-stack me-2"></i>
+                        <span class="sidebar-text">Платежи</span>
                     </a>
                 }
                 
