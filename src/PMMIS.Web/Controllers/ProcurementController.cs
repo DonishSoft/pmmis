@@ -111,16 +111,29 @@ public class ProcurementController : Controller
         ModelState.Remove("SubComponent");
         ModelState.Remove("Contract");
         
-        if (await _context.ProcurementPlans.AnyAsync(p => p.ReferenceNo == plan.ReferenceNo))
+        // Fix #3: Validate ProjectId
+        if (plan.ProjectId <= 0)
+        {
+            ModelState.AddModelError("ProjectId", "Выберите проект");
+        }
+        
+        // Fix #4: Duplicate ReferenceNo check (skip for empty strings)
+        if (!string.IsNullOrWhiteSpace(plan.ReferenceNo) 
+            && await _context.ProcurementPlans.AnyAsync(p => p.ReferenceNo == plan.ReferenceNo))
         {
             ModelState.AddModelError("ReferenceNo", "Позиция с таким номером уже существует");
         }
 
         if (ModelState.IsValid)
         {
+            // Fix #5: Normalize 0 → null for optional FK fields
+            if (plan.ComponentId == 0) plan.ComponentId = null;
+            if (plan.SubComponentId == 0) plan.SubComponentId = null;
+            
             plan.CreatedAt = DateTime.UtcNow;
             
-            // Convert dates to UTC
+            // Convert dates to UTC (Fix #1: added AdvertisementDate)
+            plan.AdvertisementDate = plan.AdvertisementDate.ToUtc();
             plan.PlannedBidOpeningDate = plan.PlannedBidOpeningDate.ToUtc();
             plan.PlannedContractSigningDate = plan.PlannedContractSigningDate.ToUtc();
             plan.PlannedCompletionDate = plan.PlannedCompletionDate.ToUtc();
@@ -134,22 +147,30 @@ public class ProcurementController : Controller
             // Audit log
             await _auditService.LogCreateAsync("ProcurementPlan", plan.Id, User);
             
-            // Auto-create task for procurement monitoring
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId))
+            // Fix #2: Auto-create task — wrapped in try-catch to not break main flow
+            try
             {
-                await _taskService.CreateAsync(new ProjectTask
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(userId))
                 {
-                    Title = $"Закупка: {plan.Description}",
-                    Description = $"Ref: {plan.ReferenceNo}. Контроль закупочной процедуры.",
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.Normal,
-                    DueDate = plan.PlannedCompletionDate ?? DateTime.UtcNow.AddMonths(1),
-                    AssigneeId = userId,
-                    AssignedById = userId,
-                    ProcurementPlanId = plan.Id,
-                    ProjectId = plan.ProjectId
-                }, userId);
+                    await _taskService.CreateAsync(new ProjectTask
+                    {
+                        Title = $"Закупка: {plan.Description}",
+                        Description = $"Ref: {plan.ReferenceNo}. Контроль закупочной процедуры.",
+                        Status = ProjectTaskStatus.New,
+                        Priority = TaskPriority.Normal,
+                        DueDate = plan.PlannedCompletionDate ?? DateTime.UtcNow.AddMonths(1),
+                        AssigneeId = userId,
+                        AssignedById = userId,
+                        ProcurementPlanId = plan.Id,
+                        ProjectId = plan.ProjectId
+                    }, userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail — the procurement plan is already saved
+                System.Diagnostics.Debug.WriteLine($"[ProcurementCreate] Task auto-creation failed: {ex.Message}");
             }
             
             TempData["Success"] = "Позиция плана закупок успешно создана";
