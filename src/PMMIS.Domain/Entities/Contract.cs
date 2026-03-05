@@ -80,11 +80,27 @@ public class Contract : BaseEntity
     public ICollection<ContractIndicator> ContractIndicators { get; set; } = new List<ContractIndicator>();
     public ICollection<ContractMilestone> Milestones { get; set; } = new List<ContractMilestone>();
     public ICollection<ContractAmendment> Amendments { get; set; } = new List<ContractAmendment>();
+    public ICollection<ContractWorkItem> WorkItems { get; set; } = new List<ContractWorkItem>();
     
     // Calculated properties
     public decimal PaidAmount => Payments.Where(p => p.Status == PaymentStatus.Paid).Sum(p => p.Amount);
     public decimal PaidPercent => FinalAmount > 0 ? PaidAmount / FinalAmount * 100 : 0;
     public decimal RemainingAmount => FinalAmount - PaidAmount;
+    
+    /// <summary>
+    /// Прогресс по объёму работ (взвешенный по сумме позиций)
+    /// </summary>
+    public decimal WorkScopePercent
+    {
+        get
+        {
+            if (!WorkItems.Any()) return WorkCompletedPercent; // fallback to AVR-based
+            var totalAmount = WorkItems.Sum(w => w.TotalAmount);
+            if (totalAmount <= 0) return 0;
+            var weightedProgress = WorkItems.Sum(w => w.ProgressPercent * w.TotalAmount);
+            return weightedProgress / totalAmount;
+        }
+    }
 }
 
 public enum ContractType

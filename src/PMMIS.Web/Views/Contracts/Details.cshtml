@@ -91,7 +91,7 @@
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
-                    <div class="text-muted small">Оплачено</div>
+                    <div class="text-muted small">Финансовый прогресс</div>
                     <div class="fs-3 fw-bold text-success">@Model.PaidPercent.ToString("N1")%</div>
                     <div class="progress mt-2" style="height: 6px;">
                         <div class="progress-bar bg-success" style="width: @Model.PaidPercent%"></div>
@@ -103,9 +103,9 @@
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body text-center">
                     <div class="text-muted small">Выполнено</div>
-                    <div class="fs-3 fw-bold text-info">@Model.WorkCompletedPercent.ToString("N1")%</div>
+                    <div class="fs-3 fw-bold text-info">@Model.WorkScopePercent.ToString("N1")%</div>
                     <div class="progress mt-2" style="height: 6px;">
-                        <div class="progress-bar bg-info" style="width: @Model.WorkCompletedPercent%"></div>
+                        <div class="progress-bar bg-info" style="width: @Model.WorkScopePercent%"></div>
                     </div>
                 </div>
             </div>

@@ -676,6 +676,7 @@ public class ContractsController : Controller
             .Include(c => c.Milestones.OrderBy(m => m.SortOrder))
             .Include(c => c.Curator)
             .Include(c => c.ProjectManager)
+            .Include(c => c.WorkItems)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (contract == null)
