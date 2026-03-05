@@ -848,24 +848,31 @@ public class ContractsController : Controller
                 }
             }
             
-            // Auto-create task for contract monitoring
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(currentUserId))
+            // Auto-create task for contract monitoring (wrapped in try-catch to not break main flow)
+            try
             {
-                // Assign to curator if set
-                var assigneeId = viewModel.Contract.CuratorId ?? currentUserId;
-                await _taskService.CreateAsync(new ProjectTask
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(currentUserId))
                 {
-                    Title = $"Контроль контракта {viewModel.Contract.ContractNumber}",
-                    Description = $"Мониторинг исполнения контракта: {viewModel.Contract.ScopeOfWork}",
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.Normal,
-                    DueDate = viewModel.Contract.ContractEndDate.AddDays(-7),
-                    AssigneeId = assigneeId,
-                    AssignedById = currentUserId,
-                    ContractId = viewModel.Contract.Id,
-                    ProjectId = viewModel.Contract.ProjectId
-                }, currentUserId);
+                    // Assign to curator if set
+                    var assigneeId = viewModel.Contract.CuratorId ?? currentUserId;
+                    await _taskService.CreateAsync(new ProjectTask
+                    {
+                        Title = $"Контроль контракта {viewModel.Contract.ContractNumber}",
+                        Description = $"Мониторинг исполнения контракта: {viewModel.Contract.ScopeOfWork}",
+                        Status = ProjectTaskStatus.New,
+                        Priority = TaskPriority.Normal,
+                        DueDate = viewModel.Contract.ContractEndDate.AddDays(-7),
+                        AssigneeId = assigneeId,
+                        AssignedById = currentUserId,
+                        ContractId = viewModel.Contract.Id,
+                        ProjectId = viewModel.Contract.ProjectId
+                    }, currentUserId);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ContractCreate] Task auto-creation failed: {ex.Message}");
             }
             
             TempData["Success"] = "Контракт успешно создан";

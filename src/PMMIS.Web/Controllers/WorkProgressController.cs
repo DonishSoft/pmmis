@@ -116,6 +116,12 @@ public class WorkProgressController : Controller
         // Remove validation errors for navigation properties
         ModelState.Remove("WorkProgress.Contract");
         
+        // W5: Validate ContractId
+        if (viewModel.WorkProgress.ContractId <= 0)
+        {
+            ModelState.AddModelError("WorkProgress.ContractId", "Выберите контракт");
+        }
+        
         if (ModelState.IsValid)
         {
             var progress = viewModel.WorkProgress;
@@ -367,23 +373,30 @@ public class WorkProgressController : Controller
         
         // Create task for Project Manager
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (progress.Contract.ProjectManagerId != null)
+        try
         {
-            await _taskService.CreateAsync(new ProjectTask
+            if (progress.Contract.ProjectManagerId != null)
             {
-                Title = $"Проверить АВР #{progress.Id} — {progress.Contract.ContractNumber}",
-                Description = $"АВР отправлен на проверку.\n" +
-                              $"Подрядчик: {progress.Contract.Contractor.Name}\n" +
-                              $"Прогресс: {progress.CompletedPercent}%",
-                Status = ProjectTaskStatus.New,
-                Priority = TaskPriority.High,
-                DueDate = DateTime.UtcNow.AddDays(3),
-                AssigneeId = progress.Contract.ProjectManagerId,
-                AssignedById = userId,
-                ContractId = progress.ContractId,
-                WorkProgressId = progress.Id,
-                ProjectId = progress.Contract.ProjectId
-            }, userId!);
+                await _taskService.CreateAsync(new ProjectTask
+                {
+                    Title = $"Проверить АВР #{progress.Id} — {progress.Contract.ContractNumber}",
+                    Description = $"АВР отправлен на проверку.\n" +
+                                  $"Подрядчик: {progress.Contract.Contractor.Name}\n" +
+                                  $"Прогресс: {progress.CompletedPercent}%",
+                    Status = ProjectTaskStatus.New,
+                    Priority = TaskPriority.High,
+                    DueDate = DateTime.UtcNow.AddDays(3),
+                    AssigneeId = progress.Contract.ProjectManagerId,
+                    AssignedById = userId,
+                    ContractId = progress.ContractId,
+                    WorkProgressId = progress.Id,
+                    ProjectId = progress.Contract.ProjectId
+                }, userId!);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SubmitForReview] Task creation failed: {ex.Message}");
         }
         
         TempData["Success"] = "АВР отправлен на проверку Менеджеру проекта.";
@@ -432,22 +445,29 @@ public class WorkProgressController : Controller
             var directorId = adminUserIds.FirstOrDefault();
             if (directorId != null)
             {
-                await _taskService.CreateAsync(new ProjectTask
+                try
                 {
-                    Title = $"Утвердить АВР #{progress.Id} — {progress.Contract.ContractNumber}",
-                    Description = $"АВР одобрен Менеджером проекта.\n" +
-                                  $"Подрядчик: {progress.Contract.Contractor.Name}\n" +
-                                  $"Прогресс: {progress.CompletedPercent}%\n" +
-                                  (string.IsNullOrEmpty(comment) ? "" : $"Комментарий менеджера: {comment}"),
-                    Status = ProjectTaskStatus.New,
-                    Priority = TaskPriority.High,
-                    DueDate = DateTime.UtcNow.AddDays(2),
-                    AssigneeId = directorId,
-                    AssignedById = userId,
-                    ContractId = progress.ContractId,
-                    WorkProgressId = progress.Id,
-                    ProjectId = progress.Contract.ProjectId
-                }, userId!);
+                    await _taskService.CreateAsync(new ProjectTask
+                    {
+                        Title = $"Утвердить АВР #{progress.Id} — {progress.Contract.ContractNumber}",
+                        Description = $"АВР одобрен Менеджером проекта.\n" +
+                                      $"Подрядчик: {progress.Contract.Contractor.Name}\n" +
+                                      $"Прогресс: {progress.CompletedPercent}%\n" +
+                                      (string.IsNullOrEmpty(comment) ? "" : $"Комментарий менеджера: {comment}"),
+                        Status = ProjectTaskStatus.New,
+                        Priority = TaskPriority.High,
+                        DueDate = DateTime.UtcNow.AddDays(2),
+                        AssigneeId = directorId,
+                        AssignedById = userId,
+                        ContractId = progress.ContractId,
+                        WorkProgressId = progress.Id,
+                        ProjectId = progress.Contract.ProjectId
+                    }, userId!);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ManagerApprove] Task creation failed: {ex.Message}");
+                }
             }
         }
         
@@ -521,21 +541,28 @@ public class WorkProgressController : Controller
         
         if (staffUserId != null)
         {
-            await _taskService.CreateAsync(new ProjectTask
+            try
             {
-                Title = $"Подготовить платёжку #{payment.Id} — {contract.ContractNumber}",
-                Description = $"АВР утверждён Директором.\nСумма: {paymentAmount:N2}\n" +
-                              $"Подрядчик: {contract.Contractor.Name}\n" +
-                              $"Проверьте и подтвердите платёжку.",
-                Status = ProjectTaskStatus.New,
-                Priority = TaskPriority.High,
-                DueDate = DateTime.UtcNow.AddDays(5),
-                AssigneeId = staffUserId,
-                AssignedById = userId,
-                ContractId = contract.Id,
-                WorkProgressId = progress.Id,
-                ProjectId = contract.ProjectId
-            }, userId!);
+                await _taskService.CreateAsync(new ProjectTask
+                {
+                    Title = $"Подготовить платёжку #{payment.Id} — {contract.ContractNumber}",
+                    Description = $"АВР утверждён Директором.\nСумма: {paymentAmount:N2}\n" +
+                                  $"Подрядчик: {contract.Contractor.Name}\n" +
+                                  $"Проверьте и подтвердите платёжку.",
+                    Status = ProjectTaskStatus.New,
+                    Priority = TaskPriority.High,
+                    DueDate = DateTime.UtcNow.AddDays(5),
+                    AssigneeId = staffUserId,
+                    AssignedById = userId,
+                    ContractId = contract.Id,
+                    WorkProgressId = progress.Id,
+                    ProjectId = contract.ProjectId
+                }, userId!);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DirectorApprove] Task creation failed: {ex.Message}");
+            }
         }
         
         TempData["Success"] = $"АВР утверждён. Платёжка #{payment.Id} создана для бухгалтерии.";
@@ -562,21 +589,28 @@ public class WorkProgressController : Controller
         await _context.SaveChangesAsync();
         
         // Notify curator
-        if (progress.Contract.CuratorId != null)
+        try
         {
-            await _taskService.CreateAsync(new ProjectTask
+            if (progress.Contract.CuratorId != null)
             {
-                Title = $"АВР #{progress.Id} отклонён — {progress.Contract.ContractNumber}",
-                Description = $"Причина: {reason}\nПожалуйста, исправьте и отправьте повторно.",
-                Status = ProjectTaskStatus.New,
-                Priority = TaskPriority.High,
-                DueDate = DateTime.UtcNow.AddDays(3),
-                AssigneeId = progress.Contract.CuratorId,
-                AssignedById = userId,
-                ContractId = progress.ContractId,
-                WorkProgressId = progress.Id,
-                ProjectId = progress.Contract.ProjectId
-            }, userId!);
+                await _taskService.CreateAsync(new ProjectTask
+                {
+                    Title = $"АВР #{progress.Id} отклонён — {progress.Contract.ContractNumber}",
+                    Description = $"Причина: {reason}\nПожалуйста, исправьте и отправьте повторно.",
+                    Status = ProjectTaskStatus.New,
+                    Priority = TaskPriority.High,
+                    DueDate = DateTime.UtcNow.AddDays(3),
+                    AssigneeId = progress.Contract.CuratorId,
+                    AssignedById = userId,
+                    ContractId = progress.ContractId,
+                    WorkProgressId = progress.Id,
+                    ProjectId = progress.Contract.ProjectId
+                }, userId!);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[RejectAVR] Task creation failed: {ex.Message}");
         }
         
         TempData["Warning"] = "АВР отклонён.";

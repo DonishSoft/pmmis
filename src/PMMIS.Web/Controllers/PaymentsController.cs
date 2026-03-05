@@ -172,11 +172,18 @@ public class PaymentsController : Controller
             _context.Payments.Add(viewModel.Payment);
             await _context.SaveChangesAsync();
             
-            // Start Payment workflow — creates tasks/notifications per step
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId))
+            // Start Payment workflow — wrapped in try-catch to not break main flow
+            try
             {
-                await _workflowRouting.StartPaymentWorkflowAsync(viewModel.Payment.Id, userId);
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    await _workflowRouting.StartPaymentWorkflowAsync(viewModel.Payment.Id, userId);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PaymentCreate] Workflow start failed: {ex.Message}");
             }
             
             var successMessage = "Платёж создан. Задачи по цепочке утверждения назначены.";
@@ -225,6 +232,7 @@ public class PaymentsController : Controller
         ModelState.Remove("Payment.Document");
         ModelState.Remove("Payment.ApprovedBy");
         ModelState.Remove("Payment.RejectedBy");
+        ModelState.Remove("Payment.WorkProgress");
 
         if (ModelState.IsValid)
         {

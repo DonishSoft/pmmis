@@ -211,6 +211,10 @@ public class ProcurementController : Controller
 
         if (ModelState.IsValid)
         {
+            // PR1: Normalize 0 → null for optional FK fields
+            if (plan.ComponentId == 0) plan.ComponentId = null;
+            if (plan.SubComponentId == 0) plan.SubComponentId = null;
+            
             // Load old values for audit
             var oldPlan = await _context.ProcurementPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
             
