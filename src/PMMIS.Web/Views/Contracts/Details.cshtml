@@ -917,7 +917,7 @@
             <div id="historyBody"></div>
             <div class="text-center py-2 d-none" id="historyShowAll">
                 <button class="btn btn-sm btn-outline-secondary" onclick="showAllHistory()">
-                    <i class="bi bi-chevron-down me-1"></i>Показать все изменения
+                    <i class="bi bi-chevron-down me-1" id="historyToggleIcon"></i><span id="historyToggleText">Показать все изменения</span>
                 </button>
             </div>
             <div class="text-center text-muted py-4 d-none" id="historyEmpty">
@@ -1239,12 +1239,25 @@
 
     function showAllHistory() {
         const body = document.getElementById('historyBody');
+        const icon = document.getElementById('historyToggleIcon');
+        const text = document.getElementById('historyToggleText');
         const logs = window._allHistoryLogs;
-        let html = '<div class="list-group list-group-flush">';
-        logs.forEach(function(log) { html += renderLogItem(log); });
-        html += '</div>';
-        body.innerHTML = html;
-        document.getElementById('historyShowAll').classList.add('d-none');
+        const isExpanded = body.dataset.expanded === 'true';
+        
+        if (!isExpanded) {
+            let html = '<div class="list-group list-group-flush">';
+            logs.forEach(function(log) { html += renderLogItem(log); });
+            html += '</div>';
+            body.innerHTML = html;
+            body.dataset.expanded = 'true';
+            icon.className = 'bi bi-chevron-up me-1';
+            text.textContent = 'Скрыть изменения';
+        } else {
+            body.innerHTML = '<div class="list-group list-group-flush">' + renderLogItem(logs[0]) + '</div>';
+            body.dataset.expanded = 'false';
+            icon.className = 'bi bi-chevron-down me-1';
+            text.textContent = 'Показать все изменения';
+        }
     }
 
     // Make renderLogItem accessible globally
