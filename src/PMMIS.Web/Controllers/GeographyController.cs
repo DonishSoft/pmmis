@@ -114,7 +114,15 @@ public class GeographyController : Controller
         if (district != null)
         {
             _context.Districts.Remove(district);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Невозможно удалить район: есть связанные джамоаты";
+                return RedirectToAction(nameof(Index));
+            }
             TempData["Success"] = "Район удалён";
         }
         return RedirectToAction(nameof(Index));
@@ -355,7 +363,15 @@ public class GeographyController : Controller
         {
             var districtId = jamoat.DistrictId;
             _context.Jamoats.Remove(jamoat);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Невозможно удалить джамоат: есть связанные населённые пункты";
+                return RedirectToAction(nameof(Jamoats), new { districtId = jamoat.DistrictId });
+            }
             TempData["Success"] = "Джамоат удалён";
             return RedirectToAction(nameof(Jamoats), new { districtId });
         }
@@ -494,7 +510,15 @@ public class GeographyController : Controller
         {
             var jamoatId = village.JamoatId;
             _context.Villages.Remove(village);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Невозможно удалить населённый пункт: есть связанные объекты";
+                return RedirectToAction(nameof(Villages), new { jamoatId = village.JamoatId });
+            }
             TempData["Success"] = "Населённый пункт удалён";
             return RedirectToAction(nameof(Villages), new { jamoatId });
         }
@@ -600,7 +624,14 @@ public class GeographyController : Controller
             existing.NameEn = model.NameEn;
             existing.UpdatedAt = DateTime.UtcNow;
         }
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true, id = model.Id > 0 ? model.Id : _context.Districts.OrderByDescending(x => x.Id).First().Id });
     }
 
@@ -611,7 +642,14 @@ public class GeographyController : Controller
         var d = await _context.Districts.FindAsync(id);
         if (d == null) return NotFound();
         _context.Districts.Remove(d);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка удаления: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true });
     }
 
@@ -651,7 +689,14 @@ public class GeographyController : Controller
             existing.NameEn = model.NameEn;
             existing.UpdatedAt = DateTime.UtcNow;
         }
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true, id = model.Id > 0 ? model.Id : _context.Jamoats.OrderByDescending(x => x.Id).First().Id });
     }
 
@@ -662,7 +707,14 @@ public class GeographyController : Controller
         var j = await _context.Jamoats.FindAsync(id);
         if (j == null) return NotFound();
         _context.Jamoats.Remove(j);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка удаления: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true });
     }
 
@@ -710,7 +762,14 @@ public class GeographyController : Controller
             existing.IsCoveredByProject = model.IsCoveredByProject;
             existing.UpdatedAt = DateTime.UtcNow;
         }
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true, id = model.Id > 0 ? model.Id : _context.Villages.OrderByDescending(x => x.Id).First().Id });
     }
 
@@ -721,7 +780,14 @@ public class GeographyController : Controller
         var v = await _context.Villages.FindAsync(id);
         if (v == null) return NotFound();
         _context.Villages.Remove(v);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка удаления: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true });
     }
 
