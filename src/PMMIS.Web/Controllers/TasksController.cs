@@ -281,7 +281,19 @@ public class TasksController : Controller
             EstimatedHours = model.EstimatedHours
         };
 
-        await _taskService.CreateAsync(task, currentUser.Id);
+        try
+        {
+            await _taskService.CreateAsync(task, currentUser.Id);
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", $"Ошибка создания задачи: {ex.InnerException?.Message ?? ex.Message}");
+            model.AvailableAssignees = await GetAssignableUsersAsync(currentUser);
+            model.Contracts = await _context.Contracts.ToListAsync();
+            model.ProcurementPlans = await _context.ProcurementPlans.ToListAsync();
+            model.Projects = await _context.Projects.ToListAsync();
+            return View(model);
+        }
 
         // Save checklists if provided
         if (!string.IsNullOrEmpty(model.ChecklistsJson))
@@ -375,7 +387,19 @@ public class TasksController : Controller
         task.ProjectId = model.ProjectId;
         task.EstimatedHours = model.EstimatedHours;
 
-        await _taskService.UpdateAsync(task, currentUser.Id);
+        try
+        {
+            await _taskService.UpdateAsync(task, currentUser.Id);
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", $"Ошибка обновления задачи: {ex.InnerException?.Message ?? ex.Message}");
+            model.AvailableAssignees = await GetAssignableUsersAsync(currentUser);
+            model.Contracts = await _context.Contracts.ToListAsync();
+            model.ProcurementPlans = await _context.ProcurementPlans.ToListAsync();
+            model.Projects = await _context.Projects.ToListAsync();
+            return View(model);
+        }
 
         // Update checklists if provided
         if (!string.IsNullOrEmpty(model.ChecklistsJson))

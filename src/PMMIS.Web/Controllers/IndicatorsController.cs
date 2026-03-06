@@ -207,6 +207,7 @@ public class IndicatorsController : Controller
         
         if (ModelState.IsValid)
         {
+            value.MeasurementDate = DateTime.SpecifyKind(value.MeasurementDate, DateTimeKind.Utc);
             value.CreatedAt = DateTime.UtcNow;
             _context.IndicatorValues.Add(value);
             await _context.SaveChangesAsync();

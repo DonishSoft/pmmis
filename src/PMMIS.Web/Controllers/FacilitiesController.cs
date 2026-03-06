@@ -278,7 +278,14 @@ public class FacilitiesController : Controller
             existing.Notes = model.Notes;
             existing.UpdatedAt = DateTime.UtcNow;
         }
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true, id = model.Id > 0 ? model.Id : _context.Schools.OrderByDescending(x => x.Id).First().Id });
     }
 
@@ -327,7 +334,14 @@ public class FacilitiesController : Controller
             existing.Notes = model.Notes;
             existing.UpdatedAt = DateTime.UtcNow;
         }
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         return Json(new { success = true, id = model.Id > 0 ? model.Id : _context.HealthFacilities.OrderByDescending(x => x.Id).First().Id });
     }
 

@@ -176,7 +176,14 @@ public class TendersController : Controller
         tender.EndDate = newEndDate;
         tender.Status = TenderStatus.Extended;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
         TempData["Success"] = $"Срок тендера продлён до {newEndDate:dd.MM.yyyy}";
         return Json(new { success = true });
     }
@@ -264,7 +271,14 @@ public class TendersController : Controller
         applicant.IsParticipant = false;
         applicant.IsWinner = false;
         _context.TenderApplicants.Add(applicant);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
 
         return Json(new { success = true, id = applicant.Id });
     }
@@ -419,7 +433,14 @@ public class TendersController : Controller
         var tender = applicant.Tender;
         tender.Status = TenderStatus.Closed;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, error = $"Ошибка сохранения: {ex.InnerException?.Message ?? ex.Message}" });
+        }
 
         return Json(new { success = true, contractId = contract.Id, contractorId });
     }
