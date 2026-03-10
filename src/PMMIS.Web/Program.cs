@@ -119,14 +119,19 @@ builder.Services.AddControllersWithViews()
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
-    var supportedCultures = new[]
-    {
-        new CultureInfo("ru"),
-        new CultureInfo("tg"), // Tajik
-        new CultureInfo("en")
-    };
+    // Override decimal separator to "." for HTML <input type="number"> compatibility
+    // Russian and Tajik cultures use "," by default which breaks browser number inputs
+    var ruCulture = new CultureInfo("ru");
+    ruCulture.NumberFormat.NumberDecimalSeparator = ".";
+    ruCulture.NumberFormat.CurrencyDecimalSeparator = ".";
 
-    options.DefaultRequestCulture = new RequestCulture("ru");
+    var tgCulture = new CultureInfo("tg");
+    tgCulture.NumberFormat.NumberDecimalSeparator = ".";
+    tgCulture.NumberFormat.CurrencyDecimalSeparator = ".";
+
+    var supportedCultures = new[] { ruCulture, tgCulture, new CultureInfo("en") };
+
+    options.DefaultRequestCulture = new RequestCulture(ruCulture);
     options.SupportedCultures = supportedCultures;
     options.SupportedUICultures = supportedCultures;
     options.RequestCultureProviders.Insert(0, new CookieRequestCultureProvider());

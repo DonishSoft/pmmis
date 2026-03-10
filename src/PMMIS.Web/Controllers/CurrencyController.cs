@@ -90,9 +90,11 @@ public class CurrencyController : Controller
     }
 
     /// <summary>
-    /// API: Получить курс USD/TJS на заданную дату
+    /// API: Получить курс USD/TJS на заданную дату.
+    /// Доступно всем авторизованным пользователям (используется в формах контрактов/платежей/тендеров).
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetUsdRate(string date)
     {
         if (!DateTime.TryParse(date, out var parsedDate))

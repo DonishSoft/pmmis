@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using PMMIS.Domain.Entities;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace PMMIS.Web.Authorization;
 
@@ -39,6 +40,14 @@ public class RequirePermissionFilter : IAsyncAuthorizationFilter
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
+        // Skip permission check if action has [AllowAnonymous] (used to bypass class-level RequirePermission)
+        if (context.ActionDescriptor is ControllerActionDescriptor actionDescriptor)
+        {
+            var hasAllowAnonymous = actionDescriptor.MethodInfo
+                .GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Length > 0;
+            if (hasAllowAnonymous) return;
+        }
+
         var user = context.HttpContext.User;
         
         if (!user.Identity?.IsAuthenticated ?? true)
