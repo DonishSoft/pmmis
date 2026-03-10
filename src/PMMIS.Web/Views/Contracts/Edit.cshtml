@@ -984,13 +984,18 @@
             const data = await resp.json();
             if (data.rate) {
                 contractExchangeRate.value = data.rate;
-                rateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                contractExchangeRate.readOnly = true;
+                rateInfo.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Курс НБТ на ${dateVal}</span>`;
                 calculateUsdFromTjs();
             } else {
-                rateInfo.textContent = 'Курс недоступен на эту дату';
+                contractExchangeRate.value = '';
+                contractExchangeRate.readOnly = false;
+                rateInfo.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Курс не найден. Введите вручную</span>';
             }
         } catch (e) {
-            rateInfo.textContent = 'Ошибка загрузки курса';
+            contractExchangeRate.value = '';
+            contractExchangeRate.readOnly = false;
+            rateInfo.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Ошибка загрузки. Введите курс вручную</span>';
         }
     }
 

@@ -226,13 +226,18 @@
             const data = await resp.json();
             if (data.rate) {
                 paymentExchangeRate.value = data.rate;
-                paymentRateInfo.textContent = `Курс НБТ на ${dateVal}`;
+                paymentExchangeRate.readOnly = true;
+                paymentRateInfo.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>Курс НБТ на ${dateVal}</span>`;
                 calculateUsdFromTjs();
             } else {
-                paymentRateInfo.textContent = 'Курс недоступен';
+                paymentExchangeRate.value = '';
+                paymentExchangeRate.readOnly = false;
+                paymentRateInfo.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Курс не найден. Введите вручную</span>';
             }
         } catch (e) {
-            paymentRateInfo.textContent = 'Ошибка загрузки';
+            paymentExchangeRate.value = '';
+            paymentExchangeRate.readOnly = false;
+            paymentRateInfo.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Ошибка загрузки. Введите курс вручную</span>';
         }
     }
 

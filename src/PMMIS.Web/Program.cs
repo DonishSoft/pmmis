@@ -98,6 +98,8 @@ builder.Services.AddScoped<PMMIS.Web.Services.IManagementAlertService, PMMIS.Web
 // Currency Exchange Rate Service (NBT)
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<PMMIS.Web.Services.INbtCurrencyService, PMMIS.Web.Services.NbtCurrencyService>();
+builder.Services.AddHostedService<PMMIS.Web.Services.CurrencyRateFetchJob>();
+builder.Services.AddHostedService<PMMIS.Web.Services.BackfillCurrencyRatesJob>();
 
 // Configure cookie authentication
 builder.Services.ConfigureApplicationCookie(options =>
